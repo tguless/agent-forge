@@ -1,49 +1,20 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import Anthropic from '@anthropic-ai/sdk';
 import { TOOL_DEFS, runTool } from './tools';
 import { addEvent, setAgentStatus, getAgent } from '@/lib/agentStore';
+import { getMetaSkillsBundle, getPromptContent } from '@/lib/forgeConfigStore';
+import { applyPromptTemplate } from '@/lib/forgePrompts';
 import { imageToolingStatus } from './imagePipeline';
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 const MAX_ITERATIONS = 24;
-
-function loadSkills(): string {
-  const dir = path.join(process.cwd(), 'skills');
-  let out = '';
-  try {
-    const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort();
-    for (const f of files) {
-      out += `\n\n===== ${f} =====\n${fs.readFileSync(path.join(dir, f), 'utf8')}`;
-    }
-  } catch {
-    /* skills optional */
-  }
-  return out;
-}
 
 function buildSystemPrompt(): string {
   const tooling = imageToolingStatus();
   const visualNote = tooling.gemini
     ? 'Image generation is ONLINE (Gemini). Generate all three images.'
     : 'Image generation has NO model key — images will be placeholders, but still call generate_image for all three so the cards have assets.';
-  return `You are the Forge — an autonomous agent that designs a single tactical "command-card" AI agent for a business.
-
-You are given a business description and a job description. Using the skills below, produce a complete, specific, operator-grade agent: identity, narrative, lists, metrics, a detailed Markdown skill file, and three visual assets. Use the provided tools to record every part. Do not ask the user questions — make strong, specific decisions grounded in the inputs.
-
-${visualNote}
-
-Follow this exact sequence of tool calls:
-1) set_identity
-2) generate_image (emblem)  3) generate_image (portrait)  4) generate_image (icon)
-5) set_narrative  6) set_lists  7) set_metrics
-8) write_skill_file
-9) finalize
-
-IMPORTANT: generate the three images RIGHT AFTER set_identity (before the long skill file) so the
-visual identity appears quickly. Call tools one logical step at a time. After finalize, stop.
-
-${loadSkills()}`;
+  const core = applyPromptTemplate(getPromptContent('forge.system'), { visualNote });
+  return `${core}${getMetaSkillsBundle()}`;
 }
 
 /** Run the full generation loop for an agent (async, fire-and-forget from the API). */
@@ -66,15 +37,13 @@ export async function runGeneration(slug: string): Promise<void> {
   const client = new Anthropic({ apiKey, timeout: 4 * 60 * 1000, maxRetries: 2 });
   const system = buildSystemPrompt();
 
-  const userPrompt = `Slug for this agent: ${slug}
-
-BUSINESS CONTEXT:
-${agent.businessContext}
-
-JOB DESCRIPTION:
-${agent.jobDescription || '(none provided — infer the role from the business context and the title hint below)'}
-
-Design the agent now.`;
+  const userPrompt = applyPromptTemplate(getPromptContent('forge.user_template'), {
+    slug,
+    businessContext: agent.businessContext,
+    jobDescription:
+      agent.jobDescription ||
+      '(none provided — infer the role from the business context and the title hint below)',
+  });
 
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userPrompt }];
 

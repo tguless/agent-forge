@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { AgentCommandCard } from '@/components/AgentCommandCard';
+import { ForgeNewAgentCard } from '@/components/ForgeNewAgentCard';
 import { ForgeHudHeader } from '@/components/ForgeHudHeader';
 import type { AgentSummary } from '@/lib/types';
 
@@ -35,9 +36,14 @@ export default function IndexPage() {
           <strong style={{ color: 'var(--ops-text)' }}>Agent Forge</strong> — every card below was
           generated from a job description.
         </p>
-        <Link href="/new" className="forge-cta">
-          + Forge new agent
-        </Link>
+        <div className="forge-config-toolbar-actions">
+          <Link href="/config" className="forge-cta forge-cta--ghost">
+            Configuration
+          </Link>
+          <Link href="/new" className="forge-cta">
+            + Forge new agent
+          </Link>
+        </div>
       </div>
 
       <div className="ops-hud-shell">
@@ -48,20 +54,12 @@ export default function IndexPage() {
 
           {agents === null ? (
             <p className="forge-empty">Loading roster…</p>
-          ) : agents.length === 0 ? (
-            <div className="forge-empty">
-              <p>No agents forged yet.</p>
-              <p>
-                <Link href="/new" className="forge-cta">
-                  Forge your first agent
-                </Link>
-              </p>
-            </div>
           ) : (
             <div className="ops-agent-grid">
               {agents.map((agent) => (
                 <AgentCommandCard key={agent.slug} agent={agent} />
               ))}
+              <ForgeNewAgentCard />
             </div>
           )}
         </div>

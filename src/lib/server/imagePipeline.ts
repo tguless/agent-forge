@@ -14,6 +14,8 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { getPromptContent } from '@/lib/forgeConfigStore';
+import { applyPromptTemplate } from '@/lib/forgePrompts';
 
 export type ImageKind = 'icon' | 'emblem' | 'portrait';
 
@@ -44,50 +46,59 @@ const MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
 const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '2K';
 const WHITE_FUZZ = process.env.ICON_WHITE_FUZZ || '14%';
 
-// ── prompt fragments (lifted from PaperIQ asset scripts) ────────────────────
+// ── prompt fragments (configurable via Forge Configuration) ─────────────────
 
-const WHITE_BG =
-  'Pure flat white background #FFFFFF only, no gradients, no shadows on background, no border, no frame, no text, no watermark.';
-const FILL_HINT =
-  'The glyph must be VERY LARGE: fill 88-92% of the square canvas edge-to-edge, bold thick strokes, minimal empty margin, centered.';
+function rankWingsKey(authority: number): 'image.emblem.rank_wings_3' | 'image.emblem.rank_wings_4' | 'image.emblem.rank_wings_5' {
+  if (authority >= 5) return 'image.emblem.rank_wings_5';
+  if (authority >= 4) return 'image.emblem.rank_wings_4';
+  return 'image.emblem.rank_wings_3';
+}
 
-const WINGED_PLAQUE =
-  'Hyper-realistic 3D metal-organic military commander insignia plaque, IDENTICAL structural style to a Command and Conquer supreme winged commander badge: symmetrical large mechanical armored wings with layered gunmetal-teal metal plates, visible gears and pistons at wing roots, thick circular brushed gunmetal ring behind center sculpture, V-shaped metallic chevron base, dramatic cinematic rim lighting, polished metal with gold trim accents, micro-scratches, heavy dimensional depth.';
-const EMBLEM_FORBIDDEN =
-  'FORBIDDEN centerpiece: five-point star, generic star, eagle, sunburst, empty circle. FORBIDDEN: any text, words, letters, nameplate typography.';
-const RANK_WINGS: Record<number, string> = {
-  5: 'Wings: largest triple-layer wingspan (supreme commander rank).',
-  4: 'Wings: large two-layer wings (executive commander rank), slightly smaller than supreme.',
-  3: 'Wings: medium mechanical wings (field officer rank).',
-};
-
-const PORTRAIT_BASE =
-  'Photorealistic cinematic portrait cosplay, Command and Conquer RTS commander character style like a Red Alert / Generals briefing screen. Upper body bust, facing camera, confident tactical expression. Dark olive-black background with faint green HUD grid. Dramatic rim lighting. No text, no logos, no watermark.';
-const RANK_UNIFORM: Record<number, string> = {
-  5: 'Supreme commander dress uniform: long coat, gold epaulettes, highest rank insignia, most ornate.',
-  4: 'Executive officer jacket: structured shoulders, medium ornate rank bars, professional HQ commander.',
-  3: 'Field officer tactical vest and fatigues: practical gear, compact rank patch, unit commander on deployment.',
-};
+function rankUniformKey(
+  authority: number,
+): 'image.portrait.rank_uniform_3' | 'image.portrait.rank_uniform_4' | 'image.portrait.rank_uniform_5' {
+  if (authority >= 5) return 'image.portrait.rank_uniform_5';
+  if (authority >= 4) return 'image.portrait.rank_uniform_4';
+  return 'image.portrait.rank_uniform_3';
+}
 
 function buildPrompt(input: GenerateImageInput): { prompt: string; aspect: '1:1' | '3:4' } {
   const authority = input.authority ?? 3;
+  const whiteBg = getPromptContent('image.shared.white_bg');
+  const fillHint = getPromptContent('image.shared.fill_hint');
+
   if (input.kind === 'icon') {
     return {
       aspect: '1:1',
-      prompt: `${WHITE_BG} ${FILL_HINT} Single minimalist flat vector icon in color ${input.accent} only: ${input.subject}.`,
+      prompt: applyPromptTemplate(getPromptContent('image.icon.template'), {
+        white_bg: whiteBg,
+        fill_hint: fillHint,
+        accent: input.accent,
+        subject: input.subject,
+      }),
     };
   }
   if (input.kind === 'emblem') {
     return {
       aspect: '1:1',
-      prompt: `${WHITE_BG.replace('no text, no watermark.', 'Single isolated 3D emblem object, centered, fills 90% of canvas.')} ${WINGED_PLAQUE} ${
-        RANK_WINGS[authority] ?? RANK_WINGS[3]
-      } Primary accent ${input.accent} on the center sculpture and wing highlights. CENTER SCULPTURE: ${input.subject} — this is the only center symbol, rendered in polished metal. ${EMBLEM_FORBIDDEN}`,
+      prompt: applyPromptTemplate(getPromptContent('image.emblem.template'), {
+        emblem_white_bg: getPromptContent('image.emblem.white_bg'),
+        winged_plaque: getPromptContent('image.emblem.winged_plaque'),
+        rank_wings: getPromptContent(rankWingsKey(authority)),
+        accent: input.accent,
+        subject: input.subject,
+        emblem_forbidden: getPromptContent('image.emblem.forbidden'),
+      }),
     };
   }
   return {
     aspect: '3:4',
-    prompt: `${PORTRAIT_BASE} ${RANK_UNIFORM[authority] ?? RANK_UNIFORM[3]} Accent color ${input.accent} on uniform trim and holograms. ${input.subject} Unique individual — distinct face and styling.`,
+    prompt: applyPromptTemplate(getPromptContent('image.portrait.template'), {
+      portrait_base: getPromptContent('image.portrait.base'),
+      rank_uniform: getPromptContent(rankUniformKey(authority)),
+      accent: input.accent,
+      subject: input.subject,
+    }),
   };
 }
 

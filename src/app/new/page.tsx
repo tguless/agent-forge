@@ -129,9 +129,14 @@ export default function NewAgentPage() {
 
   return (
     <div className="ops-font-scope forge-page">
-      <Link href="/" className="ops-detail-back" style={{ position: 'static', marginBottom: 18 }}>
-        ← All agents
-      </Link>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 18 }}>
+        <Link href="/" className="ops-detail-back" style={{ position: 'static' }}>
+          ← All agents
+        </Link>
+        <Link href="/config" className="forge-cta forge-cta--ghost" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
+          Configuration
+        </Link>
+      </div>
 
       <div className="forge-wordmark forge-wordmark--lg" style={{ marginBottom: 6 }}>
         AGENT<span>FORGE</span>
