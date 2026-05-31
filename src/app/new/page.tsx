@@ -5,10 +5,42 @@ import Link from 'next/link';
 import { HudBox } from '@/components/HudBox';
 import type { AgentStatus, GenerationEvent } from '@/lib/types';
 
-const EXAMPLE_BUSINESS =
-  'We run a mid-market commercial real estate firm. Our analysts spend hours abstracting key terms out of lease PDFs (rent schedules, options, CAM, escalations) into spreadsheets for asset managers.';
-const EXAMPLE_JD =
-  'Lease Abstraction Specialist — read incoming lease documents, extract critical dates and financial terms into our system of record, flag risky clauses, and keep the abstract database accurate and audit-ready.';
+type ForgeExample = {
+  label: string;
+  businessContext: string;
+  jobDescription: string;
+  titleHint: string;
+};
+
+const FORGE_EXAMPLES: ForgeExample[] = [
+  {
+    label: 'Use Example 1',
+    businessContext:
+      'We run a mid-market commercial real estate firm. Our analysts spend hours abstracting key terms out of lease PDFs (rent schedules, options, CAM, escalations) into spreadsheets for asset managers.',
+    jobDescription:
+      'Lease Abstraction Specialist — read incoming lease documents, extract critical dates and financial terms into our system of record, flag risky clauses, and keep the abstract database accurate and audit-ready.',
+    titleHint: 'Lease Abstraction Agent',
+  },
+  {
+    label: 'Use Example 2',
+    businessContext:
+      'PaperIQ.ai is a B2B document intelligence platform. Customers upload invoices, contracts, and operational PDFs; we extract structured fields, route exceptions, and expose answers through tenant-safe AI agents.',
+    jobDescription:
+      'Accounts Payable Automation Agent — ingest vendor invoices (PDF/email), extract header/line fields, match to POs, flag duplicates and policy exceptions, and push clean records to NetSuite with an audit trail.',
+    titleHint: 'AP Automation Agent',
+  },
+  {
+    label: 'Use Example 3',
+    businessContext:
+      'We operate a regional health system with 40+ clinics. Prior authorization packets and referral faxes arrive as unstructured PDFs; coordinators manually re-key patient, payer, and CPT details before submission.',
+    jobDescription:
+      'Prior Authorization Intake Agent — triage incoming auth packets, extract member ID, diagnosis codes, requested service, and urgency signals, validate completeness against payer rules, and queue clean submissions for human sign-off.',
+    titleHint: 'Prior Auth Intake Agent',
+  },
+];
+
+const EXAMPLE_BUSINESS = FORGE_EXAMPLES[0]!.businessContext;
+const EXAMPLE_JD = FORGE_EXAMPLES[0]!.jobDescription;
 
 export default function NewAgentPage() {
   const [businessContext, setBusinessContext] = React.useState('');
@@ -119,10 +151,13 @@ export default function NewAgentPage() {
     }
   };
 
-  const useExample = () => {
-    setBusinessContext(EXAMPLE_BUSINESS);
-    setJobDescription(EXAMPLE_JD);
-    setTitleHint('Lease Abstraction Agent');
+  const useExample = (index: number) => {
+    const ex = FORGE_EXAMPLES[index];
+    if (!ex) return;
+    setBusinessContext(ex.businessContext);
+    setJobDescription(ex.jobDescription);
+    setTitleHint(ex.titleHint);
+    setError(null);
   };
 
   const running = status === 'queued' || status === 'generating';
@@ -199,9 +234,16 @@ export default function NewAgentPage() {
             <button type="submit" className="forge-cta" disabled={submitting}>
               {submitting ? 'Igniting forge…' : '⚡ Forge agent'}
             </button>
-            <button type="button" className="forge-cta forge-cta--ghost" onClick={useExample}>
-              Use example
-            </button>
+            {FORGE_EXAMPLES.map((ex, i) => (
+              <button
+                key={ex.titleHint}
+                type="button"
+                className="forge-cta forge-cta--ghost"
+                onClick={() => useExample(i)}
+              >
+                {ex.label}
+              </button>
+            ))}
           </div>
         </form>
       ) : (
