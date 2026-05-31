@@ -1,0 +1,1014 @@
+/* PaperIQ Q1 Operating Plan — Command & Conquer HUD parity */
+
+.ops-font-scope {
+  --ops-bg: #020617;
+  --ops-panel: #060d18;
+  --ops-cyan: #38bdf8;
+  --ops-cyan-bright: #7dd3fc;
+  --ops-cyan-glow: rgba(56, 189, 248, 0.55);
+  --ops-text: #f8fafc;
+  --ops-muted: #64748b;
+  --ops-bracket-arm: 28px;
+  --ops-bracket-stroke: 2px;
+  --ops-box-arm: 14px;
+  --ops-card-arm: 10px;
+  --ops-font-display: var(--font-ops-display), 'Oxanium', 'Rajdhani', sans-serif;
+  --ops-font-ui: var(--font-ops-ui), 'Chakra Petch', 'Segoe UI', sans-serif;
+  /* Gradient edges — bright center, fade at ends (not flat mono strokes) */
+  --ops-edge-h: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--ops-cyan) 25%, transparent) 18%,
+    var(--ops-cyan-bright) 50%,
+    color-mix(in srgb, var(--ops-cyan) 25%, transparent) 82%,
+    transparent 100%
+  );
+  --ops-edge-v: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--ops-cyan) 22%, transparent) 20%,
+    var(--ops-cyan-bright) 50%,
+    color-mix(in srgb, var(--ops-cyan) 22%, transparent) 80%,
+    transparent 100%
+  );
+}
+
+.ops-dashboard {
+  font-family: var(--ops-font-ui);
+  background-color: var(--ops-bg);
+  background-image:
+    linear-gradient(rgba(30, 58, 138, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 58, 138, 0.14) 1px, transparent 1px);
+  background-size: 32px 32px;
+  color: var(--ops-text);
+  min-height: 100vh;
+  padding-bottom: 2rem;
+}
+
+/* ── Outer HUD shell (lifted border) ── */
+.ops-hud-shell {
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 10px 10px 0;
+}
+
+/* Ambient glow */
+.ops-hud-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(
+    12px 0,
+    calc(100% - 12px) 0,
+    100% 12px,
+    100% 100%,
+    0 100%,
+    0 12px
+  );
+  border: none;
+  box-shadow:
+    0 0 40px rgba(56, 189, 248, 0.2),
+    0 0 80px rgba(56, 189, 248, 0.08),
+    inset 0 0 48px rgba(56, 189, 248, 0.05);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Shell perimeter: top + sides (bottom owned by footer rail) */
+.ops-hud-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  --frame-arm: var(--ops-bracket-arm);
+  background-image: var(--ops-edge-h), var(--ops-edge-v), var(--ops-edge-v);
+  background-repeat: no-repeat;
+  background-size:
+    calc(100% - 2 * var(--frame-arm)) var(--ops-bracket-stroke),
+    var(--ops-bracket-stroke) 100%,
+    var(--ops-bracket-stroke) 100%;
+  background-position:
+    var(--frame-arm) 0,
+    0 0,
+    100% 0;
+}
+
+/* Side scan streaks */
+.ops-hud-inner::before,
+.ops-hud-inner::after {
+  content: '';
+  position: absolute;
+  top: 8%;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, transparent, var(--ops-cyan), transparent);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ops-hud-inner::before {
+  left: 0;
+}
+
+.ops-hud-inner::after {
+  right: 0;
+}
+
+.ops-hud-inner {
+  position: relative;
+  z-index: 1;
+  background: rgba(4, 10, 20, 0.92);
+  padding: 8px 10px 6px;
+  overflow: hidden;
+}
+
+/* ── HUD header (HTML/CSS recreation — no bitmap) ── */
+.ops-hud-header {
+  margin-bottom: 8px;
+}
+
+.ops-hud-header-frame {
+  position: relative;
+  padding: 12px 14px 10px;
+  background: linear-gradient(180deg, rgba(8, 16, 32, 0.98) 0%, rgba(4, 10, 20, 0.98) 100%);
+}
+
+.ops-hud-header-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  clip-path: polygon(
+    14px 0,
+    calc(100% - 14px) 0,
+    100% 14px,
+    100% calc(100% - 14px),
+    calc(100% - 14px) 100%,
+    14px 100%,
+    0 calc(100% - 14px),
+    0 14px
+  );
+  border: none;
+  box-shadow: inset 0 0 24px rgba(56, 189, 248, 0.04);
+  z-index: 0;
+}
+
+/* Connecting edges between header L-brackets */
+.ops-hud-header-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  --frame-arm: var(--ops-bracket-arm);
+  background-image: var(--ops-edge-h), var(--ops-edge-h), var(--ops-edge-v), var(--ops-edge-v);
+  background-repeat: no-repeat;
+  background-size:
+    calc(100% - 2 * var(--frame-arm)) var(--ops-bracket-stroke),
+    calc(100% - 2 * var(--frame-arm)) var(--ops-bracket-stroke),
+    var(--ops-bracket-stroke) calc(100% - 2 * var(--frame-arm)),
+    var(--ops-bracket-stroke) calc(100% - 2 * var(--frame-arm));
+  background-position:
+    var(--frame-arm) 0,
+    var(--frame-arm) 100%,
+    0 var(--frame-arm),
+    100% var(--frame-arm);
+}
+
+/* Top-center status crest (gradient highlight, not a second box border) */
+.ops-hf-crest {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ops-cyan-bright), transparent);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* ── Gradient L-brackets: transparent hit area, arms fade out (no drop-shadow box) ── */
+.ops-hf-corner,
+.ops-box-corner,
+.ops-bf-corner {
+  position: absolute;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  filter: none;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.ops-hf-corner {
+  --corner-arm: 28px;
+  --corner-color: var(--ops-cyan-bright);
+  width: var(--corner-arm);
+  height: var(--corner-arm);
+  z-index: 4;
+}
+
+.ops-box-corner {
+  --corner-arm: 14px;
+  --corner-color: var(--ops-cyan-bright);
+  width: var(--corner-arm);
+  height: var(--corner-arm);
+  z-index: 2;
+}
+
+.ops-bf-corner {
+  --corner-arm: 28px;
+  --corner-color: var(--ops-cyan-bright);
+  width: var(--corner-arm);
+  height: 22px;
+  z-index: 3;
+}
+
+.ops-hf-corner::before,
+.ops-hf-corner::after,
+.ops-box-corner::before,
+.ops-box-corner::after,
+.ops-bf-corner::before,
+.ops-bf-corner::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Top-left */
+.ops-hf-corner-tl,
+.ops-box-corner-tl {
+  top: 0;
+  left: 0;
+}
+
+.ops-hf-corner-tl::before,
+.ops-box-corner-tl::before {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--ops-bracket-stroke);
+  background: linear-gradient(
+    90deg,
+    var(--corner-color) 0%,
+    color-mix(in srgb, var(--corner-color) 35%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+.ops-hf-corner-tl::after,
+.ops-box-corner-tl::after {
+  top: 0;
+  left: 0;
+  width: var(--ops-bracket-stroke);
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    var(--corner-color) 0%,
+    color-mix(in srgb, var(--corner-color) 35%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+/* Top-right */
+.ops-hf-corner-tr,
+.ops-box-corner-tr {
+  top: 0;
+  right: 0;
+}
+
+.ops-hf-corner-tr::before,
+.ops-box-corner-tr::before {
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--ops-bracket-stroke);
+  background: linear-gradient(
+    270deg,
+    var(--corner-color) 0%,
+    color-mix(in srgb, var(--corner-color) 35%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+.ops-hf-corner-tr::after,
+.ops-box-corner-tr::after {
+  top: 0;
+  right: 0;
+  width: var(--ops-bracket-stroke);
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    var(--corner-color) 0%,
+    color-mix(in srgb, var(--corner-color) 35%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+/* Bottom-left */
+.ops-hf-corner-bl,
+.ops-box-corner-bl,
+.ops-bf-corner-bl {
+  bottom: 0;
+  left: 0;
+}
+
+.ops-hf-corner-bl::before,
+.ops-box-corner-bl::before,
+.ops-bf-corner-bl::before {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--ops-bracket-stroke);
+  background: linear-gradient(
+    90deg,
+    var(--corner-color) 0%,
+    color-mix(in srgb, var(--corner-color) 35%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+.ops-hf-corner-bl::after,
+.ops-box-corner-bl::after,
+.ops-bf-corner-bl::after {
+  bottom: 0;
+  left: 0;
+  width: var(--ops-bracket-stroke);
+  height: 100%;
+  background: linear-gradient(
+    0deg,
+    var(--corner-color) 0%,
+    color-mix(in srgb, var(--corner-color) 35%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+/* Bottom-right */
+.ops-hf-corner-br,
+.ops-box-corner-br,
+.ops-bf-corner-br {
+  bottom: 0;
+  right: 0;
+}
+
+.ops-hf-corner-br::before,
+.ops-box-corner-br::before,
+.ops-bf-corner-br::before {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--ops-bracket-stroke);
+  background: linear-gradient(
+    270deg,
+    var(--corner-color) 0%,
+    color-mix(in srgb, var(--corner-color) 35%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+.ops-hf-corner-br::after,
+.ops-box-corner-br::after,
+.ops-bf-corner-br::after {
+  bottom: 0;
+  right: 0;
+  width: var(--ops-bracket-stroke);
+  height: 100%;
+  background: linear-gradient(
+    0deg,
+    var(--corner-color) 0%,
+    color-mix(in srgb, var(--corner-color) 35%, transparent) 45%,
+    transparent 100%
+  );
+}
+
+.ops-hud-header-inner {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 2px 8px 0;
+}
+
+.ops-hud-header-brand {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+
+.ops-hud-logo {
+  height: 68px;
+  width: auto;
+  max-width: 340px;
+  object-fit: contain;
+  display: block;
+  background: transparent;
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.35));
+}
+
+.ops-title {
+  font-family: var(--ops-font-display);
+  font-size: clamp(0.95rem, 2.4vw, 1.35rem);
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--ops-text);
+  margin: 0 0 6px;
+  text-shadow:
+    0 0 28px rgba(56, 189, 248, 0.5),
+    0 1px 0 rgba(0, 0, 0, 0.9);
+}
+
+.ops-title-line2 {
+  display: block;
+  font-size: 0.88em;
+  color: var(--ops-cyan-bright);
+  letter-spacing: 0.24em;
+  margin-top: 1px;
+}
+
+/* ── Reusable HUD box (corners + optional chamfer border) ── */
+.ops-hud-box {
+  position: relative;
+}
+
+.ops-hud-box-body {
+  position: relative;
+  z-index: 1;
+}
+
+/* Connecting edges between box L-brackets */
+.ops-hud-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  --frame-arm: var(--ops-box-arm);
+  background-image: var(--ops-edge-h), var(--ops-edge-h), var(--ops-edge-v), var(--ops-edge-v);
+  background-repeat: no-repeat;
+  background-size:
+    calc(100% - 2 * var(--frame-arm)) var(--ops-bracket-stroke),
+    calc(100% - 2 * var(--frame-arm)) var(--ops-bracket-stroke),
+    var(--ops-bracket-stroke) calc(100% - 2 * var(--frame-arm)),
+    var(--ops-bracket-stroke) calc(100% - 2 * var(--frame-arm));
+  background-position:
+    var(--frame-arm) 0,
+    var(--frame-arm) 100%,
+    0 var(--frame-arm),
+    100% var(--frame-arm);
+}
+
+/* Optional per-panel accent (footer scorecard / philosophy) */
+.ops-hud-box--accent-gold {
+  --ops-edge-h: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, #fbbf24 50%, transparent) 15%,
+    #fbbf24 50%,
+    color-mix(in srgb, #fbbf24 50%, transparent) 85%,
+    transparent
+  );
+  --ops-edge-v: linear-gradient(180deg, transparent, #fbbf24, transparent);
+}
+
+.ops-hud-box--accent-gold .ops-box-corner {
+  --corner-color: #fbbf24;
+}
+
+.ops-hud-box--chamfer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  clip-path: polygon(
+    10px 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    10px 100%,
+    0 calc(100% - 10px),
+    0 10px
+  );
+  border: none;
+  box-shadow: inset 0 0 18px rgba(56, 189, 248, 0.06);
+  z-index: 0;
+}
+
+/* Outcome panel */
+.ops-outcome-box {
+  max-width: 92%;
+  margin: 0 auto 2px;
+  text-align: center;
+  background: rgba(3, 8, 18, 0.95);
+}
+
+.ops-outcome-box .ops-hud-box-body {
+  padding: 5px 12px 6px;
+}
+
+.ops-outcome-label {
+  position: relative;
+  font-family: var(--ops-font-display);
+  font-size: 0.55rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ops-cyan-bright);
+  font-weight: 700;
+  margin: 0 0 3px;
+}
+
+.ops-outcome-text {
+  position: relative;
+  font-family: var(--ops-font-ui);
+  font-size: clamp(0.55rem, 1.2vw, 0.68rem);
+  line-height: 1.35;
+  margin: 0;
+  color: var(--ops-text);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.ops-funnel-stage {
+  font-weight: 600;
+  color: var(--ops-text);
+}
+
+.ops-funnel-arrow {
+  color: var(--ops-cyan);
+  margin: 0 0.15em;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+}
+
+/* ── Agent grid (compressed) ── */
+.ops-agent-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 1100px) {
+  .ops-agent-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .ops-agent-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@property --ops-shimmer-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.ops-agent-card {
+  --card-accent: var(--ops-cyan);
+  --ops-edge-h-accent: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--card-accent) 22%, transparent) 18%,
+    var(--card-accent) 50%,
+    color-mix(in srgb, var(--card-accent) 22%, transparent) 82%,
+    transparent 100%
+  );
+  --ops-edge-v-accent: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--card-accent) 20%, transparent) 20%,
+    var(--card-accent) 50%,
+    color-mix(in srgb, var(--card-accent) 20%, transparent) 80%,
+    transparent 100%
+  );
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  color: inherit;
+  background: rgba(5, 10, 20, 0.95);
+  border: none;
+  border-radius: 0;
+  padding: 5px 6px 6px;
+  min-height: 0;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+  cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ops-agent-card:hover,
+.ops-agent-card:focus-visible {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--card-accent) 40%, transparent);
+}
+
+/* Accent border shimmer — runs on hover/focus only */
+.ops-agent-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--ops-shimmer-angle),
+    transparent 0deg 52deg,
+    color-mix(in srgb, var(--card-accent) 30%, transparent) 68deg,
+    color-mix(in srgb, var(--card-accent) 75%, white) 88deg,
+    var(--card-accent) 96deg,
+    color-mix(in srgb, var(--card-accent) 75%, white) 104deg,
+    color-mix(in srgb, var(--card-accent) 30%, transparent) 120deg,
+    transparent 136deg 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  animation: none;
+  transition: opacity 0.2s ease;
+}
+
+.ops-agent-card:hover::before,
+.ops-agent-card:focus-visible::before {
+  opacity: 0.85;
+  animation: ops-agent-border-shimmer 2.4s linear infinite;
+}
+
+@keyframes ops-agent-border-shimmer {
+  to {
+    --ops-shimmer-angle: 360deg;
+  }
+}
+
+/* Fallback sweep when @property is unavailable */
+@supports not (background: conic-gradient(red, blue)) {
+  .ops-agent-card::before {
+    background: linear-gradient(
+      110deg,
+      transparent 0%,
+      transparent 38%,
+      color-mix(in srgb, var(--card-accent) 20%, transparent) 46%,
+      color-mix(in srgb, var(--card-accent) 70%, white) 50%,
+      color-mix(in srgb, var(--card-accent) 20%, transparent) 54%,
+      transparent 62%,
+      transparent 100%
+    );
+    background-size: 280% 280%;
+    animation: none;
+  }
+
+  .ops-agent-card:hover::before,
+  .ops-agent-card:focus-visible::before {
+    animation: ops-agent-border-shimmer-sweep 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes ops-agent-border-shimmer-sweep {
+  0% {
+    background-position: 130% 20%;
+  }
+
+  100% {
+    background-position: -30% 80%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ops-agent-card:hover::before,
+  .ops-agent-card:focus-visible::before {
+    animation: none;
+    opacity: 0.5;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg 40deg,
+      color-mix(in srgb, var(--card-accent) 50%, transparent) 90deg,
+      transparent 140deg 360deg
+    );
+  }
+}
+
+.ops-agent-card > :not(.ops-box-corner) {
+  position: relative;
+  z-index: 3;
+}
+
+/* Connecting edges — per-card accent gradients */
+.ops-agent-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  --frame-arm: var(--ops-card-arm);
+  background-image:
+    var(--ops-edge-h-accent),
+    var(--ops-edge-h-accent),
+    var(--ops-edge-v-accent),
+    var(--ops-edge-v-accent);
+  background-repeat: no-repeat;
+  background-size:
+    calc(100% - 2 * var(--frame-arm)) 2px,
+    calc(100% - 2 * var(--frame-arm)) 2px,
+    2px calc(100% - 2 * var(--frame-arm)),
+    2px calc(100% - 2 * var(--frame-arm));
+  background-position:
+    var(--frame-arm) 0,
+    var(--frame-arm) 100%,
+    0 var(--frame-arm),
+    100% var(--frame-arm);
+}
+
+.ops-agent-card .ops-box-corner {
+  --corner-arm: 12px;
+  --corner-color: var(--card-accent);
+  z-index: 4;
+}
+
+.ops-agent-card-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+}
+
+/* Circle clips the glyph; img stays inset so nothing bleeds past the ring */
+.ops-agent-icon-wrap {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 55%, transparent);
+  background: rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.ops-agent-icon-wrap--detail {
+  width: 56px;
+  height: 56px;
+}
+
+.ops-agent-icon {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.ops-agent-titles {
+  min-width: 0;
+  flex: 1;
+}
+
+.ops-agent-name {
+  font-family: var(--ops-font-display);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--ops-text);
+}
+
+.ops-agent-skills-file {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.46rem;
+  color: var(--ops-muted);
+  margin: 1px 0 0;
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+.ops-objective-heading {
+  font-family: var(--ops-font-display);
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--card-accent);
+  margin: 0 0 2px;
+  letter-spacing: 0.03em;
+}
+
+.ops-objective-text {
+  font-size: 0.5rem;
+  line-height: 1.32;
+  margin: 0 0 4px;
+  color: var(--ops-text);
+}
+
+.ops-section-label {
+  font-family: var(--ops-font-display);
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--card-accent);
+  margin: 3px 0 1px;
+}
+
+.ops-list {
+  margin: 0;
+  padding-left: 0.75rem;
+  font-size: 0.48rem;
+  line-height: 1.32;
+  color: var(--ops-text);
+}
+
+.ops-list li {
+  margin-bottom: 1px;
+}
+
+.ops-list li::marker {
+  color: var(--card-accent);
+}
+
+/* ── Footer (compressed) ── */
+.ops-footer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 800px) {
+  .ops-footer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ops-footer-panel.ops-hud-box {
+  background: rgba(5, 10, 20, 0.95);
+}
+
+.ops-footer-panel .ops-hud-box-body {
+  padding: 8px 10px;
+}
+
+.ops-footer-panel-title {
+  font-family: var(--ops-font-display);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ops-cyan-bright);
+  margin: 0 0 6px;
+}
+
+.ops-score-row {
+  margin-bottom: 5px;
+}
+
+.ops-score-label {
+  font-family: var(--ops-font-display);
+  font-size: 0.52rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1px;
+}
+
+.ops-score-target {
+  font-size: 0.48rem;
+  color: var(--ops-muted);
+  margin-bottom: 2px;
+}
+
+.ops-segments {
+  display: flex;
+  gap: 2px;
+}
+
+.ops-segment {
+  flex: 1;
+  height: 6px;
+  background: rgba(56, 189, 248, 0.12);
+  border-radius: 0;
+}
+
+.ops-segment.filled {
+  background: linear-gradient(180deg, #7dd3fc 0%, #0ea5e9 100%);
+  box-shadow: 0 0 4px rgba(56, 189, 248, 0.6);
+}
+
+.ops-philosophy-text {
+  font-family: var(--ops-font-display);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ops-philosophy-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.ops-philosophy-item {
+  text-align: center;
+  font-family: var(--ops-font-display);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ops-cyan-bright);
+}
+
+/* Bottom rail — same L-bracket pattern as header (corners + one baseline) */
+.ops-hud-bottom-rail {
+  position: relative;
+  z-index: 2;
+  margin: 6px -10px 0;
+  padding: 6px calc(10px + var(--ops-bracket-arm))
+    calc(var(--ops-bracket-arm) * 0.45 + var(--ops-bracket-stroke));
+  text-align: center;
+}
+
+/* Bottom + sides up to footer (corners on .ops-bf-corner) */
+.ops-hud-bottom-rail::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  --frame-arm: var(--ops-bracket-arm);
+  background-image: var(--ops-edge-h), var(--ops-edge-v), var(--ops-edge-v);
+  background-repeat: no-repeat;
+  background-size:
+    calc(100% - 2 * var(--frame-arm)) var(--ops-bracket-stroke),
+    var(--ops-bracket-stroke) calc(100% - var(--frame-arm)),
+    var(--ops-bracket-stroke) calc(100% - var(--frame-arm));
+  background-position:
+    var(--frame-arm) 100%,
+    0 0,
+    100% 0;
+}
+
+.ops-bf-corner-bl {
+  left: 0;
+}
+
+.ops-bf-corner-br {
+  right: 0;
+}
+
+.ops-tagline {
+  font-family: var(--ops-font-display);
+  text-align: center;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ops-cyan);
+  margin: 0;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.ops-nav-bar {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.75rem 10px 0;
+}
+
+.ops-back-link {
+  color: var(--ops-muted) !important;
+  text-transform: none !important;
+  margin-bottom: 0.5rem !important;
+  font-size: 0.8rem !important;
+}
+
+.ops-pitch {
+  max-width: 1180px;
+  margin: 0 auto 8px;
+  padding: 0 10px;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--ops-muted);
+  text-align: center;
+}

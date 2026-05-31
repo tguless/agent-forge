@@ -1,0 +1,204 @@
+/* Agent Forge — additive styles on top of the lifted operations CSS. */
+
+.forge-wordmark {
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  font-size: 1.1rem;
+  color: var(--ops-cyan-bright, #7fe7ff);
+  line-height: 1;
+  text-transform: uppercase;
+}
+.forge-wordmark span {
+  color: var(--ops-text, #d7e6dd);
+  margin-left: 0.18em;
+}
+.forge-wordmark--lg {
+  font-size: 2rem;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--ops-cyan, #38bdf8) 45%, transparent);
+}
+
+/* index toolbar */
+.forge-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1180px;
+  margin: 0 auto 14px;
+  padding: 0 16px;
+}
+.forge-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: #04110c;
+  background: var(--ops-cyan-bright, #7fe7ff);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+.forge-cta:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+.forge-cta--ghost {
+  color: var(--ops-cyan-bright, #7fe7ff);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 55%, transparent);
+}
+
+.forge-card-status {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 2px 0 8px;
+  color: var(--ops-cyan-bright, #7fe7ff);
+}
+.forge-card-status[data-status='error'] {
+  color: #ff8a8a;
+}
+
+.forge-empty {
+  max-width: 720px;
+  margin: 40px auto;
+  text-align: center;
+  color: var(--ops-muted, #8aa);
+  font-family: var(--ops-font-ui, monospace);
+  line-height: 1.7;
+}
+
+/* ── /new forge form ─────────────────────────────────────────────────────── */
+.forge-page {
+  min-height: 100vh;
+  padding: 28px 16px 80px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+.forge-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+.forge-field {
+  display: grid;
+  gap: 6px;
+}
+.forge-label {
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  color: var(--ops-cyan-bright, #7fe7ff);
+}
+.forge-hint {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.72rem;
+  color: var(--ops-muted, #8aa);
+}
+.forge-input,
+.forge-textarea {
+  width: 100%;
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.86rem;
+  color: var(--ops-text, #d7e6dd);
+  background: rgba(4, 12, 14, 0.7);
+  border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 35%, transparent);
+  border-radius: 4px;
+  padding: 11px 13px;
+  outline: none;
+  resize: vertical;
+}
+.forge-input:focus,
+.forge-textarea:focus {
+  border-color: var(--ops-cyan-bright, #7fe7ff);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ops-cyan, #38bdf8) 22%, transparent);
+}
+.forge-textarea {
+  min-height: 120px;
+  line-height: 1.55;
+}
+.forge-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.forge-error {
+  color: #ff8a8a;
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.78rem;
+}
+
+/* ── generation progress log ─────────────────────────────────────────────── */
+.forge-progress {
+  margin-top: 24px;
+  display: grid;
+  gap: 14px;
+}
+.forge-status-line {
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ops-cyan-bright, #7fe7ff);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.forge-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 30%, transparent);
+  border-top-color: var(--ops-cyan-bright, #7fe7ff);
+  border-radius: 50%;
+  animation: forge-spin 0.8s linear infinite;
+}
+@keyframes forge-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.forge-log {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  background: rgba(3, 10, 12, 0.78);
+  border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 22%, transparent);
+  border-radius: 4px;
+  padding: 14px 16px;
+  max-height: 340px;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+}
+.forge-log-row {
+  display: flex;
+  gap: 10px;
+  color: var(--ops-text, #d7e6dd);
+}
+.forge-log-row[data-type='warn'] {
+  color: #ffcf7a;
+}
+.forge-log-row[data-type='error'] {
+  color: #ff8a8a;
+}
+.forge-log-row[data-type='done'] {
+  color: #8ee85a;
+}
+.forge-log-row[data-type='image'] {
+  color: #9ad7ff;
+}
+.forge-log-tick {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
