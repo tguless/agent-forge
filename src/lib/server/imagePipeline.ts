@@ -179,21 +179,39 @@ Image.open(s).convert("RGB").resize((${w}, ${h}), Image.Resampling.LANCZOS).save
   return spawnSync(python, ['-c', script], { encoding: 'utf8' }).status === 0;
 }
 
-function drawPlaceholder(magick: string | null, kind: ImageKind, accent: string, label: string, dst: string): boolean {
+function writeTinyPlaceholderPng(dst: string): void {
+  const px = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  fs.writeFileSync(dst, px);
+}
+
+/** Shape-only glyphs — Alpine ImageMagick often has no fonts, so -annotate fails silently. */
+function drawPlaceholder(magick: string | null, kind: ImageKind, accent: string, _label: string, dst: string): boolean {
   if (!magick) {
-    // last-resort: 1x1 transparent pixel so the <img> doesn't 404
-    const px = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      'base64',
-    );
-    fs.writeFileSync(dst, px);
+    writeTinyPlaceholderPng(dst);
     return true;
   }
-  const initial = (label.trim()[0] || 'A').toUpperCase();
   const size = kind === 'portrait' ? '480x600' : '512x512';
   const args =
     kind === 'portrait'
-      ? ['-size', size, `xc:#0a0f0c`, '-fill', accent, '-gravity', 'center', '-pointsize', '240', '-annotate', '0', initial, dst]
+      ? [
+          '-size',
+          size,
+          'xc:#0a0f0c',
+          '-fill',
+          accent,
+          '-stroke',
+          accent,
+          '-strokewidth',
+          '8',
+          '-draw',
+          'circle 240,220 240,120',
+          '-draw',
+          'rectangle 160,320 320,520',
+          dst,
+        ]
       : [
           '-size',
           size,
@@ -206,23 +224,23 @@ function drawPlaceholder(magick: string | null, kind: ImageKind, accent: string,
           '10',
           '-draw',
           'roundrectangle 36,36 476,476 40,40',
-          '-gravity',
-          'center',
           '-fill',
           accent,
-          '-pointsize',
-          '230',
-          '-annotate',
-          '0',
-          initial,
+          '-draw',
+          'circle 256,256 256,140',
           dst,
         ];
-  return spawnSync(magick, args, { encoding: 'utf8' }).status === 0;
+  if (spawnSync(magick, args, { encoding: 'utf8' }).status === 0) return true;
+  writeTinyPlaceholderPng(dst);
+  return true;
 }
 
-async function geminiGenerate(prompt: string, aspect: '1:1' | '3:4'): Promise<Buffer | null> {
+async function geminiGenerate(
+  prompt: string,
+  aspect: '1:1' | '3:4',
+): Promise<{ buf: Buffer | null; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return { buf: null, error: 'No GEMINI_API_KEY' };
   try {
     const { GoogleGenAI } = await import('@google/genai');
     const client = new GoogleGenAI({ apiKey });
@@ -236,11 +254,13 @@ async function geminiGenerate(prompt: string, aspect: '1:1' | '3:4'): Promise<Bu
     const parts = response.candidates?.[0]?.content?.parts ?? [];
     for (const part of parts) {
       const data = (part as { inlineData?: { data?: string } }).inlineData?.data;
-      if (data) return Buffer.from(data, 'base64');
+      if (data) return { buf: Buffer.from(data, 'base64') };
     }
-    return null;
-  } catch {
-    return null;
+    return { buf: null, error: 'Gemini returned no image bytes' };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[imagePipeline] Gemini error:', msg);
+    return { buf: null, error: msg.slice(0, 200) };
   }
 }
 
@@ -259,10 +279,10 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
   const magick = findMagick();
 
   const { prompt, aspect } = buildPrompt(input);
-  const buf = await geminiGenerate(prompt, aspect);
+  const { buf, error: geminiError } = await geminiGenerate(prompt, aspect);
 
   if (!buf) {
-    notes.push(process.env.GEMINI_API_KEY ? 'Gemini returned no image; used placeholder.' : 'No GEMINI_API_KEY; used placeholder.');
+    notes.push(geminiError ? `${geminiError}; used placeholder.` : 'Used placeholder.');
     drawPlaceholder(magick, input.kind, input.accent, input.subject, finalPath);
     return { webPath, generated: false, notes };
   }
