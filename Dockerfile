@@ -26,6 +26,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV REMBG_PYTHON=/app/.venv-rembg/bin/python3
 ENV U2NET_HOME=/app/.u2net
+ENV NUMBA_CACHE_DIR=/app/.forge_tmp/numba
 
 COPY docker/rembg-requirements.txt /tmp/rembg-requirements.txt
 
@@ -52,7 +53,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY docker/rembg-remove.py /app/docker/rembg-remove.py
+RUN chmod +x /entrypoint.sh /app/docker/rembg-remove.py
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0

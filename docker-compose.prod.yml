@@ -18,6 +18,7 @@ services:
       FORGE_DB_PATH: /app/data/forge.db
       REMBG_PYTHON: /app/.venv-rembg/bin/python3
       U2NET_HOME: /app/.u2net
+      NUMBA_CACHE_DIR: /app/.forge_tmp/numba
     volumes:
       - agent_forge_data:/app/data
       - agent_forge_agents:/app/public/agents

@@ -178,14 +178,17 @@ function ensurePngRaw(magick: string | null, buf: Buffer, dstPng: string): boole
 
 function rembgRemove(python: string | null, src: string, dst: string): boolean {
   const py = resolveRembgPython();
-  if (!py || python !== py) return false; // only the rembg venv has the rembg package
-  const script = `
-from rembg import remove
-from pathlib import Path
-s, d = Path(${JSON.stringify(src)}), Path(${JSON.stringify(dst)})
-d.write_bytes(remove(s.read_bytes()))
-`;
-  const result = spawnSync(py, ['-c', script], { encoding: 'utf8', env: { ...process.env, U2NET_HOME: process.env.U2NET_HOME || path.join(CWD, '.u2net') } });
+  if (!py || python !== py) return false;
+  const script = path.join(CWD, 'docker/rembg-remove.py');
+  if (!fs.existsSync(script)) return false;
+  const result = spawnSync(py, [script, src, dst], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      U2NET_HOME: process.env.U2NET_HOME || path.join(CWD, '.u2net'),
+      NUMBA_CACHE_DIR: process.env.NUMBA_CACHE_DIR || path.join(TMP, 'numba'),
+    },
+  });
   if (result.status !== 0) {
     console.error('[imagePipeline] rembg:', (result.stderr || result.stdout || '').trim().slice(0, 300));
     return false;
