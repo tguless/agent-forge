@@ -39,14 +39,25 @@
   font-family: var(--ops-font-ui);
 }
 
+.ops-detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 12px auto 0;
+  padding: 0 16px;
+}
+
 .ops-detail-back {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin: 12px auto 0;
-  max-width: 1200px;
-  width: 100%;
-  padding: 0 16px;
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  width: auto;
   font-family: var(--ops-font-display);
   font-size: 0.65rem;
   font-weight: 600;
@@ -61,6 +72,32 @@
 
 .ops-detail-back:hover {
   color: var(--ops-detail-green-bright);
+}
+
+.ops-detail-back:disabled,
+.ops-detail-delete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ops-detail-delete {
+  font-family: var(--ops-font-display);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.35);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.ops-detail-delete:hover:not(:disabled) {
+  color: #fecaca;
+  border-color: rgba(252, 165, 165, 0.7);
+  background: rgba(153, 27, 27, 0.45);
 }
 
 .ops-detail-shell {

@@ -88,6 +88,7 @@ export function AgentDetailCommandCard({ agent }: { agent: AgentData }) {
   const accent = agent.accent ?? '#8ee85a';
   const [portraitFailed, setPortraitFailed] = React.useState(false);
   const [skillsOpen, setSkillsOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   const showPortrait = !portraitFailed && !!agent.portraitPath;
   const outputs = (agent.outputs ?? agent.deliverables).filter(Boolean);
   const skillsAgent = {
@@ -97,11 +98,54 @@ export function AgentDetailCommandCard({ agent }: { agent: AgentData }) {
     accent,
   };
 
+  async function handleDelete() {
+    const label = agent.title || agent.slug;
+    if (!window.confirm(`Delete "${label}"?\n\nThis removes the command card, skill file, and generated images. This cannot be undone.`)) {
+      return;
+    }
+    const password = window.prompt('Enter deletion password:');
+    if (password == null) return;
+    if (!password.trim()) {
+      window.alert('Deletion password is required.');
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/agents/${encodeURIComponent(agent.slug)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      if (res.status === 403) {
+        window.alert('Incorrect deletion password.');
+        setDeleting(false);
+        return;
+      }
+      if (!res.ok) throw new Error('delete failed');
+      router.push('/');
+      router.refresh();
+    } catch {
+      window.alert('Could not delete this agent. Try again.');
+      setDeleting(false);
+    }
+  }
+
   return (
     <div className="ops-detail-page" style={{ ['--card-accent' as string]: accent }}>
-      <button type="button" className="ops-detail-back" onClick={() => router.push('/')}>
-        ← All agents
-      </button>
+      <div className="ops-detail-toolbar">
+        <button type="button" className="ops-detail-back" onClick={() => router.push('/')} disabled={deleting}>
+          ← All agents
+        </button>
+        <button
+          type="button"
+          className="ops-detail-delete"
+          onClick={() => void handleDelete()}
+          disabled={deleting}
+          aria-busy={deleting}
+        >
+          {deleting ? 'Deleting…' : 'Delete profile'}
+        </button>
+      </div>
 
       <div className="ops-detail-shell">
         <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />

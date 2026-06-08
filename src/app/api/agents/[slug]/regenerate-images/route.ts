@@ -8,7 +8,6 @@ export const dynamic = 'force-dynamic';
 
 /** PaperIQ operations pattern: one concrete metal center sculpture, not a flat HUD layout. */
 function deriveEmblemSubject(data: AgentData): string {
-  if (data.emblemSubject?.trim()) return data.emblemSubject.trim();
 
   const combined = `${data.role ?? ''} ${data.title ?? ''} ${data.focus ?? ''}`.toLowerCase();
   if (/lease|abstract|contract|extract|document/.test(combined)) {

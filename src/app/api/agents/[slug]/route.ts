@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getAgent, deleteAgent } from '@/lib/agentStore';
+import { deleteAgent, getAgent } from '@/lib/agentStore';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(_req: Request, { params }: { params: { slug: string } }) {
-  const agent = getAgent(params.slug);
+export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }> }) {
+  const { slug } = await ctx.params;
+  const agent = getAgent(slug);
   if (!agent) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json({
     slug: agent.slug,
@@ -17,7 +18,23 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
   });
 }
 
-export async function DELETE(_req: Request, { params }: { params: { slug: string } }) {
-  deleteAgent(params.slug);
-  return NextResponse.json({ ok: true });
+const DELETE_PASSWORD = process.env.FORGE_DELETE_PASSWORD || 'password';
+
+export async function DELETE(req: Request, ctx: { params: Promise<{ slug: string }> }) {
+  const { slug } = await ctx.params;
+  if (!getAgent(slug)) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+  let password = '';
+  try {
+    const body = (await req.json()) as { password?: string };
+    password = String(body.password ?? '');
+  } catch {
+    password = req.headers.get('x-forge-delete-password') ?? '';
+  }
+  if (password !== DELETE_PASSWORD) {
+    return NextResponse.json({ error: 'invalid password' }, { status: 403 });
+  }
+
+  deleteAgent(slug);
+  return NextResponse.json({ ok: true, slug });
 }

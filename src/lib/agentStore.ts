@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { getDb } from './db';
 import type {
   AgentData,
@@ -133,6 +135,21 @@ export function listEvents(slug: string, afterId = 0): GenerationEvent[] {
     .all(slug, afterId) as GenerationEvent[];
 }
 
-export function deleteAgent(slug: string): void {
-  getDb().prepare('DELETE FROM agents WHERE slug = ?').run(slug);
+function removeAgentAssetFiles(slug: string): void {
+  const agentDir = path.join(process.cwd(), 'public', 'agents', slug);
+  if (fs.existsSync(agentDir)) fs.rmSync(agentDir, { recursive: true, force: true });
+
+  const tmpDir = path.join(process.cwd(), '.forge_tmp');
+  if (!fs.existsSync(tmpDir)) return;
+  for (const name of fs.readdirSync(tmpDir)) {
+    if (name.startsWith(`${slug}-`)) fs.rmSync(path.join(tmpDir, name), { force: true });
+  }
+}
+
+/** Delete agent row (+ cascaded events) and generated PNG assets. Returns false if slug missing. */
+export function deleteAgent(slug: string): boolean {
+  const result = getDb().prepare('DELETE FROM agents WHERE slug = ?').run(slug);
+  if (result.changes === 0) return false;
+  removeAgentAssetFiles(slug);
+  return true;
 }

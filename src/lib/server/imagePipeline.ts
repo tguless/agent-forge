@@ -205,22 +205,54 @@ function magickWhiteToAlpha(magick: string, src: string, dst: string, fuzz = WHI
   return result.status === 0;
 }
 
-function magickNormalizeSquare(magick: string, src: string, dst: string, outPx = 512): boolean {
-  return (
-    spawnSync(
-      magick,
-      [src, '-trim', '+repage', '-background', 'none', '-gravity', 'center', '-extent', `${outPx}x${outPx}`, `PNG32:${dst}`],
-      { encoding: 'utf8' },
-    ).status === 0
-  );
+/** Icons: trim empty margins then scale down. Emblems: scale full frame — trim+extent alone center-crops wings off 2K renders. */
+function magickNormalizeSquare(
+  magick: string,
+  src: string,
+  dst: string,
+  outPx = 512,
+  kind: ImageKind = 'icon',
+): boolean {
+  const args =
+    kind === 'emblem'
+      ? [src, '-background', 'none', '-gravity', 'center', '-resize', `${outPx}x${outPx}`, '-extent', `${outPx}x${outPx}`, `PNG32:${dst}`]
+      : [
+          src,
+          '-trim',
+          '+repage',
+          '-background',
+          'none',
+          '-gravity',
+          'center',
+          '-resize',
+          `${outPx}x${outPx}`,
+          '-extent',
+          `${outPx}x${outPx}`,
+          `PNG32:${dst}`,
+        ];
+  return spawnSync(magick, args, { encoding: 'utf8' }).status === 0;
 }
 
 function magickResizePortrait(magick: string, src: string, dst: string, w = 480, h = 600): boolean {
   return spawnSync(magick, [src, '-resize', `${w}x${h}!`, `PNG32:${dst}`], { encoding: 'utf8' }).status === 0;
 }
 
-function pilNormalizeSquare(python: string, src: string, dst: string, outPx = 512): boolean {
-  const script = `
+function pilNormalizeSquare(
+  python: string,
+  src: string,
+  dst: string,
+  outPx = 512,
+  kind: ImageKind = 'icon',
+): boolean {
+  const script =
+    kind === 'emblem'
+      ? `
+from PIL import Image
+from pathlib import Path
+s, d = Path(${JSON.stringify(src)}), Path(${JSON.stringify(dst)})
+Image.open(s).convert("RGBA").resize((${outPx}, ${outPx}), Image.Resampling.LANCZOS).save(d, format="PNG", optimize=True)
+`
+      : `
 from PIL import Image
 from pathlib import Path
 s, d = Path(${JSON.stringify(src)}), Path(${JSON.stringify(dst)})
@@ -383,10 +415,10 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
   } else {
     notes.push('ImageMagick not found; skipped white→alpha.');
   }
-  if (magick && magickNormalizeSquare(magick, source, finalPath)) {
+  if (magick && magickNormalizeSquare(magick, source, finalPath, 512, input.kind)) {
     return { webPath, generated: true, notes };
   }
-  if (python && pilNormalizeSquare(python, source, finalPath)) {
+  if (python && pilNormalizeSquare(python, source, finalPath, 512, input.kind)) {
     return { webPath, generated: true, notes };
   }
   fs.copyFileSync(source, finalPath);
