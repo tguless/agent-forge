@@ -1,0 +1,2 @@
+# Pinned for reproducible Docker builds (rembg 2.x + onnxruntime CPU).
+rembg[cpu]==2.0.76

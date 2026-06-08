@@ -8,7 +8,7 @@
  *
  * Everything degrades gracefully:
  *   - no GEMINI_API_KEY        → ImageMagick-drawn placeholder glyph
- *   - no rembg venv            → skip AI bg removal (magick + normalize still run)
+ *   - no rembg venv            → skip AI bg removal (Docker ships /app/.venv-rembg)
  *   - no ImageMagick / Python  → write the raw/placeholder PNG as-is
  */
 import { spawnSync } from 'node:child_process';
@@ -107,6 +107,8 @@ function buildPrompt(input: GenerateImageInput): { prompt: string; aspect: '1:1'
 function resolveRembgPython(): string | null {
   const fromEnv = process.env.REMBG_PYTHON;
   if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
+  const dockerVenv = path.join(CWD, '.venv-rembg/bin/python3');
+  if (fs.existsSync(dockerVenv)) return dockerVenv;
   const shared = path.resolve(CWD, '../.cursor/mcp-servers/rembg/.venv/bin/python3');
   if (fs.existsSync(shared)) return shared;
   return null;
