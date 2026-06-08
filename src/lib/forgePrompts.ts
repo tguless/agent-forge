@@ -2,6 +2,8 @@
 export type ForgePromptKey =
   | 'forge.system'
   | 'forge.user_template'
+  | 'forge.example.system'
+  | 'forge.example.user_template'
   | 'skills.agent_architect'
   | 'skills.skill_file_author'
   | 'skills.visual_identity'
@@ -56,6 +58,25 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     categoryLabel: CATEGORY_LABELS.forge,
     description: 'First user turn sent when forging an agent. Substitute slug and inputs at runtime.',
     placeholders: ['{{slug}}', '{{businessContext}}', '{{jobDescription}}'],
+    format: 'markdown',
+  },
+  {
+    key: 'forge.example.system',
+    label: 'Generate example · system',
+    category: 'forge',
+    categoryLabel: CATEGORY_LABELS.forge,
+    description:
+      'System prompt for ad-hoc demo example generation on /new (Generate Example button). Model must return JSON only.',
+    placeholders: [],
+    format: 'markdown',
+  },
+  {
+    key: 'forge.example.user_template',
+    label: 'Generate example · user template',
+    category: 'forge',
+    categoryLabel: CATEGORY_LABELS.forge,
+    description: 'User turn for example generation. {{themeInstruction}} expands to a theme hint or diversity constraint.',
+    placeholders: ['{{themeInstruction}}'],
     format: 'markdown',
   },
   {
