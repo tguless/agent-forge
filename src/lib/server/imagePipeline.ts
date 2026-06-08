@@ -124,7 +124,7 @@ function findPython(): string | null {
 }
 
 function findMagick(): string | null {
-  for (const cmd of ['magick', '/opt/homebrew/bin/magick', '/usr/local/bin/magick']) {
+  for (const cmd of ['magick', 'convert', '/usr/bin/magick', '/usr/bin/convert', '/opt/homebrew/bin/magick', '/usr/local/bin/magick']) {
     if (spawnSync(cmd, ['-version'], { encoding: 'utf8' }).status === 0) return cmd;
   }
   return null;
