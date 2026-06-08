@@ -4,7 +4,7 @@
  * Mirrors the PaperIQ operations asset scripts:
  *   1. Compose a prompt (icon / emblem / portrait) from agent details
  *   2. Generate via Gemini "Nano Banana" image model (@google/genai)
- *   3. Background removal: rembg (AI) → ImageMagick fuzz white→alpha → PIL normalize
+ *   3. Decode Gemini JPEG → PNG, then rembg (AI) → ImageMagick fuzz white→alpha → normalize
  *
  * Everything degrades gracefully:
  *   - no GEMINI_API_KEY        → ImageMagick-drawn placeholder glyph
@@ -130,6 +130,50 @@ function findMagick(): string | null {
 
 // ── pipeline steps ────────────────────────────────────────────────────────────
 
+type RawFormat = 'jpeg' | 'png' | 'webp' | 'unknown';
+
+function detectRawFormat(buf: Buffer): RawFormat {
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpeg';
+  if (
+    buf.length >= 8 &&
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47
+  ) {
+    return 'png';
+  }
+  if (buf.length >= 12 && buf.subarray(0, 4).toString('ascii') === 'RIFF' && buf.subarray(8, 12).toString('ascii') === 'WEBP') {
+    return 'webp';
+  }
+  return 'unknown';
+}
+
+/** Gemini often returns JPEG bytes; Alpine ImageMagick needs imagemagick-jpeg + real PNG for alpha ops. */
+function ensurePngRaw(magick: string | null, buf: Buffer, dstPng: string): boolean {
+  const fmt = detectRawFormat(buf);
+  if (fmt === 'png') {
+    fs.writeFileSync(dstPng, buf);
+    return true;
+  }
+  if (!magick) {
+    fs.writeFileSync(dstPng, buf);
+    return false;
+  }
+  const ext = fmt === 'jpeg' ? 'jpg' : fmt === 'webp' ? 'webp' : 'bin';
+  const tmpIn = `${dstPng}.incoming.${ext}`;
+  fs.writeFileSync(tmpIn, buf);
+  const input = fmt === 'jpeg' ? `JPEG:${tmpIn}` : fmt === 'webp' ? `WEBP:${tmpIn}` : tmpIn;
+  const ok = spawnSync(magick, [input, '-strip', `PNG32:${dstPng}`], { encoding: 'utf8' }).status === 0;
+  try {
+    fs.unlinkSync(tmpIn);
+  } catch {
+    /* ignore */
+  }
+  if (!ok) fs.writeFileSync(dstPng, buf);
+  return ok;
+}
+
 function rembgRemove(python: string | null, src: string, dst: string): boolean {
   const py = resolveRembgPython();
   if (!py || python !== py) return false; // only the rembg venv has the rembg package
@@ -143,13 +187,26 @@ d.write_bytes(remove(s.read_bytes()))
 }
 
 function magickWhiteToAlpha(magick: string, src: string, dst: string): boolean {
+  const result = spawnSync(
+    magick,
+    [src, '-alpha', 'set', '-channel', 'RGBA', '-fuzz', WHITE_FUZZ, '-fill', 'none', '-opaque', 'white', `PNG32:${dst}`],
+    { encoding: 'utf8' },
+  );
+  return result.status === 0;
+}
+
+function magickNormalizeSquare(magick: string, src: string, dst: string, outPx = 512): boolean {
   return (
     spawnSync(
       magick,
-      [src, '-alpha', 'set', '-channel', 'RGBA', '-fuzz', WHITE_FUZZ, '-fill', 'none', '-opaque', 'white', dst],
+      [src, '-trim', '+repage', '-background', 'none', '-gravity', 'center', '-extent', `${outPx}x${outPx}`, `PNG32:${dst}`],
       { encoding: 'utf8' },
     ).status === 0
   );
+}
+
+function magickResizePortrait(magick: string, src: string, dst: string, w = 480, h = 600): boolean {
+  return spawnSync(magick, [src, '-resize', `${w}x${h}!`, `PNG32:${dst}`], { encoding: 'utf8' }).status === 0;
 }
 
 function pilNormalizeSquare(python: string, src: string, dst: string, outPx = 512): boolean {
@@ -287,11 +344,19 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
     return { webPath, generated: false, notes };
   }
 
-  fs.writeFileSync(rawPath, buf);
+  if (!ensurePngRaw(magick, buf, rawPath)) {
+    notes.push('Could not decode Gemini bytes to PNG; transparency pipeline may fail.');
+  }
 
   if (input.kind === 'portrait') {
-    if (python && !pilResize(python, rawPath, finalPath)) fs.copyFileSync(rawPath, finalPath);
-    else if (!python) fs.copyFileSync(rawPath, finalPath);
+    if (magick && magickResizePortrait(magick, rawPath, finalPath)) {
+      return { webPath, generated: true, notes };
+    }
+    if (python && pilResize(python, rawPath, finalPath)) {
+      return { webPath, generated: true, notes };
+    }
+    fs.copyFileSync(rawPath, finalPath);
+    notes.push('Portrait resize fallback (raw copy).');
     return { webPath, generated: true, notes };
   }
 
@@ -306,14 +371,22 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
   }
   if (magick) {
     const alphaPath = path.join(TMP, `${input.slug}-${input.kind}-alpha.png`);
-    if (magickWhiteToAlpha(magick, source, alphaPath)) source = alphaPath;
+    if (magickWhiteToAlpha(magick, source, alphaPath)) {
+      source = alphaPath;
+    } else {
+      notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
+    }
   } else {
     notes.push('ImageMagick not found; skipped white→alpha.');
+  }
+  if (magick && magickNormalizeSquare(magick, source, finalPath)) {
+    return { webPath, generated: true, notes };
   }
   if (python && pilNormalizeSquare(python, source, finalPath)) {
     return { webPath, generated: true, notes };
   }
   fs.copyFileSync(source, finalPath);
+  if (!magick && !python) notes.push('Normalize skipped; saved intermediate PNG.');
   return { webPath, generated: true, notes };
 }
 

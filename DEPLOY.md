@@ -91,6 +91,7 @@ Commit `public/og-image.png` and redeploy for CloudFront to serve the new previe
 
 ## Image pipeline notes
 
-- **ImageMagick** is included in the Docker image.
+- **ImageMagick** is included in the Docker image (`imagemagick` + `imagemagick-jpeg` for Gemini JPEG output).
+- **Pillow** (`py3-pillow`) and ImageMagick both handle trim/resize/normalize.
 - **rembg** (AI background removal) is optional; mount or install a Python venv and set `REMBG_PYTHON` in `.env.local` if needed.
 - Without `GEMINI_API_KEY`, agents still generate text/skills; images use placeholders.
