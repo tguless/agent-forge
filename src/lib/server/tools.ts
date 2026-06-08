@@ -204,7 +204,13 @@ export async function runTool(slug: string, name: string, input: Record<string, 
         authority: input.authority ? Number(input.authority) : agent.data.authority,
       });
       const field = kind === 'icon' ? 'iconPath' : kind === 'emblem' ? 'emblemPath' : 'portraitPath';
-      patchAgentData(slug, { [field]: result.webPath } as Record<string, string>);
+      const subjectField =
+        kind === 'icon' ? 'iconSubject' : kind === 'emblem' ? 'emblemSubject' : 'portraitSubject';
+      const subject = String(input.subject ?? '');
+      patchAgentData(slug, {
+        [field]: result.webPath,
+        [subjectField]: subject,
+      } as Record<string, string>);
       addEvent(
         slug,
         result.generated ? 'image' : 'warn',

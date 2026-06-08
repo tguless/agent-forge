@@ -6,13 +6,41 @@ import type { AgentData } from '@/lib/types';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/** PaperIQ operations pattern: one concrete metal center sculpture, not a flat HUD layout. */
+function deriveEmblemSubject(data: AgentData): string {
+  if (data.emblemSubject?.trim()) return data.emblemSubject.trim();
+
+  const combined = `${data.role ?? ''} ${data.title ?? ''} ${data.focus ?? ''}`.toLowerCase();
+  if (/lease|abstract|contract|extract|document/.test(combined)) {
+    return 'large magnifying glass over stacked lease document pages in polished metal — magnifying glass is the only center symbol';
+  }
+  if (/patent|prior art|research/.test(combined)) {
+    return 'large magnifying glass with thick circular lens and handle in metal — magnifying glass is the only center symbol';
+  }
+  if (/sales|prospect|outbound|pipeline/.test(combined)) {
+    return 'large paper airplane pointing up-right in metal — paper airplane is the only center symbol';
+  }
+  if (/growth|acquisition|marketing|seo|content/.test(combined)) {
+    return 'large upward trending line chart with bold arrow tip in metal — growth chart is the only center symbol';
+  }
+  if (/security|audit|compliance|risk/.test(combined)) {
+    return 'large crosshair target reticle circle with cross lines in metal — crosshair is the only center symbol';
+  }
+  const role = data.role || data.title || 'this agent';
+  return `large polished metal sculpture of the single dominant object for ${role} — that object is the only center symbol`;
+}
+
 function deriveSubjects(data: AgentData): Record<ImageKind, string> {
   const role = data.role || data.title;
   const focus = data.focus ? `, focus on ${data.focus}` : '';
   return {
-    icon: `flat vector HUD glyph: one bold symbol for ${role}${focus}`,
-    emblem: `large polished metal sculpture of the single dominant object for ${role}${focus} — that object is the only center symbol inside the winged badge`,
-    portrait: `${data.callsign ?? 'Commander'} tactical commander for ${role}${focus}, ${data.accent} gear`,
+    icon:
+      data.iconSubject?.trim() ||
+      `flat vector HUD glyph: one bold symbol for ${role}${focus}`,
+    emblem: deriveEmblemSubject(data),
+    portrait:
+      data.portraitSubject?.trim() ||
+      `${data.callsign ?? 'Commander'} tactical commander for ${role}${focus}, ${data.accent} gear`,
   };
 }
 

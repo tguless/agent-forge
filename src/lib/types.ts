@@ -59,6 +59,10 @@ export type AgentData = {
   iconPath?: string;
   emblemPath?: string;
   portraitPath?: string;
+  /** LLM-authored generate_image subjects (for regenerate-images). */
+  iconSubject?: string;
+  emblemSubject?: string;
+  portraitSubject?: string;
 };
 
 export type AgentRecord = {
