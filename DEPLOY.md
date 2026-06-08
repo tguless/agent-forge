@@ -71,6 +71,24 @@ Docker volumes:
 - `agent_forge_agents` — generated PNG assets under `/public/agents`
 - `agent_forge_tmp` — image pipeline temp files
 
+## Open Graph banner
+
+Social preview: `public/og-image.png` (uses C&C winged-emblem house style). Backup of the prior SaaS-style banner: `public/og-image.bak.png`.
+
+Regenerate from llm-ocr repo root:
+
+```bash
+node scripts/generate-og-image.mjs \
+  --slug agent-forge --style forge \
+  --output agent-forge/public/og-image.png \
+  --title "Agent Forge" \
+  --subtitle "Tactical AI agent card generator" \
+  --tagline "Describe a role. Forge an agent." \
+  --accent "#38bdf8"
+```
+
+Commit `public/og-image.png` and redeploy for CloudFront to serve the new preview.
+
 ## Image pipeline notes
 
 - **ImageMagick** is included in the Docker image.
