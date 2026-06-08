@@ -199,7 +199,7 @@ function rembgRemove(python: string | null, src: string, dst: string): boolean {
 function magickWhiteToAlpha(magick: string, src: string, dst: string, fuzz = WHITE_FUZZ): boolean {
   const result = spawnSync(
     magick,
-    [src, '-alpha', 'set', '-channel', 'RGBA', '-fuzz', WHITE_FUZZ, '-fill', 'none', '-opaque', 'white', `PNG32:${dst}`],
+    [src, '-alpha', 'set', '-channel', 'RGBA', '-fuzz', fuzz, '-fill', 'none', '-opaque', 'white', `PNG32:${dst}`],
     { encoding: 'utf8' },
   );
   return result.status === 0;

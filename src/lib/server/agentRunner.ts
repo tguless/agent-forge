@@ -11,7 +11,7 @@ const MAX_ITERATIONS = 24;
 function buildSystemPrompt(): string {
   const tooling = imageToolingStatus();
   const visualNote = tooling.gemini
-    ? 'Image generation is ONLINE (Gemini). Generate all three images.'
+    ? 'Image generation is ONLINE (Gemini). Call generate_image three times with three DIFFERENT subject strings: icon = flat HUD glyph; emblem = ONE metal center sculpture only (backend adds full winged C&C plaque — never copy the icon subject); portrait = commander bust.'
     : 'Image generation has NO model key — images will be placeholders, but still call generate_image for all three so the cards have assets.';
   const core = applyPromptTemplate(getPromptContent('forge.system'), { visualNote });
   return `${core}${getMetaSkillsBundle()}`;

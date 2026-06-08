@@ -105,7 +105,7 @@ export const TOOL_DEFS: ToolDef[] = [
   {
     name: 'generate_image',
     description:
-      'Generate one visual asset. kind: "icon" (flat HUD glyph), "emblem" (3D winged badge center symbol), or "portrait" (cosplay commander bust). subject describes only the symbol/persona; the backend applies house style. Pass the agent accent and authority.',
+      'Generate one visual asset. kind: "icon" (flat HUD glyph for index card), "emblem" (ONE polished metal center sculpture inside a full winged C&C commander badge — NOT a flat icon, NOT the same subject string as icon), or "portrait" (cosplay commander bust). Pass three different subject strings across the three calls. Backend applies house style. Pass accent and authority.',
     input_schema: {
       type: 'object',
       properties: {

@@ -10,8 +10,8 @@ function deriveSubjects(data: AgentData): Record<ImageKind, string> {
   const role = data.role || data.title;
   const focus = data.focus ? `, focus on ${data.focus}` : '';
   return {
-    icon: `a bold flat symbol for ${role}${focus}`,
-    emblem: `a polished metal sculpture of the core symbol for ${role}${focus}`,
+    icon: `flat vector HUD glyph: one bold symbol for ${role}${focus}`,
+    emblem: `large polished metal sculpture of the single dominant object for ${role}${focus} — that object is the only center symbol inside the winged badge`,
     portrait: `${data.callsign ?? 'Commander'} tactical commander for ${role}${focus}, ${data.accent} gear`,
   };
 }

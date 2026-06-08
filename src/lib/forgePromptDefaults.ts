@@ -48,7 +48,7 @@ const DEFAULT_IMAGE = {
     'The glyph must be VERY LARGE: fill 88-92% of the square canvas edge-to-edge, bold thick strokes, minimal empty margin, centered.',
   icon_template: '{{white_bg}} {{fill_hint}} Single minimalist flat vector icon in color {{accent}} only: {{subject}}.',
   emblem_white_bg:
-    'Pure flat white background #FFFFFF only, no gradients, no shadows on background, no border, no frame. Single isolated 3D emblem object, centered, fills 90% of canvas.',
+    'Pure flat white background #FFFFFF only, no gradients, no shadows on background, no border, no frame. Full symmetrical winged commander insignia badge centered, fills 90% of canvas edge-to-edge.',
   winged_plaque:
     'Hyper-realistic 3D metal-organic military commander insignia plaque, IDENTICAL structural style to a Command and Conquer supreme winged commander badge: symmetrical large mechanical armored wings with layered gunmetal-teal metal plates, visible gears and pistons at wing roots, thick circular brushed gunmetal ring behind center sculpture, V-shaped metallic chevron base, dramatic cinematic rim lighting, polished metal with gold trim accents, micro-scratches, heavy dimensional depth.',
   emblem_forbidden:
@@ -57,7 +57,7 @@ const DEFAULT_IMAGE = {
   rank_wings_4: 'Wings: large two-layer wings (executive commander rank), slightly smaller than supreme.',
   rank_wings_5: 'Wings: largest triple-layer wingspan (supreme commander rank).',
   emblem_template:
-    '{{emblem_white_bg}} {{winged_plaque}} {{rank_wings}} Primary accent {{accent}} on the center sculpture and wing highlights. CENTER SCULPTURE ONLY (wings come from the plaque, not from this description): {{subject}} — rendered in polished metal inside the winged ring. The winged commander badge fills the frame; do not draw a small isolated icon. {{emblem_forbidden}}',
+    '{{emblem_white_bg}} {{winged_plaque}} {{rank_wings}} Primary accent {{accent}} on the center sculpture and wing highlights. CENTER SCULPTURE ONLY (wings come from the plaque, not from this description): {{subject}} — rendered in polished metal inside the winged ring. The winged commander badge fills the frame; do not draw a small isolated icon or flat HUD glyph. {{emblem_forbidden}} Same photoreal metal-organic quality as supreme commander rook emblem.',
   portrait_base:
     'Photorealistic cinematic portrait cosplay, Command and Conquer RTS commander character style like a Red Alert / Generals briefing screen. Upper body bust, facing camera, confident tactical expression. Dark olive-black background with faint green HUD grid. Dramatic rim lighting. No text, no logos, no watermark.',
   rank_uniform_3:
