@@ -25,6 +25,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV REMBG_PYTHON=/app/.venv-rembg/bin/python3
+ENV U2NET_HOME=/app/.u2net
 
 COPY docker/rembg-requirements.txt /tmp/rembg-requirements.txt
 
@@ -39,9 +40,12 @@ RUN apt-get update \
   && python3 -m venv /app/.venv-rembg \
   && /app/.venv-rembg/bin/pip install --no-cache-dir --upgrade pip \
   && /app/.venv-rembg/bin/pip install --no-cache-dir -r /tmp/rembg-requirements.txt \
+  && mkdir -p /app/.u2net \
+  && /app/.venv-rembg/bin/python3 -c "import base64; from rembg import remove; remove(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2ZkAAAAASUVORK5CYII=')); print('u2net cached')" \
   && /app/.venv-rembg/bin/python3 -c "from rembg import remove; print('rembg ok')" \
   && groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs \
+  && chown -R nextjs:nodejs /app/.u2net \
   && rm /tmp/rembg-requirements.txt
 
 COPY --from=builder /app/public ./public

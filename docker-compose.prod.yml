@@ -16,6 +16,8 @@ services:
     environment:
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://agent.paperiq.ai}
       FORGE_DB_PATH: /app/data/forge.db
+      REMBG_PYTHON: /app/.venv-rembg/bin/python3
+      U2NET_HOME: /app/.u2net
     volumes:
       - agent_forge_data:/app/data
       - agent_forge_agents:/app/public/agents

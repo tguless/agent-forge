@@ -185,7 +185,12 @@ from pathlib import Path
 s, d = Path(${JSON.stringify(src)}), Path(${JSON.stringify(dst)})
 d.write_bytes(remove(s.read_bytes()))
 `;
-  return spawnSync(py, ['-c', script], { encoding: 'utf8' }).status === 0;
+  const result = spawnSync(py, ['-c', script], { encoding: 'utf8', env: { ...process.env, U2NET_HOME: process.env.U2NET_HOME || path.join(CWD, '.u2net') } });
+  if (result.status !== 0) {
+    console.error('[imagePipeline] rembg:', (result.stderr || result.stdout || '').trim().slice(0, 300));
+    return false;
+  }
+  return true;
 }
 
 function magickWhiteToAlpha(magick: string, src: string, dst: string): boolean {
