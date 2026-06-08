@@ -10,9 +10,10 @@ You commission three images per agent via the `generate_image` tool. The backend
 
 ## emblem (3D winged commander badge for the detail header)
 
-- A single object that becomes the metal **center sculpture** inside the winged plaque.
+- A single object that becomes the metal **center sculpture** inside the winged plaque — **not** a flat icon. The backend prompt adds mechanical wings, ring, and chevron; your subject is only the center metal piece.
 - Reuse the same core symbol as the icon, described as a sculpted object, e.g.: "a polished metal upward growth-chart arrow", "a sculpted erlenmeyer flask", "a crosshair target reticle".
 - Never request a star, eagle, sunburst, or text — those are forbidden centerpieces.
+- Never describe wings, frame, or badge structure — the template supplies the full C&C winged plaque.
 
 ## portrait (C&C cosplay commander bust)
 

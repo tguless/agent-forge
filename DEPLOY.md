@@ -91,7 +91,6 @@ Commit `public/og-image.png` and redeploy for CloudFront to serve the new previe
 
 ## Image pipeline notes
 
-- **ImageMagick** + **rembg** (`rembg[cpu]` in `/app/.venv-rembg`, `REMBG_PYTHON` set in Docker).
-- **Pillow** (`python3-pil`) and ImageMagick both handle trim/resize/normalize.
-- Local dev: optional `.cursor/mcp-servers/rembg/.venv` or set `REMBG_PYTHON` in `.env.local`.
+- **ImageMagick** white→alpha for icon/emblem transparency (pure `#FFFFFF` Gemini backgrounds).
+- **rembg** is installed in Docker (`/app/.venv-rembg`) but **not used** for icon/emblem — it crops winged plaques to the center sculpture and breaks multi-part HUD glyphs. ImageMagick fuzz handles both.
 - Without `GEMINI_API_KEY`, agents still generate text/skills; images use placeholders.

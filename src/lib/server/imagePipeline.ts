@@ -4,12 +4,11 @@
  * Mirrors the PaperIQ operations asset scripts:
  *   1. Compose a prompt (icon / emblem / portrait) from agent details
  *   2. Generate via Gemini "Nano Banana" image model (@google/genai)
- *   3. Decode Gemini JPEG → PNG, then rembg (icons only) → ImageMagick fuzz white→alpha → normalize
+ *   3. Decode Gemini JPEG → PNG, then ImageMagick fuzz white→alpha → normalize
  *
- * Everything degrades gracefully:
- *   - no GEMINI_API_KEY        → ImageMagick-drawn placeholder glyph
- *   - no rembg venv            → skip AI bg removal (Docker ships /app/.venv-rembg)
- *   - no ImageMagick / Python  → write the raw/placeholder PNG as-is
+ * rembg is available in Docker but skipped for icon/emblem: Gemini uses pure #FFFFFF
+ * backgrounds and rembg isolates a single salient object (destroys winged plaques and
+ * multi-part flat HUD glyphs). Icons/emblems use ImageMagick white→alpha only.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -371,19 +370,8 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
     return { webPath, generated: true, notes };
   }
 
-  // icon / emblem → transparency pipeline
+  // icon / emblem → transparency pipeline (pure white Gemini bg → magick fuzz, no rembg)
   let source = rawPath;
-  // rembg isolates the salient foreground object — fine for flat icons, but it crops
-  // winged emblem plaques down to the center sculpture only. Emblems use white→alpha.
-  if (rembgPy && input.kind === 'icon') {
-    const rembgPath = path.join(TMP, `${input.slug}-${input.kind}-rembg.png`);
-    if (rembgRemove(rembgPy, source, rembgPath)) source = rembgPath;
-    else notes.push('rembg pass failed; continuing.');
-  } else if (input.kind === 'emblem') {
-    notes.push('emblem: skipped rembg (preserves winged plaque).');
-  } else {
-    notes.push('rembg venv not found; skipped AI bg removal.');
-  }
   if (magick) {
     const alphaPath = path.join(TMP, `${input.slug}-${input.kind}-alpha.png`);
     const fuzz = input.kind === 'emblem' ? EMBLEM_WHITE_FUZZ : WHITE_FUZZ;

@@ -28,6 +28,19 @@ JOB DESCRIPTION:
 
 Design the agent now.`;
 
+const DEFAULT_EXAMPLE_SYSTEM = `You invent realistic demo inputs for Agent Forge — a product that forges tactical AI agent command cards from a business description and a job description.
+
+Return ONLY valid JSON (no markdown fences, no commentary) with exactly these keys:
+- "businessContext": 2–4 sentences — what the company does and the document/workflow pain (name concrete systems, volumes, or SLAs where natural)
+- "jobDescription": 2–4 sentences — the agent role, recurring tasks, escalation bar, and artifacts it produces
+- "titleHint": a short agent name ending in "Agent" (e.g. "Claims Triage Agent")
+
+Be specific and operator-grade. Avoid corporate filler and emoji. Vary industries unless the user specifies a theme.`;
+
+const DEFAULT_EXAMPLE_USER = `{{themeInstruction}}
+
+Generate one fresh example now.`;
+
 const DEFAULT_IMAGE = {
   white_bg:
     'Pure flat white background #FFFFFF only, no gradients, no shadows on background, no border, no frame, no text, no watermark.',
@@ -39,12 +52,12 @@ const DEFAULT_IMAGE = {
   winged_plaque:
     'Hyper-realistic 3D metal-organic military commander insignia plaque, IDENTICAL structural style to a Command and Conquer supreme winged commander badge: symmetrical large mechanical armored wings with layered gunmetal-teal metal plates, visible gears and pistons at wing roots, thick circular brushed gunmetal ring behind center sculpture, V-shaped metallic chevron base, dramatic cinematic rim lighting, polished metal with gold trim accents, micro-scratches, heavy dimensional depth.',
   emblem_forbidden:
-    'FORBIDDEN centerpiece: five-point star, generic star, eagle, sunburst, empty circle. FORBIDDEN: any text, words, letters, nameplate typography.',
+    'FORBIDDEN centerpiece: five-point star, generic star, eagle, sunburst, empty circle. FORBIDDEN: any text, words, letters, nameplate typography. FORBIDDEN composition: flat 2D HUD icon, standalone logo mark, icon-only glyph, cropped center badge without wings — the full symmetrical winged plaque MUST be visible edge-to-edge.',
   rank_wings_3: 'Wings: medium mechanical wings (field officer rank).',
   rank_wings_4: 'Wings: large two-layer wings (executive commander rank), slightly smaller than supreme.',
   rank_wings_5: 'Wings: largest triple-layer wingspan (supreme commander rank).',
   emblem_template:
-    '{{emblem_white_bg}} {{winged_plaque}} {{rank_wings}} Primary accent {{accent}} on the center sculpture and wing highlights. CENTER SCULPTURE: {{subject}} — this is the only center symbol, rendered in polished metal. {{emblem_forbidden}}',
+    '{{emblem_white_bg}} {{winged_plaque}} {{rank_wings}} Primary accent {{accent}} on the center sculpture and wing highlights. CENTER SCULPTURE ONLY (wings come from the plaque, not from this description): {{subject}} — rendered in polished metal inside the winged ring. The winged commander badge fills the frame; do not draw a small isolated icon. {{emblem_forbidden}}',
   portrait_base:
     'Photorealistic cinematic portrait cosplay, Command and Conquer RTS commander character style like a Red Alert / Generals briefing screen. Upper body bust, facing camera, confident tactical expression. Dark olive-black background with faint green HUD grid. Dramatic rim lighting. No text, no logos, no watermark.',
   rank_uniform_3:
@@ -72,6 +85,10 @@ export function getDefaultPromptContent(key: ForgePromptKey): string {
       return DEFAULT_SYSTEM;
     case 'forge.user_template':
       return DEFAULT_USER_TEMPLATE;
+    case 'forge.example.system':
+      return DEFAULT_EXAMPLE_SYSTEM;
+    case 'forge.example.user_template':
+      return DEFAULT_EXAMPLE_USER;
     case 'skills.agent_architect':
       return readSkillFile('01-agent-architect.skill.md');
     case 'skills.skill_file_author':
