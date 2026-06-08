@@ -7,6 +7,40 @@ import { imageToolingStatus } from './imagePipeline';
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 const MAX_ITERATIONS = 24;
+const STALE_GENERATING_MS = Number(process.env.FORGE_STALE_GENERATING_MS || 12 * 60 * 1000);
+
+const generationInFlight = new Set<string>();
+
+export function isGenerationInFlight(slug: string): boolean {
+  return generationInFlight.has(slug);
+}
+
+/** True when status is generating but no progress event for STALE_GENERATING_MS. */
+export function isGenerationStale(slug: string): boolean {
+  const agent = getAgent(slug);
+  if (!agent || agent.status !== 'generating') return false;
+  return Date.now() - agent.updatedAt > STALE_GENERATING_MS;
+}
+
+export function retryGeneration(slug: string, opts?: { force?: boolean }): { ok: boolean; error?: string } {
+  const agent = getAgent(slug);
+  if (!agent) return { ok: false, error: 'not found' };
+  if (generationInFlight.has(slug) && !opts?.force && !isGenerationStale(slug)) {
+    return { ok: false, error: 'generation already in progress' };
+  }
+  beginGeneration(slug, 'Retrying forge…', opts);
+  return { ok: true };
+}
+
+export function startAgentGeneration(slug: string): void {
+  beginGeneration(slug);
+}
+
+function beginGeneration(slug: string, startNote?: string, opts?: { force?: boolean }): void {
+  void runGeneration(slug, startNote, opts).catch((err) => {
+    console.error('runGeneration crashed', err);
+  });
+}
 
 function buildSystemPrompt(): string {
   const tooling = imageToolingStatus();
@@ -18,19 +52,28 @@ function buildSystemPrompt(): string {
 }
 
 /** Run the full generation loop for an agent (async, fire-and-forget from the API). */
-export async function runGeneration(slug: string): Promise<void> {
+export async function runGeneration(
+  slug: string,
+  startNote?: string,
+  opts?: { force?: boolean },
+): Promise<void> {
+  if (generationInFlight.has(slug) && !opts?.force) return;
+
   const agent = getAgent(slug);
   if (!agent) return;
+
+  generationInFlight.add(slug);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     setAgentStatus(slug, 'error', 'ANTHROPIC_API_KEY is not set');
     addEvent(slug, 'error', 'ANTHROPIC_API_KEY missing — add it to .env.local and retry.');
+    generationInFlight.delete(slug);
     return;
   }
 
   setAgentStatus(slug, 'generating');
-  addEvent(slug, 'info', `Forge online · model ${MODEL}. Designing agent…`);
+  addEvent(slug, 'info', startNote ?? `Forge online · model ${MODEL}. Designing agent…`);
 
   // Generous per-request timeout + retries; streaming (below) keeps long skill-file
   // generations from stalling on idle connections.
@@ -99,5 +142,7 @@ export async function runGeneration(slug: string): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     setAgentStatus(slug, 'error', message);
     addEvent(slug, 'error', `Forge failure: ${message}`);
+  } finally {
+    generationInFlight.delete(slug);
   }
 }

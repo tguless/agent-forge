@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAgent, hasAgent } from '@/lib/agentStore';
-import { runGeneration } from '@/lib/server/agentRunner';
+import { startAgentGeneration } from '@/lib/server/agentRunner';
 import { uniqueSlug } from '@/lib/slug';
 import type { AgentData } from '@/lib/types';
 
@@ -41,11 +41,7 @@ export async function POST(req: Request) {
 
   createAgent({ slug, title: initial.title, data: initial, businessContext, jobDescription });
 
-  // Fire-and-forget: the loop updates the DB; the client polls /events + detail.
-  void runGeneration(slug).catch((err) => {
-    // runGeneration already records errors to the DB; this guards the unhandled rejection.
-    console.error('runGeneration crashed', err);
-  });
+  startAgentGeneration(slug);
 
   return NextResponse.json({ slug });
 }

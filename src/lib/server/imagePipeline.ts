@@ -43,6 +43,7 @@ const PUBLIC_AGENTS = path.join(CWD, 'public', 'agents');
 
 const MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
 const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '2K';
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_IMAGE_TIMEOUT_MS || 180_000);
 const WHITE_FUZZ = process.env.ICON_WHITE_FUZZ || '14%';
 const EMBLEM_WHITE_FUZZ = process.env.EMBLEM_WHITE_FUZZ || '10%';
 
@@ -345,17 +346,34 @@ async function geminiGenerate(
     const client = new GoogleGenAI({ apiKey });
     const imageConfig: Record<string, unknown> = { aspectRatio: aspect };
     if (MODEL.includes('gemini-3')) imageConfig.imageSize = IMAGE_SIZE;
-    const response = await client.models.generateContent({
-      model: MODEL,
-      contents: prompt,
-      config: { imageConfig },
+
+    const run = async (): Promise<{ buf: Buffer | null; error?: string }> => {
+      const response = await client.models.generateContent({
+        model: MODEL,
+        contents: prompt,
+        config: { imageConfig },
+      });
+      const parts = response.candidates?.[0]?.content?.parts ?? [];
+      for (const part of parts) {
+        const data = (part as { inlineData?: { data?: string } }).inlineData?.data;
+        if (data) return { buf: Buffer.from(data, 'base64') };
+      }
+      return { buf: null, error: 'Gemini returned no image bytes' };
+    };
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<{ buf: null; error: string }>((resolve) => {
+      timer = setTimeout(
+        () => resolve({ buf: null, error: `Gemini timed out after ${Math.round(GEMINI_TIMEOUT_MS / 1000)}s` }),
+        GEMINI_TIMEOUT_MS,
+      );
     });
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
-    for (const part of parts) {
-      const data = (part as { inlineData?: { data?: string } }).inlineData?.data;
-      if (data) return { buf: Buffer.from(data, 'base64') };
+
+    try {
+      return await Promise.race([run(), timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
-    return { buf: null, error: 'Gemini returned no image bytes' };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[imagePipeline] Gemini error:', msg);
