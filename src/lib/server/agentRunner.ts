@@ -7,7 +7,7 @@ import { imageToolingStatus } from './imagePipeline';
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 const MAX_ITERATIONS = 24;
-const STALE_GENERATING_MS = Number(process.env.FORGE_STALE_GENERATING_MS || 12 * 60 * 1000);
+const STALE_GENERATING_MS = Number(process.env.FORGE_STALE_GENERATING_MS || 45 * 60 * 1000);
 
 const generationInFlight = new Set<string>();
 

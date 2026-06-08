@@ -43,7 +43,7 @@ const PUBLIC_AGENTS = path.join(CWD, 'public', 'agents');
 
 const MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
 const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '2K';
-const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_IMAGE_TIMEOUT_MS || 180_000);
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_IMAGE_TIMEOUT_MS || 600_000);
 const WHITE_FUZZ = process.env.ICON_WHITE_FUZZ || '14%';
 const EMBLEM_WHITE_FUZZ = process.env.EMBLEM_WHITE_FUZZ || '10%';
 

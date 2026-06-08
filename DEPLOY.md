@@ -95,4 +95,6 @@ Commit `public/og-image.png` and redeploy for CloudFront to serve the new previe
 - **Emblem normalize** scales the full 2K winged badge to 512×512 (no trim+extent crop — that was zooming into the center sculpture only).
 - **rembg** is installed in Docker (`/app/.venv-rembg`) but **not used** for icon/emblem — it crops winged plaques to the center sculpture and breaks multi-part HUD glyphs. ImageMagick fuzz handles both.
 - Without `GEMINI_API_KEY`, agents still generate text/skills; images use placeholders.
+- **Gemini image timeout:** default **10 minutes** per asset (`GEMINI_IMAGE_TIMEOUT_MS=600000`). 2K winged emblems can be slow; raise in `.env.local` if needed.
+- **Stale forge detection:** default **45 minutes** without progress (`FORGE_STALE_GENERATING_MS`) — should exceed 3× image timeout plus skill-file writing.
 - **Delete agents:** detail page → Delete profile → password `password` (override with `FORGE_DELETE_PASSWORD` in `.env.local`).
