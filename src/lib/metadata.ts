@@ -13,16 +13,25 @@ const OG_IMAGE_ALT = 'Agent Forge — tactical AI agent card generator on PaperI
 export function buildSocialMetadata(overrides?: {
   title?: string;
   description?: string;
+  url?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  imageWidth?: number;
+  imageHeight?: number;
 }): Pick<Metadata, 'openGraph' | 'twitter'> {
   const title = overrides?.title ?? DEFAULT_TITLE;
   const description = overrides?.description ?? DEFAULT_DESCRIPTION;
-  const imageUrl = absoluteUrl(OG_IMAGE_PATH);
+  const pageUrl = overrides?.url ?? getSiteUrl();
+  const imageUrl = overrides?.imageUrl ?? absoluteUrl(OG_IMAGE_PATH);
+  const imageAlt = overrides?.imageAlt ?? OG_IMAGE_ALT;
+  const imageWidth = overrides?.imageWidth ?? 1200;
+  const imageHeight = overrides?.imageHeight ?? 630;
 
   return {
     openGraph: {
       type: 'website',
       locale: 'en_US',
-      url: getSiteUrl(),
+      url: pageUrl,
       siteName: SITE_NAME,
       title,
       description,
@@ -30,9 +39,9 @@ export function buildSocialMetadata(overrides?: {
         {
           url: imageUrl,
           secureUrl: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: OG_IMAGE_ALT,
+          width: imageWidth,
+          height: imageHeight,
+          alt: imageAlt,
           type: 'image/png',
         },
       ],
@@ -43,6 +52,48 @@ export function buildSocialMetadata(overrides?: {
       description,
       images: [imageUrl],
     },
+  };
+}
+
+/** Per-agent command profile — portrait (or emblem/icon) for link previews. */
+export function buildAgentMetadata(agent: {
+  slug: string;
+  title: string;
+  subtitle?: string;
+  callsign?: string;
+  role?: string;
+  q1Objective?: string;
+  mission?: string;
+  portraitPath?: string;
+  emblemPath?: string;
+  iconPath?: string;
+}): Metadata {
+  const headline = agent.callsign ? `${agent.title} (${agent.callsign})` : agent.title;
+  const title = `${headline} · ${SITE_NAME}`;
+  const description =
+    agent.q1Objective?.trim() ||
+    agent.mission?.trim() ||
+    agent.subtitle?.trim() ||
+    agent.role?.trim() ||
+    DEFAULT_DESCRIPTION;
+  const imagePath = agent.portraitPath || agent.emblemPath || agent.iconPath || OG_IMAGE_PATH;
+  const pageUrl = absoluteUrl(`/agent/${agent.slug}`);
+  const imageAlt = `${agent.title} — tactical command profile`;
+  const isPortrait = !!agent.portraitPath;
+
+  return {
+    title: headline,
+    description,
+    alternates: { canonical: pageUrl },
+    ...buildSocialMetadata({
+      title,
+      description,
+      url: pageUrl,
+      imageUrl: absoluteUrl(imagePath),
+      imageAlt,
+      imageWidth: isPortrait ? 480 : 512,
+      imageHeight: isPortrait ? 600 : 512,
+    }),
   };
 }
 
