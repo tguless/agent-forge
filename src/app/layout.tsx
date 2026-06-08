@@ -4,6 +4,7 @@ import '@/styles/globals.css';
 import '@/styles/operations-dashboard.css';
 import '@/styles/operations-detail.css';
 import '@/styles/forge.css';
+import { rootMetadata } from '@/lib/metadata';
 
 const oxanium = Oxanium({
   subsets: ['latin'],
@@ -17,11 +18,7 @@ const chakraPetch = Chakra_Petch({
   variable: '--font-ops-ui',
 });
 
-export const metadata: Metadata = {
-  title: 'Agent Forge — Tactical Agent Card Generator',
-  description:
-    'Turn a minimal job description and business context into a fully realized tactical command-card agent with a generated skill file and visual identity.',
-};
+export const metadata: Metadata = rootMetadata;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
