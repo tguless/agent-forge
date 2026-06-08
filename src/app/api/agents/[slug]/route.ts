@@ -18,7 +18,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
   });
 }
 
-const DELETE_PASSWORD = process.env.FORGE_DELETE_PASSWORD || 'password';
+const DEFAULT_DELETE_PASSWORD = 'password';
 
 export async function DELETE(req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
@@ -27,11 +27,12 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ slug: string
   let password = '';
   try {
     const body = (await req.json()) as { password?: string };
-    password = String(body.password ?? '');
+    password = String(body.password ?? '').trim();
   } catch {
-    password = req.headers.get('x-forge-delete-password') ?? '';
+    password = (req.headers.get('x-forge-delete-password') ?? '').trim();
   }
-  if (password !== DELETE_PASSWORD) {
+  const expected = (process.env.FORGE_DELETE_PASSWORD || 'password').trim();
+  if (password !== expected) {
     return NextResponse.json({ error: 'invalid password' }, { status: 403 });
   }
 

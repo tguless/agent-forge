@@ -103,9 +103,9 @@ export function AgentDetailCommandCard({ agent }: { agent: AgentData }) {
     if (!window.confirm(`Delete "${label}"?\n\nThis removes the command card, skill file, and generated images. This cannot be undone.`)) {
       return;
     }
-    const password = window.prompt('Enter deletion password:');
+    const password = window.prompt('Deletion password (default: password):')?.trim();
     if (password == null) return;
-    if (!password.trim()) {
+    if (!password) {
       window.alert('Deletion password is required.');
       return;
     }
