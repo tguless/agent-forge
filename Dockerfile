@@ -1,12 +1,16 @@
-FROM node:20-alpine AS deps
+FROM node:20-bookworm-slim AS deps
 WORKDIR /app
-RUN apk add --no-cache python3 make g++
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 WORKDIR /app
-RUN apk add --no-cache python3 make g++
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN mkdir -p public data
@@ -15,7 +19,7 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Debian runner: rembg[cpu] + onnxruntime do not build on Alpine/musl.
+# Debian runner: rembg[cpu] + onnxruntime; same glibc as builder (better-sqlite3).
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
