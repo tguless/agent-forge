@@ -1,0 +1,27 @@
+# Production overlay for eyesense home server.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://agent.paperiq.ai}
+    restart: unless-stopped
+    ports:
+      - "8911:3000"
+    env_file:
+      - path: .env.local
+        required: true
+    environment:
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://agent.paperiq.ai}
+      FORGE_DB_PATH: /app/data/forge.db
+    volumes:
+      - agent_forge_data:/app/data
+      - agent_forge_agents:/app/public/agents
+      - agent_forge_tmp:/app/.forge_tmp
+
+volumes:
+  agent_forge_data:
+  agent_forge_agents:
+  agent_forge_tmp:

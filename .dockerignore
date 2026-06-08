@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.forge_tmp
+.forge.pid
+forge.log
+.env.local
+screenshots
+data/forge.db
+data/forge.db-*
