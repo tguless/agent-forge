@@ -4,7 +4,7 @@
  * Mirrors the PaperIQ operations asset scripts:
  *   1. Compose a prompt (icon / emblem / portrait) from agent details
  *   2. Generate via Gemini "Nano Banana" image model (@google/genai)
- *   3. Decode Gemini JPEG → PNG, then rembg (AI) → ImageMagick fuzz white→alpha → normalize
+ *   3. Decode Gemini JPEG → PNG, then rembg (icons only) → ImageMagick fuzz white→alpha → normalize
  *
  * Everything degrades gracefully:
  *   - no GEMINI_API_KEY        → ImageMagick-drawn placeholder glyph
@@ -45,6 +45,7 @@ const PUBLIC_AGENTS = path.join(CWD, 'public', 'agents');
 const MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
 const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '2K';
 const WHITE_FUZZ = process.env.ICON_WHITE_FUZZ || '14%';
+const EMBLEM_WHITE_FUZZ = process.env.EMBLEM_WHITE_FUZZ || '10%';
 
 // ── prompt fragments (configurable via Forge Configuration) ─────────────────
 
@@ -196,7 +197,7 @@ function rembgRemove(python: string | null, src: string, dst: string): boolean {
   return true;
 }
 
-function magickWhiteToAlpha(magick: string, src: string, dst: string): boolean {
+function magickWhiteToAlpha(magick: string, src: string, dst: string, fuzz = WHITE_FUZZ): boolean {
   const result = spawnSync(
     magick,
     [src, '-alpha', 'set', '-channel', 'RGBA', '-fuzz', WHITE_FUZZ, '-fill', 'none', '-opaque', 'white', `PNG32:${dst}`],
@@ -372,16 +373,21 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
 
   // icon / emblem → transparency pipeline
   let source = rawPath;
-  if (rembgPy) {
+  // rembg isolates the salient foreground object — fine for flat icons, but it crops
+  // winged emblem plaques down to the center sculpture only. Emblems use white→alpha.
+  if (rembgPy && input.kind === 'icon') {
     const rembgPath = path.join(TMP, `${input.slug}-${input.kind}-rembg.png`);
     if (rembgRemove(rembgPy, source, rembgPath)) source = rembgPath;
     else notes.push('rembg pass failed; continuing.');
+  } else if (input.kind === 'emblem') {
+    notes.push('emblem: skipped rembg (preserves winged plaque).');
   } else {
     notes.push('rembg venv not found; skipped AI bg removal.');
   }
   if (magick) {
     const alphaPath = path.join(TMP, `${input.slug}-${input.kind}-alpha.png`);
-    if (magickWhiteToAlpha(magick, source, alphaPath)) {
+    const fuzz = input.kind === 'emblem' ? EMBLEM_WHITE_FUZZ : WHITE_FUZZ;
+    if (magickWhiteToAlpha(magick, source, alphaPath, fuzz)) {
       source = alphaPath;
     } else {
       notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
