@@ -4,6 +4,7 @@ import { getDb } from './db';
 import type {
   AgentData,
   AgentRecord,
+  AgentRosterGroup,
   AgentStatus,
   AgentSummary,
   GenerationEvent,
@@ -70,8 +71,17 @@ export function hasAgent(slug: string): boolean {
 
 export function listAgents(): AgentSummary[] {
   const rows = getDb()
-    .prepare('SELECT * FROM agents ORDER BY created_at DESC')
-    .all() as Row[];
+    .prepare(
+      `SELECT a.*, b.slug AS biz_slug, b.name AS biz_name, b.is_placeholder AS biz_placeholder
+       FROM agents a
+       LEFT JOIN businesses b ON b.slug = a.business_slug
+       ORDER BY a.created_at DESC`,
+    )
+    .all() as (Row & {
+    biz_slug: string | null;
+    biz_name: string | null;
+    biz_placeholder: number | null;
+  })[];
   return rows.map((row) => {
     const data = JSON.parse(row.data || '{}') as AgentData;
     return {
@@ -88,7 +98,36 @@ export function listAgents(): AgentSummary[] {
       iconPath: data.iconPath,
       authority: data.authority || 3,
       updatedAt: row.updated_at,
+      businessSlug: row.biz_slug,
+      businessName: row.biz_name,
+      businessIsPlaceholder: row.biz_placeholder != null ? !!row.biz_placeholder : undefined,
     };
+  });
+}
+
+/** Group agents for the homepage roster (real businesses first, placeholder / unassigned last). */
+export function groupAgentsByBusiness(agents: AgentSummary[]): AgentRosterGroup[] {
+  const map = new Map<string, AgentRosterGroup>();
+  for (const agent of agents) {
+    const key = agent.businessSlug ?? '__unassigned__';
+    let group = map.get(key);
+    if (!group) {
+      group = {
+        businessSlug: agent.businessSlug ?? null,
+        businessName: agent.businessName ?? 'Unassigned',
+        isPlaceholder: agent.businessIsPlaceholder ?? false,
+        agents: [],
+      };
+      map.set(key, group);
+    }
+    group.agents.push(agent);
+  }
+  return [...map.values()].sort((a, b) => {
+    if (!a.businessSlug) return 1;
+    if (!b.businessSlug) return -1;
+    if (a.isPlaceholder && !b.isPlaceholder) return 1;
+    if (!a.isPlaceholder && b.isPlaceholder) return -1;
+    return a.businessName.localeCompare(b.businessName, undefined, { sensitivity: 'base' });
   });
 }
 

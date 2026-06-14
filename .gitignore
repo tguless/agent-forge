@@ -12,10 +12,10 @@ next-env.d.ts
 # local sqlite db + generated agent assets
 /data/*.db
 /data/*.db-*
-/public/agents/*
-!/public/agents/.gitkeep
-/public/businesses/*
-!/public/businesses/.gitkeep
+/data/agents/*
+!/data/agents/.gitkeep
+/data/businesses/*
+!/data/businesses/.gitkeep
 
 # scratch image work dir
 /.forge_tmp

@@ -112,9 +112,8 @@ export function AgentDetailCommandCard({
     setEmblemCacheBust(0);
   }, [agent.slug]);
 
-  const emblemSrc = agent.emblemPath
-    ? `${agent.emblemPath}${emblemCacheBust ? `?v=${emblemCacheBust}` : ''}`
-    : undefined;
+  const emblemVersion = emblemCacheBust || Date.now();
+  const emblemSrc = agent.emblemPath ? `${agent.emblemPath}?v=${emblemVersion}` : undefined;
 
   async function handleRegenerateEmblem() {
     const gen = ++emblemRequestGen.current;
@@ -222,6 +221,7 @@ export function AgentDetailCommandCard({
             <div className="ops-detail-emblem">
               {emblemSrc ? (
                 <img
+                  key={emblemSrc}
                   src={emblemSrc}
                   alt=""
                   className="ops-detail-emblem-img"

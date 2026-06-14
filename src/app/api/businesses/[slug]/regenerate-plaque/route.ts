@@ -39,6 +39,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ slug: string 
     plaqueSubject: subject,
   });
 
+  const refreshed = getBusiness(slug);
+
   console.log(
     `[regenerate-plaque] done slug=${slug} generated=${result.generated} path=${result.webPath} ms=${Date.now() - started}${result.notes.length ? ` notes=${result.notes.join('; ')}` : ''}`,
   );
@@ -50,6 +52,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ slug: string 
       webPath: result.webPath,
       notes: result.notes,
       cacheBust: Date.now(),
+      businessUpdatedAt: refreshed?.updatedAt,
     },
   });
 }

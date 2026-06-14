@@ -93,6 +93,17 @@ export type AgentSummary = {
   iconPath?: string;
   authority: number;
   updatedAt: number;
+  businessSlug?: string | null;
+  businessName?: string | null;
+  businessIsPlaceholder?: boolean;
+};
+
+/** Homepage roster section — agents grouped under their mapped business. */
+export type AgentRosterGroup = {
+  businessSlug: string | null;
+  businessName: string;
+  isPlaceholder: boolean;
+  agents: AgentSummary[];
 };
 
 export type GenerationEvent = {

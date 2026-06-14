@@ -14,16 +14,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string; 
     return new NextResponse('Not found', { status: 404 });
   }
 
-  const abs = path.join(process.cwd(), 'public', 'agents', slug, file);
+  const abs = path.join(process.cwd(), 'data', 'agents', slug, file);
   if (!fs.existsSync(abs)) {
     return new NextResponse('Not found', { status: 404 });
   }
 
   const buf = fs.readFileSync(abs);
+  const stat = fs.statSync(abs);
   return new NextResponse(buf, {
     headers: {
       'Content-Type': 'image/png',
-      'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
+      'Cache-Control': 'private, no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'ETag': `"${stat.mtimeMs}"`,
     },
   });
 }

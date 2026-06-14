@@ -921,3 +921,57 @@
     justify-self: center;
   }
 }
+
+/* ── Homepage roster grouped by business ──────────────────────────────────── */
+.forge-roster-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.forge-roster-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px 14px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 22%, transparent);
+}
+
+.forge-roster-group-title {
+  font-family: var(--font-ops-display, 'Oxanium'), ui-sans-serif, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #dffaf0;
+  text-decoration: none;
+}
+
+a.forge-roster-group-title:hover {
+  color: var(--ops-cyan, #38bdf8);
+}
+
+.forge-roster-group-tag {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ops-muted, #8fa88a);
+}
+
+.forge-roster-group-count {
+  margin-left: auto;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ops-cyan, #38bdf8) 65%, #8fa88a);
+}
+
+.forge-roster-group--new {
+  margin-top: 4px;
+}
+
+.forge-roster-group--new .ops-agent-grid {
+  margin-top: 0;
+}

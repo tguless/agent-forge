@@ -44,8 +44,8 @@ export type GenerateImageResult = {
 
 const CWD = process.cwd();
 const TMP = path.join(CWD, '.forge_tmp');
-const PUBLIC_AGENTS = path.join(CWD, 'public', 'agents');
-const PUBLIC_BUSINESSES = path.join(CWD, 'public', 'businesses');
+const DATA_AGENTS = path.join(CWD, 'data', 'agents');
+const DATA_BUSINESSES = path.join(CWD, 'data', 'businesses');
 
 const MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
 const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '2K';
@@ -614,7 +614,7 @@ function runBusinessPlaqueAlphaPipeline(ctx: AlphaPipelineCtx, rawPath: string):
 export async function generateAgentImage(input: GenerateImageInput): Promise<GenerateImageResult> {
   /** Agent assets only — prompts from image.emblem.* / image.icon.*; white-key pipelines above. */
   const notes: string[] = [];
-  const outDir = path.join(PUBLIC_AGENTS, input.slug);
+  const outDir = path.join(DATA_AGENTS, input.slug);
   fs.mkdirSync(TMP, { recursive: true });
   fs.mkdirSync(outDir, { recursive: true });
 
@@ -722,7 +722,7 @@ function buildBusinessPlaquePrompt(input: GenerateBusinessPlaqueInput): string {
 /** Gemini sector plaque — image.business.* prompts + chroma pipeline only (not generateAgentImage). */
 export async function generateBusinessPlaque(input: GenerateBusinessPlaqueInput): Promise<GenerateImageResult> {
   const notes: string[] = [];
-  const outDir = path.join(PUBLIC_BUSINESSES, input.slug);
+  const outDir = path.join(DATA_BUSINESSES, input.slug);
   fs.mkdirSync(TMP, { recursive: true });
   fs.mkdirSync(outDir, { recursive: true });
 

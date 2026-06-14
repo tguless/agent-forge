@@ -5,36 +5,37 @@ import Link from 'next/link';
 import { AgentCommandCard } from '@/components/AgentCommandCard';
 import { ForgeNewAgentCard } from '@/components/ForgeNewAgentCard';
 import { ForgeHudHeader } from '@/components/ForgeHudHeader';
-import type { AgentSummary } from '@/lib/types';
+import type { AgentRosterGroup } from '@/lib/types';
 
 export default function IndexPage() {
-  const [agents, setAgents] = React.useState<AgentSummary[] | null>(null);
+  const [groups, setGroups] = React.useState<AgentRosterGroup[] | null>(null);
 
   const load = React.useCallback(async () => {
     try {
       const res = await fetch('/api/agents', { cache: 'no-store' });
-      const json = (await res.json()) as { agents: AgentSummary[] };
-      setAgents(json.agents);
+      const json = (await res.json()) as { groups: AgentRosterGroup[] };
+      setGroups(json.groups);
     } catch {
-      setAgents([]);
+      setGroups([]);
     }
   }, []);
 
   React.useEffect(() => {
     void load();
-    // Poll while anything is still forging so cards fill in live.
     const id = setInterval(load, 4000);
     return () => clearInterval(id);
   }, [load]);
 
-  const anyForging = (agents ?? []).some((a) => a.status === 'queued' || a.status === 'generating');
+  const anyForging = (groups ?? []).some((g) =>
+    g.agents.some((a) => a.status === 'queued' || a.status === 'generating'),
+  );
 
   return (
     <div className="ops-dashboard">
       <div className="forge-toolbar">
         <p className="ops-pitch" style={{ margin: 0 }}>
-          <strong style={{ color: 'var(--ops-text)' }}>Agent Forge</strong> — every card below was
-          generated from a job description.
+          <strong style={{ color: 'var(--ops-text)' }}>Agent Forge</strong> — agents grouped by the
+          business blueprint they serve.
         </p>
         <div className="forge-config-toolbar-actions">
           <Link href="/config" className="forge-cta forge-cta--ghost">
@@ -55,14 +56,43 @@ export default function IndexPage() {
         <div className="ops-hud-inner">
           <ForgeHudHeader />
 
-          {agents === null ? (
+          {groups === null ? (
             <p className="forge-empty">Loading roster…</p>
-          ) : (
+          ) : groups.length === 0 ? (
             <div className="ops-agent-grid">
-              {agents.map((agent) => (
-                <AgentCommandCard key={agent.slug} agent={agent} />
-              ))}
               <ForgeNewAgentCard />
+            </div>
+          ) : (
+            <div className="forge-roster-groups">
+              {groups.map((group) => (
+                <section key={group.businessSlug ?? '__unassigned__'} className="forge-roster-group">
+                  <header className="forge-roster-group-head">
+                    {group.businessSlug ? (
+                      <Link href={`/business/${group.businessSlug}`} className="forge-roster-group-title">
+                        {group.businessName}
+                      </Link>
+                    ) : (
+                      <span className="forge-roster-group-title">{group.businessName}</span>
+                    )}
+                    {group.isPlaceholder && (
+                      <span className="forge-roster-group-tag">default home</span>
+                    )}
+                    <span className="forge-roster-group-count">
+                      {group.agents.length} agent{group.agents.length === 1 ? '' : 's'}
+                    </span>
+                  </header>
+                  <div className="ops-agent-grid">
+                    {group.agents.map((agent) => (
+                      <AgentCommandCard key={agent.slug} agent={agent} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+              <section className="forge-roster-group forge-roster-group--new">
+                <div className="ops-agent-grid">
+                  <ForgeNewAgentCard />
+                </div>
+              </section>
             </div>
           )}
         </div>

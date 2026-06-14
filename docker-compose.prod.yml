@@ -21,8 +21,8 @@ services:
       NUMBA_CACHE_DIR: /app/.forge_tmp/numba
     volumes:
       - agent_forge_data:/app/data
-      - agent_forge_agents:/app/public/agents
-      - agent_forge_businesses:/app/public/businesses
+      - agent_forge_agents:/app/data/agents
+      - agent_forge_businesses:/app/data/businesses
       - agent_forge_tmp:/app/.forge_tmp
 
 volumes:
