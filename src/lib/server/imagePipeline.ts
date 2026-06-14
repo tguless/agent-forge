@@ -6,10 +6,11 @@
  *   2. Generate via Gemini "Nano Banana" image model (@google/genai)
  *   3. Decode Gemini JPEG → PNG, then ImageMagick fuzz white→alpha → normalize
  *
- * rembg is available in Docker. Icons: rembg → 14% white→alpha → trim/normalize.
- * Emblems (classic default): rembg when it preserves wing span → 14% white→alpha →
- * PIL trim/normalize (May 2026 look). Sharp mode (EMBLEM_PIPELINE=sharp): magick-only
- * defringe without rembg. rembg is skipped when it shrinks the winged plaque bbox.
+ * rembg is available in Docker.
+ *   Icons:     rembg → ImageMagick 14% white→alpha → trim/normalize
+ *   Emblems:   rembg (wing guard) → ImageMagick 14% white→alpha → PIL/magick normalize
+ *   Plaques:   rembg → ImageMagick 12% magenta (#FF00FF) chroma→alpha → normalize
+ *              (same rembg+magick trick as icons; white key eats silver gunmetal on plaques)
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -59,6 +60,9 @@ const EMBLEM_MARGIN_PCT = Number(process.env.EMBLEM_MARGIN_PCT || 5);
 const EMBLEM_SHARP_WHITE_FUZZ = process.env.EMBLEM_SHARP_WHITE_FUZZ || '2%';
 const EMBLEM_POST_WHITE_FUZZ = process.env.EMBLEM_POST_WHITE_FUZZ || '3%';
 const EMBLEM_ALPHA_THRESHOLD = process.env.EMBLEM_ALPHA_THRESHOLD || '65%';
+/** Business plaques: chroma key (not white — silver highlights get eaten). */
+const PLAQUE_CHROMA_COLOR = process.env.PLAQUE_CHROMA_COLOR || '#FF00FF';
+const PLAQUE_CHROMA_FUZZ = process.env.PLAQUE_CHROMA_FUZZ || '12%';
 
 // ── prompt fragments (configurable via Forge Configuration) ─────────────────
 
@@ -76,7 +80,9 @@ function rankUniformKey(
   return 'image.portrait.rank_uniform_3';
 }
 
-function buildPrompt(input: GenerateImageInput): { prompt: string; aspect: '1:1' | '3:4' } {
+// ── Agent image prompts (icon / emblem / portrait) — never business plaque keys ─
+
+function buildAgentImagePrompt(input: GenerateImageInput): { prompt: string; aspect: '1:1' | '3:4' } {
   const authority = input.authority ?? 3;
   const whiteBg = getPromptContent('image.shared.white_bg');
   const fillHint = getPromptContent('image.shared.fill_hint');
@@ -214,6 +220,22 @@ function magickWhiteToAlpha(magick: string, src: string, dst: string, fuzz = WHI
   const result = spawnSync(
     magick,
     [src, '-alpha', 'set', '-channel', 'RGBA', '-fuzz', fuzz, '-fill', 'none', '-opaque', 'white', `PNG32:${dst}`],
+    { encoding: 'utf8' },
+  );
+  return result.status === 0;
+}
+
+/** Business plaques only — agent emblems/icons use magickWhiteToAlpha instead. */
+function magickChromaToAlpha(
+  magick: string,
+  src: string,
+  dst: string,
+  color = PLAQUE_CHROMA_COLOR,
+  fuzz = PLAQUE_CHROMA_FUZZ,
+): boolean {
+  const result = spawnSync(
+    magick,
+    [src, '-alpha', 'set', '-channel', 'RGBA', '-fuzz', fuzz, '-fill', 'none', '-opaque', color, `PNG32:${dst}`],
     { encoding: 'utf8' },
   );
   return result.status === 0;
@@ -496,7 +518,78 @@ async function geminiGenerate(
   }
 }
 
+// ── Transparency pipelines (bifurcated: agent white-key vs business chroma-key) ─
+
+type AlphaPipelineCtx = {
+  slug: string;
+  kind: ImageKind;
+  magick: string | null;
+  rembgPy: string | null;
+  notes: string[];
+};
+
+/** Agent emblem classic path: rembg (wing crop guard) → white→alpha. Never uses plaque chroma. */
+function runAgentEmblemAlphaPipeline(ctx: AlphaPipelineCtx, rawPath: string): string {
+  let source = rawPath;
+  if (EMBLEM_USE_REMBG && ctx.rembgPy) {
+    const rembgPath = path.join(TMP, `${ctx.slug}-${ctx.kind}-rembg.png`);
+    if (rembgRemove(ctx.rembgPy, rawPath, rembgPath)) {
+      if (ctx.magick && emblemRembgLooksCropped(ctx.magick, rawPath, rembgPath)) {
+        ctx.notes.push('rembg cropped wing span; using raw + magick.');
+      } else {
+        source = rembgPath;
+      }
+    } else {
+      ctx.notes.push('rembg pass failed; continuing on raw.');
+    }
+  } else if (!ctx.rembgPy && EMBLEM_USE_REMBG) {
+    ctx.notes.push('rembg venv not found; skipped AI bg removal.');
+  }
+  const alphaPath = path.join(TMP, `${ctx.slug}-${ctx.kind}-alpha.png`);
+  if (ctx.magick && magickWhiteToAlpha(ctx.magick, source, alphaPath, EMBLEM_WHITE_FUZZ)) {
+    return alphaPath;
+  }
+  if (ctx.magick) ctx.notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
+  return source;
+}
+
+/** Agent icon: rembg → white→alpha. Never uses plaque chroma. */
+function runAgentIconAlphaPipeline(ctx: AlphaPipelineCtx, rawPath: string): string {
+  let source = rawPath;
+  if (ctx.rembgPy) {
+    const rembgPath = path.join(TMP, `${ctx.slug}-${ctx.kind}-rembg.png`);
+    if (rembgRemove(ctx.rembgPy, source, rembgPath)) source = rembgPath;
+    else ctx.notes.push('rembg pass failed; continuing.');
+  }
+  const alphaPath = path.join(TMP, `${ctx.slug}-${ctx.kind}-alpha.png`);
+  if (ctx.magick && magickWhiteToAlpha(ctx.magick, source, alphaPath, WHITE_FUZZ)) {
+    return alphaPath;
+  }
+  if (ctx.magick) ctx.notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
+  else ctx.notes.push('ImageMagick not found; skipped white→alpha.');
+  return source;
+}
+
+/** Business plaque: rembg → chroma→alpha (parallel to icon white→alpha, different key color). */
+function runBusinessPlaqueAlphaPipeline(ctx: AlphaPipelineCtx, rawPath: string): string {
+  let source = rawPath;
+  if (ctx.rembgPy) {
+    const rembgPath = path.join(TMP, `${ctx.slug}-plaque-rembg.png`);
+    if (rembgRemove(ctx.rembgPy, source, rembgPath)) source = rembgPath;
+    else ctx.notes.push('rembg pass failed; continuing.');
+  }
+  const alphaPath = path.join(TMP, `${ctx.slug}-plaque-alpha.png`);
+  if (ctx.magick && magickChromaToAlpha(ctx.magick, source, alphaPath)) {
+    ctx.notes.push(`plaque chroma key ${PLAQUE_CHROMA_COLOR} fuzz ${PLAQUE_CHROMA_FUZZ}`);
+    return alphaPath;
+  }
+  if (ctx.magick) ctx.notes.push('ImageMagick chroma→alpha failed (check imagemagick-jpeg).');
+  else ctx.notes.push('ImageMagick not found; skipped chroma→alpha.');
+  return source;
+}
+
 export async function generateAgentImage(input: GenerateImageInput): Promise<GenerateImageResult> {
+  /** Agent assets only — prompts from image.emblem.* / image.icon.*; white-key pipelines above. */
   const notes: string[] = [];
   const outDir = path.join(PUBLIC_AGENTS, input.slug);
   fs.mkdirSync(TMP, { recursive: true });
@@ -510,7 +603,7 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
   const rembgPy = resolveRembgPython();
   const magick = findMagick();
 
-  const { prompt, aspect } = buildPrompt(input);
+  const { prompt, aspect } = buildAgentImagePrompt(input);
   const { buf, error: geminiError } = await geminiGenerate(prompt, aspect);
 
   if (!buf) {
@@ -535,8 +628,9 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
     return { webPath, generated: true, notes };
   }
 
-  // emblem → classic (May 2026) or sharp (magick defringe)
+  // emblem → classic (May 2026) or sharp (magick defringe) — white key only
   if (input.kind === 'emblem') {
+    const pipeCtx: AlphaPipelineCtx = { slug: input.slug, kind: 'emblem', magick, rembgPy, notes };
     if (EMBLEM_PIPELINE === 'sharp') {
       if (magick && magickEmblemPipelineSharp(magick, rawPath, finalPath)) {
         notes.push(
@@ -546,27 +640,7 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
       }
       if (magick) notes.push('ImageMagick sharp emblem pipeline failed.');
     } else {
-      let source = rawPath;
-      if (EMBLEM_USE_REMBG && rembgPy) {
-        const rembgPath = path.join(TMP, `${input.slug}-${input.kind}-rembg.png`);
-        if (rembgRemove(rembgPy, rawPath, rembgPath)) {
-          if (magick && emblemRembgLooksCropped(magick, rawPath, rembgPath)) {
-            notes.push('rembg cropped wing span; using raw + magick.');
-          } else {
-            source = rembgPath;
-          }
-        } else {
-          notes.push('rembg pass failed; continuing on raw.');
-        }
-      } else if (!rembgPy && EMBLEM_USE_REMBG) {
-        notes.push('rembg venv not found; skipped AI bg removal.');
-      }
-      const alphaPath = path.join(TMP, `${input.slug}-${input.kind}-alpha.png`);
-      if (magick && magickWhiteToAlpha(magick, source, alphaPath, EMBLEM_WHITE_FUZZ)) {
-        source = alphaPath;
-      } else if (magick) {
-        notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
-      }
+      const source = runAgentEmblemAlphaPipeline(pipeCtx, rawPath);
       if (python && pilNormalizeSquare(python, source, finalPath, 512, 'emblem')) {
         notes.push(`emblem classic: rembg=${source.includes('-rembg')}, fuzz ${EMBLEM_WHITE_FUZZ}, PIL trim`);
         return { webPath, generated: true, notes };
@@ -585,22 +659,8 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
     return { webPath, generated: true, notes };
   }
 
-  let source = rawPath;
-  if (rembgPy && input.kind === 'icon') {
-    const rembgPath = path.join(TMP, `${input.slug}-${input.kind}-rembg.png`);
-    if (rembgRemove(rembgPy, source, rembgPath)) source = rembgPath;
-    else notes.push('rembg pass failed; continuing.');
-  }
-  if (magick) {
-    const alphaPath = path.join(TMP, `${input.slug}-${input.kind}-alpha.png`);
-    if (magickWhiteToAlpha(magick, source, alphaPath, WHITE_FUZZ)) {
-      source = alphaPath;
-    } else {
-      notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
-    }
-  } else {
-    notes.push('ImageMagick not found; skipped white→alpha.');
-  }
+  const iconCtx: AlphaPipelineCtx = { slug: input.slug, kind: 'icon', magick, rembgPy, notes };
+  const source = runAgentIconAlphaPipeline(iconCtx, rawPath);
   if (magick && magickNormalizeSquare(magick, source, finalPath, 512, input.kind)) {
     return { webPath, generated: true, notes };
   }
@@ -612,6 +672,8 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
   return { webPath, generated: true, notes };
 }
 
+// ── Business plaque (image.business.* prompts + chroma pipeline only) ─────────
+
 export type GenerateBusinessPlaqueInput = {
   slug: string;
   subject: string;
@@ -622,7 +684,7 @@ export type GenerateBusinessPlaqueInput = {
 
 function buildBusinessPlaquePrompt(input: GenerateBusinessPlaqueInput): string {
   return applyPromptTemplate(getPromptContent('image.business.plaque_template'), {
-    plaque_white_bg: getPromptContent('image.business.plaque_white_bg'),
+    plaque_chroma_bg: getPromptContent('image.business.plaque_chroma_bg'),
     business_plaque_base: applyPromptTemplate(getPromptContent('image.business.plaque_base'), {
       accent: input.accent,
     }),
@@ -634,7 +696,7 @@ function buildBusinessPlaquePrompt(input: GenerateBusinessPlaqueInput): string {
   });
 }
 
-/** Gemini sector plaque for business blueprints — icon-style transparency pipeline. */
+/** Gemini sector plaque — image.business.* prompts + chroma pipeline only (not generateAgentImage). */
 export async function generateBusinessPlaque(input: GenerateBusinessPlaqueInput): Promise<GenerateImageResult> {
   const notes: string[] = [];
   const outDir = path.join(PUBLIC_BUSINESSES, input.slug);
@@ -664,22 +726,8 @@ export async function generateBusinessPlaque(input: GenerateBusinessPlaqueInput)
     notes.push('Could not decode Gemini bytes to PNG; transparency pipeline may fail.');
   }
 
-  let source = rawPath;
-  if (rembgPy) {
-    const rembgPath = path.join(TMP, `${input.slug}-plaque-rembg.png`);
-    if (rembgRemove(rembgPy, source, rembgPath)) source = rembgPath;
-    else notes.push('rembg pass failed; continuing.');
-  }
-  if (magick) {
-    const alphaPath = path.join(TMP, `${input.slug}-plaque-alpha.png`);
-    if (magickWhiteToAlpha(magick, source, alphaPath, WHITE_FUZZ)) {
-      source = alphaPath;
-    } else {
-      notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
-    }
-  } else {
-    notes.push('ImageMagick not found; skipped white→alpha.');
-  }
+  const pipeCtx: AlphaPipelineCtx = { slug: input.slug, kind: 'icon', magick, rembgPy, notes };
+  const source = runBusinessPlaqueAlphaPipeline(pipeCtx, rawPath);
   if (magick && magickNormalizeSquare(magick, source, finalPath, 512, 'icon')) {
     console.log(`[imagePipeline] business plaque ok slug=${input.slug} path=${webPath}`);
     return { webPath, generated: true, notes };

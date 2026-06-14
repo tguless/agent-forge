@@ -204,13 +204,11 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
 
     generate_plaque: tool({
       description:
-        'Generate the riveted business identity plaque (Gemini / Nano Banana). Call once right after set_business_profile. Pass subject = ONE minimalist neon line-art center icon that uniquely represents THIS business (from its name, description, and profile — e.g. magnifying glass over patent pages for a patent researcher, not a generic sector badge). Not a winged commander badge, not a portrait.',
+        'Generate the riveted business identity plaque (Gemini). Call once after set_business_profile. Pass subject = ONE short HUD glyph phrase (10–25 words): [artifact] + [action] — HUD line icon. Example for patent research: "magnifying glass over fanned patent pages with claim lines — HUD line icon". Never paste the business description; never generic circuit-book or database icons.',
       inputSchema: z.object({
         subject: z
           .string()
-          .describe(
-            'Minimalist neon line-art center icon unique to this business — must reflect what it does, not a generic compliance/sector label',
-          ),
+          .describe('Short HUD glyph phrase, 10–25 words — concrete workflow artifact for this business'),
         accent: z
           .string()
           .optional()

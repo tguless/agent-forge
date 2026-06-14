@@ -28,7 +28,7 @@ export type ForgePromptKey =
   | 'image.portrait.rank_uniform_4'
   | 'image.portrait.rank_uniform_5'
   | 'image.portrait.template'
-  | 'image.business.plaque_white_bg'
+  | 'image.business.plaque_chroma_bg'
   | 'image.business.plaque_base'
   | 'image.business.plaque_forbidden'
   | 'image.business.plaque_template';
@@ -322,11 +322,11 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     format: 'text',
   },
   {
-    key: 'image.business.plaque_white_bg',
-    label: 'Business plaque · white background',
+    key: 'image.business.plaque_chroma_bg',
+    label: 'Business plaque · chroma key background',
     category: 'image',
     categoryLabel: CATEGORY_LABELS.image,
-    description: 'Background framing for sector plaque renders.',
+    description: 'Solid magenta #FF00FF behind plaque for chroma removal (not white — preserves silver metal).',
     placeholders: [],
     format: 'text',
   },
@@ -355,7 +355,7 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     categoryLabel: CATEGORY_LABELS.image,
     description: 'Gemini prompt wrapper for business sector plaques.',
     placeholders: [
-      '{{plaque_white_bg}}',
+      '{{plaque_chroma_bg}}',
       '{{business_plaque_base}}',
       '{{business_plaque_forbidden}}',
       '{{business_name}}',
@@ -368,6 +368,14 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
 ];
 
 export const FORGE_PROMPT_KEYS = FORGE_PROMPT_DEFS.map((d) => d.key);
+
+/** Agent icon/emblem/portrait image prompts — white-key pipeline in imagePipeline.ts */
+export const AGENT_IMAGE_PROMPT_KEYS = FORGE_PROMPT_KEYS.filter(
+  (k) => k.startsWith('image.') && !k.startsWith('image.business.'),
+);
+
+/** Business sector plaque prompts — magenta chroma pipeline in generateBusinessPlaque() */
+export const BUSINESS_PLAQUE_PROMPT_KEYS = FORGE_PROMPT_KEYS.filter((k) => k.startsWith('image.business.'));
 
 export function getPromptDef(key: ForgePromptKey): ForgePromptDef | undefined {
   return FORGE_PROMPT_DEFS.find((d) => d.key === key);

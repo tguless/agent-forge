@@ -47,7 +47,7 @@ const DEFAULT_BUSINESS_SYSTEM = `You are the Forge Business Consultant — an au
 
 From the business description you must, using the tools provided:
 1) set_business_profile — capture industry, business model, a crisp summary, and the core value-chain stages.
-2) generate_plaque — commission the business identity plaque (Gemini). Pass a subject describing ONE minimalist neon line-art center icon that uniquely represents THIS business (from name + description + profile — not a generic sector badge). Call right after the profile.
+2) generate_plaque — commission the business identity plaque (Gemini). Pass subject = one short HUD glyph phrase (10–25 words) naming a concrete workflow artifact for THIS business — never paste the description. Call right after the profile.
 3) set_elevator_pitch — a 30–45 second spoken pitch (~50–90 words): hook, problem, solution, differentiation, outcome.
 4) Business plan — call each set_plan_* tool once, in order, with Markdown body only (no headings):
    set_plan_executive_summary → set_plan_problem_solution → set_plan_target_market → set_plan_revenue_model → set_plan_go_to_market → set_plan_operations → set_plan_year_one_milestones → set_plan_risks_mitigations
@@ -114,7 +114,8 @@ EXISTING PROFILE (may be empty):
 
 Write all eight business-plan sections now.`;
 
-const DEFAULT_IMAGE = {
+/** Agent icon / emblem / portrait — white-key pipeline only (see imagePipeline.ts). */
+const AGENT_IMAGE_DEFAULTS = {
   white_bg:
     'Pure flat white background #FFFFFF only, no gradients, no shadows on background, no border, no frame, no text, no watermark.',
   fill_hint:
@@ -141,14 +142,23 @@ const DEFAULT_IMAGE = {
     'Supreme commander dress uniform: long coat, gold epaulettes, highest rank insignia, most ornate.',
   portrait_template:
     '{{portrait_base}} {{rank_uniform}} Accent color {{accent}} on uniform trim and holograms. {{subject}} Unique individual — distinct face and styling.',
+};
+
+/** Business sector plaque — magenta chroma-key pipeline only (never shares agent emblem prompts). */
+const BUSINESS_PLAQUE_IMAGE_DEFAULTS = {
   business_plaque_base:
-    'Hyper-realistic square brushed gunmetal business identity plaque, Command and Conquer operator aesthetic. Thick matte black outer frame with glowing neon {{accent}} inner rim light. Four domed metal rivets in each corner (industrial riveted mount — NOT Phillips screws). Brushed metallic grey plate with subtle diagonal light streaks. Perfectly square, level, and face-on — no tilt, no rotation, no crooked hang. Square composition — the plaque fills 90% of the canvas edge-to-edge.',
+    'Hyper-realistic square brushed gunmetal identity plaque, Command and Conquer Red Alert tactical HUD aesthetic. Thick matte-black outer frame, thin glowing neon {{accent}} inner rim. Four domed steel rivets in the corners (NOT screws). Brushed silver-grey plate, subtle diagonal specular streaks. Perfectly square, face-on, level — no tilt, no rotation. Plaque fills 88% of canvas.',
   business_plaque_forbidden:
-    'FORBIDDEN: winged commander badge, eagle, portrait, Phillips screws, crooked or tilted mount, photographic scene, 3D metal sculpture centerpiece, star, sunburst. FORBIDDEN any text, words, letters, captions, labels, or typography on the plaque (no "SECTOR", no business name, no sector names).',
+    'FORBIDDEN: winged commander badge, eagle, portrait, Phillips screws, crooked mount, photo background, 3D sculpt, star, sunburst, circuit-board wallpaper, generic book/folder/database icons unless the subject explicitly asks for them. FORBIDDEN all text, letters, captions, logos, watermarks. FORBIDDEN magenta, pink, or chroma-green anywhere on the metal plaque (background only).',
   business_plaque_template:
-    '{{plaque_white_bg}} {{business_plaque_base}} This plaque identifies the business "{{business_name}}": {{business_context}} CENTER ICON ONLY: {{subject}} — bright neon {{accent}} minimalist line-art on the brushed metal plate (not 3D sculpture, not winged badge). {{business_plaque_forbidden}} Same photoreal riveted metal plate quality as Agent Forge business blueprint mounts.',
-  plaque_white_bg:
-    'Pure flat white background #FFFFFF only, no gradients, no shadows on background, no border. Full square plaque centered, fills 90% of canvas.',
+    '{{plaque_chroma_bg}} {{business_plaque_base}} Sector identity for "{{business_name}}". {{business_context}} CENTER GLYPH (follow exactly): {{subject}} — single neon {{accent}} tactical HUD line-art icon, uniform 2px stroke weight, no fill shading, centered on plate, icon ~50–60% of inner metal area, 2–5 strokes total, reads at thumbnail size. {{business_plaque_forbidden}} Match Agent Forge riveted blueprint mount quality.',
+  plaque_chroma_bg:
+    'Pure flat solid chroma magenta background #FF00FF ONLY behind the plaque — uniform color, no gradients, no shadows, no grid, no white. Used for rembg + ImageMagick chroma removal (same pipeline as agent icons, but magenta instead of white so silver metal is not keyed out). The plaque metal, rivets, frame, and HUD icon must contain zero magenta or pink pixels. Plaque centered on canvas, fills 88%.',
+};
+
+const DEFAULT_IMAGE = {
+  ...AGENT_IMAGE_DEFAULTS,
+  ...BUSINESS_PLAQUE_IMAGE_DEFAULTS,
 };
 
 function readSkillFile(name: string): string {
@@ -224,8 +234,8 @@ export function getDefaultPromptContent(key: ForgePromptKey): string {
       return DEFAULT_IMAGE.business_plaque_forbidden;
     case 'image.business.plaque_template':
       return DEFAULT_IMAGE.business_plaque_template;
-    case 'image.business.plaque_white_bg':
-      return DEFAULT_IMAGE.plaque_white_bg;
+    case 'image.business.plaque_chroma_bg':
+      return DEFAULT_IMAGE.plaque_chroma_bg;
     default:
       return '';
   }

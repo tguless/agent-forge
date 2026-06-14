@@ -24,9 +24,20 @@ Given what a business does, produce seven things via tools:
 ## How to commission the business plaque (`generate_plaque`)
 
 - Call **once**, immediately after `set_business_profile`.
-- **subject**: ONE minimalist **neon line-art** center icon that **uniquely represents THIS business** — read the business name, description, and profile and pick a symbol (e.g. magnifying glass over patent document pages for a patent researcher; stacked lease pages for a brokerage). Not a generic "compliance" or sector badge. Not a winged commander badge, not a portrait, not 3D metal sculpture.
-- **accent** (optional): hex color for the neon rim + icon; omit to use the house default for this business.
-- The backend renders a square riveted metal plaque (Agent Forge blueprint mount) — level, not crooked; no caption text on the image.
+- **subject**: ONE short HUD glyph phrase (**10–25 words max**) — a single concrete object or action from THIS business. Good: `magnifying glass over fanned patent pages with one visible claim paragraph — HUD line icon`. Bad: pasting the business description, generic circuit-book, database cylinder, or building-with-keyhole.
+- Pick the **dominant workflow artifact** (patent pages, lease stack, clipboard, document+schema, etc.), not the industry label.
+- **accent** (optional): hex neon rim color; omit for the house default.
+- Backend renders a square **riveted** metal plaque — level, no caption text.
+
+### Subject formula
+
+`[tool or artifact] + [what it acts on] — HUD line icon`
+
+Examples:
+- Patent prior-art SaaS → magnifying glass over fanned patent pages with claim lines
+- CRE lease brokerage → stacked lease pages with corner fold
+- Prior-auth healthcare → clipboard with cross and approval check
+- Document OCR platform → single page with bracketed field lines
 
 ## How to write the pitch (`set_elevator_pitch`)
 
