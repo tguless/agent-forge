@@ -49,6 +49,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ slug: string 
       generated: result.generated,
       webPath: result.webPath,
       notes: result.notes,
+      cacheBust: Date.now(),
     },
   });
 }

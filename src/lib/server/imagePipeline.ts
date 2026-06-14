@@ -20,6 +20,9 @@ import { applyPromptTemplate } from '@/lib/forgePrompts';
 
 export type ImageKind = 'icon' | 'emblem' | 'portrait';
 
+/** Post-process square assets — plaque uses trim like icon; emblem never trims. */
+type NormalizeKind = ImageKind | 'plaque';
+
 export type GenerateImageInput = {
   slug: string;
   kind: ImageKind;
@@ -55,7 +58,9 @@ const EMBLEM_USE_REMBG = process.env.EMBLEM_USE_REMBG !== '0';
 const EMBLEM_WHITE_FUZZ = process.env.EMBLEM_WHITE_FUZZ || '14%';
 /** Min rembg/raw trim-bbox ratio — reject rembg when wings were cropped to center only. */
 const EMBLEM_REMBG_MIN_RATIO = Number(process.env.EMBLEM_REMBG_MIN_RATIO || 0.72);
-const EMBLEM_MARGIN_PCT = Number(process.env.EMBLEM_MARGIN_PCT || 5);
+/** Extra inset around emblem alpha bbox before crop — preserves wing tips after white key. */
+const EMBLEM_BBOX_PAD_PCT = Number(process.env.EMBLEM_BBOX_PAD_PCT || 8);
+const EMBLEM_MARGIN_PCT = Number(process.env.EMBLEM_MARGIN_PCT || 8);
 /** Sharp pipeline only — see EMBLEM_PIPELINE=sharp */
 const EMBLEM_SHARP_WHITE_FUZZ = process.env.EMBLEM_SHARP_WHITE_FUZZ || '2%';
 const EMBLEM_POST_WHITE_FUZZ = process.env.EMBLEM_POST_WHITE_FUZZ || '3%';
@@ -241,8 +246,12 @@ function magickChromaToAlpha(
   return result.status === 0;
 }
 
-/** Max side of alpha bbox after white key + trim — used to detect rembg wing crop. */
-function measureEmblemTrimMax(magick: string, src: string, fuzz = EMBLEM_WHITE_FUZZ): number | null {
+/** Alpha bounding box after emblem white key — detects rembg wing/top crop. */
+function measureEmblemAlphaBox(
+  magick: string,
+  src: string,
+  fuzz = EMBLEM_WHITE_FUZZ,
+): { w: number; h: number; x: number; y: number } | null {
   const result = spawnSync(
     magick,
     [
@@ -259,30 +268,35 @@ function measureEmblemTrimMax(magick: string, src: string, fuzz = EMBLEM_WHITE_F
       'white',
       '-alpha',
       'extract',
-      '-trim',
-      '+repage',
       '-format',
-      '%w %h',
+      '%@',
       'info:',
     ],
     { encoding: 'utf8' },
   );
   if (result.status !== 0) return null;
-  const parts = (result.stdout || '').trim().split(/\s+/);
-  if (parts.length < 2) return null;
-  const w = Number(parts[0]);
-  const h = Number(parts[1]);
+  const m = (result.stdout || '').trim().match(/^(\d+)x(\d+)([+-]\d+)([+-]\d+)$/);
+  if (!m) return null;
+  const w = Number(m[1]);
+  const h = Number(m[2]);
+  const x = Number(m[3]);
+  const y = Number(m[4]);
   if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
-  return Math.max(w, h);
+  return { w, h, x, y };
 }
 
-/** True when rembg isolated the center sculpture and dropped the winged plaque span. */
+/** True when rembg isolated the center sculpture and dropped wing span or clipped the top. */
 function emblemRembgLooksCropped(magick: string, rawPath: string, rembgPath: string): boolean {
-  const rawMax = measureEmblemTrimMax(magick, rawPath);
-  const rembgMax = measureEmblemTrimMax(magick, rembgPath);
-  if (rawMax == null || rembgMax == null) return true;
+  const raw = measureEmblemAlphaBox(magick, rawPath);
+  const rembg = measureEmblemAlphaBox(magick, rembgPath);
+  if (!raw || !rembg) return true;
+  const rawMax = Math.max(raw.w, raw.h);
+  const rembgMax = Math.max(rembg.w, rembg.h);
   if (rawMax <= 0) return false;
-  return rembgMax / rawMax < EMBLEM_REMBG_MIN_RATIO;
+  if (rembgMax / rawMax < EMBLEM_REMBG_MIN_RATIO) return true;
+  if (rembg.h / raw.h < 0.88) return true;
+  if (rembg.y < raw.y - 6) return true;
+  return false;
 }
 
 /**
@@ -351,7 +365,7 @@ function magickNormalizeSquare(
   src: string,
   dst: string,
   outPx = 512,
-  kind: ImageKind = 'icon',
+  kind: NormalizeKind = 'icon',
 ): boolean {
   const args =
     kind === 'emblem'
@@ -382,20 +396,29 @@ function pilNormalizeSquare(
   src: string,
   dst: string,
   outPx = 512,
-  kind: ImageKind = 'icon',
+  kind: NormalizeKind = 'icon',
 ): boolean {
   const marginPct = kind === 'emblem' ? EMBLEM_MARGIN_PCT : 5;
+  const bboxPadPct = kind === 'emblem' ? EMBLEM_BBOX_PAD_PCT : 0;
   const script = `
 from PIL import Image
 from pathlib import Path
 s, d = Path(${JSON.stringify(src)}), Path(${JSON.stringify(dst)})
 out_px = ${outPx}
 margin_pct = ${marginPct}
+bbox_pad_pct = ${bboxPadPct}
 im = Image.open(s).convert("RGBA")
 bbox = im.split()[-1].getbbox()
 if not bbox:
     raise SystemExit("no opaque pixels")
-cropped = im.crop(bbox)
+x0, y0, x1, y1 = bbox
+if bbox_pad_pct:
+    pad = max(12, int(max(im.size) * bbox_pad_pct / 100))
+    x0 = max(0, x0 - pad)
+    y0 = max(0, y0 - pad)
+    x1 = min(im.width, x1 + pad)
+    y1 = min(im.height, y1 + pad)
+cropped = im.crop((x0, y0, x1, y1))
 w, h = cropped.size
 side = max(w, h)
 margin = max(4, int(side * margin_pct / 100))
@@ -728,11 +751,11 @@ export async function generateBusinessPlaque(input: GenerateBusinessPlaqueInput)
 
   const pipeCtx: AlphaPipelineCtx = { slug: input.slug, kind: 'icon', magick, rembgPy, notes };
   const source = runBusinessPlaqueAlphaPipeline(pipeCtx, rawPath);
-  if (magick && magickNormalizeSquare(magick, source, finalPath, 512, 'icon')) {
+  if (magick && magickNormalizeSquare(magick, source, finalPath, 512, 'plaque')) {
     console.log(`[imagePipeline] business plaque ok slug=${input.slug} path=${webPath}`);
     return { webPath, generated: true, notes };
   }
-  if (python && pilNormalizeSquare(python, source, finalPath, 512, 'icon')) {
+  if (python && pilNormalizeSquare(python, source, finalPath, 512, 'plaque')) {
     console.log(`[imagePipeline] business plaque ok slug=${input.slug} path=${webPath} (PIL)`);
     return { webPath, generated: true, notes };
   }

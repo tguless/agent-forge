@@ -97,7 +97,8 @@ export function AgentDetailCommandCard({
   const [deleting, setDeleting] = React.useState(false);
   const [regeneratingEmblem, setRegeneratingEmblem] = React.useState(false);
   const [emblemError, setEmblemError] = React.useState<string | null>(null);
-  const [emblemSrc, setEmblemSrc] = React.useState(agent.emblemPath);
+  const [emblemCacheBust, setEmblemCacheBust] = React.useState(0);
+  const emblemRequestGen = React.useRef(0);
   const showPortrait = !portraitFailed && !!agent.portraitPath;
   const outputs = (agent.outputs ?? agent.deliverables).filter(Boolean);
   const skillsAgent = {
@@ -108,10 +109,15 @@ export function AgentDetailCommandCard({
   };
 
   React.useEffect(() => {
-    setEmblemSrc(agent.emblemPath);
-  }, [agent.emblemPath]);
+    setEmblemCacheBust(0);
+  }, [agent.slug]);
+
+  const emblemSrc = agent.emblemPath
+    ? `${agent.emblemPath}${emblemCacheBust ? `?v=${emblemCacheBust}` : ''}`
+    : undefined;
 
   async function handleRegenerateEmblem() {
+    const gen = ++emblemRequestGen.current;
     setRegeneratingEmblem(true);
     setEmblemError(null);
     try {
@@ -122,15 +128,16 @@ export function AgentDetailCommandCard({
       });
       const json = (await res.json()) as {
         error?: string;
-        results?: { emblem?: { webPath?: string; generated?: boolean; notes?: string[] } };
+        results?: { emblem?: { webPath?: string; generated?: boolean; notes?: string[]; cacheBust?: number } };
       };
+      if (gen !== emblemRequestGen.current) return;
       if (!res.ok) {
         setEmblemError(json.error ?? `Server error ${res.status}`);
         return;
       }
       const emblem = json.results?.emblem;
       if (emblem?.webPath) {
-        setEmblemSrc(`${emblem.webPath}?t=${Date.now()}`);
+        setEmblemCacheBust(emblem.cacheBust ?? Date.now());
       }
       if (emblem && !emblem.generated) {
         setEmblemError(
@@ -138,9 +145,10 @@ export function AgentDetailCommandCard({
         );
       }
     } catch (err) {
+      if (gen !== emblemRequestGen.current) return;
       setEmblemError(err instanceof Error ? err.message : 'Failed to regenerate emblem');
     } finally {
-      setRegeneratingEmblem(false);
+      if (gen === emblemRequestGen.current) setRegeneratingEmblem(false);
     }
   }
 

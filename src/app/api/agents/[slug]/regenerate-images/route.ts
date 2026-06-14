@@ -88,7 +88,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
       result.generated ? 'image' : 'warn',
       `${kind}: ${result.generated ? 'generated' : 'placeholder'}${result.notes.length ? ` — ${result.notes.join(' ')}` : ''}`,
     );
-    results[kind] = { generated: result.generated, webPath: result.webPath, notes: result.notes };
+    results[kind] = {
+      generated: result.generated,
+      webPath: result.webPath,
+      notes: result.notes,
+      cacheBust: Date.now(),
+    };
   }
 
   return NextResponse.json({ slug, results });

@@ -10,15 +10,22 @@ export function BusinessPlaque({
   business: Business;
   disabled?: boolean;
 }) {
-  const [plaqueSrc, setPlaqueSrc] = React.useState(business.profile.plaquePath);
+  /** Bust token survives parent poll re-renders; reset only when slug changes. */
+  const [cacheBust, setCacheBust] = React.useState(0);
   const [regenerating, setRegenerating] = React.useState(false);
   const [plaqueError, setPlaqueError] = React.useState<string | null>(null);
+  const requestGen = React.useRef(0);
 
   React.useEffect(() => {
-    setPlaqueSrc(business.profile.plaquePath);
-  }, [business.profile.plaquePath]);
+    setCacheBust(0);
+  }, [business.slug]);
+
+  const plaqueSrc = business.profile.plaquePath
+    ? `${business.profile.plaquePath}${cacheBust ? `?v=${cacheBust}` : ''}`
+    : undefined;
 
   const handleRegenerate = async () => {
+    const gen = ++requestGen.current;
     setRegenerating(true);
     setPlaqueError(null);
     try {
@@ -27,20 +34,22 @@ export function BusinessPlaque({
       });
       const json = (await res.json()) as {
         error?: string;
-        plaque?: { webPath?: string; generated?: boolean; notes?: string[] };
+        plaque?: { webPath?: string; generated?: boolean; notes?: string[]; cacheBust?: number };
       };
+      if (gen !== requestGen.current) return;
       if (!res.ok) throw new Error(json.error ?? `Server error ${res.status}`);
       const plaque = json.plaque;
       if (plaque?.webPath) {
-        setPlaqueSrc(`${plaque.webPath}?t=${Date.now()}`);
+        setCacheBust(plaque.cacheBust ?? Date.now());
       }
       if (plaque && !plaque.generated) {
         setPlaqueError(plaque.notes?.join(' ') || 'Gemini unavailable — placeholder plaque was used.');
       }
     } catch (err) {
+      if (gen !== requestGen.current) return;
       setPlaqueError(err instanceof Error ? err.message : 'Failed to regenerate plaque');
     } finally {
-      setRegenerating(false);
+      if (gen === requestGen.current) setRegenerating(false);
     }
   };
 

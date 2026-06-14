@@ -23,7 +23,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string; 
   return new NextResponse(buf, {
     headers: {
       'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
     },
   });
 }
