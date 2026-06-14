@@ -55,6 +55,14 @@
   background: transparent;
   border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 55%, transparent);
 }
+.forge-cta--generate {
+  gap: 8px;
+}
+.forge-cta--generate .forge-spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
 
 .forge-card-status {
   font-family: var(--ops-font-ui, monospace);
@@ -521,4 +529,14 @@
 
 .forge-markdown {
   color: var(--ops-text, #d7e6dd);
+}
+
+/*
+ * Default inner padding for HudBox panels on the forge / business / agent
+ * pages so content does not sit flush against the L-bracket frame. The header
+ * card uses .ops-outcome-box, whose higher-specificity rule keeps its own
+ * tighter padding.
+ */
+.ops-hud-box-body {
+  padding: 18px 22px;
 }

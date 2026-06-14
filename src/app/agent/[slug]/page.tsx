@@ -3,6 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { AgentDetailCommandCard } from '@/components/AgentDetailCommandCard';
+import { AgentAccessGrid } from '@/components/AgentAccessGrid';
+import { HudBox } from '@/components/HudBox';
 import type { AgentData, AgentStatus } from '@/lib/types';
 
 type DetailResponse = {
@@ -78,6 +80,17 @@ export default function AgentDetailPage({ params }: { params: { slug: string } }
         </p>
       )}
       <AgentDetailCommandCard agent={detail.data} />
+      <div style={{ maxWidth: 1180, margin: '18px auto 40px', padding: '0 16px' }}>
+        <HudBox variant="rect">
+          <h2 className="forge-label">SaaS access grid</h2>
+          <p className="forge-hint" style={{ marginTop: 0 }}>
+            Which business apps this agent can touch, at what capacity (least privilege).
+          </p>
+          <div style={{ marginTop: 10 }}>
+            <AgentAccessGrid slug={slug} />
+          </div>
+        </HudBox>
+      </div>
     </>
   );
 }

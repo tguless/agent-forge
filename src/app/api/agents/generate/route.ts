@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createAgent, hasAgent } from '@/lib/agentStore';
 import { startAgentGeneration } from '@/lib/server/agentRunner';
+import { ensurePlaceholderBusinessAndConsult } from '@/lib/server/businessRunner';
+import { hasBusiness, setAgentBusiness } from '@/lib/businessStore';
 import { uniqueSlug } from '@/lib/slug';
 import type { AgentData } from '@/lib/types';
 
@@ -8,7 +10,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  let body: { businessContext?: string; jobDescription?: string; titleHint?: string };
+  let body: { businessContext?: string; jobDescription?: string; titleHint?: string; businessSlug?: string };
   try {
     body = await req.json();
   } catch {
@@ -18,6 +20,7 @@ export async function POST(req: Request) {
   const businessContext = (body.businessContext ?? '').trim();
   const jobDescription = (body.jobDescription ?? '').trim();
   const titleHint = (body.titleHint ?? '').trim();
+  const requestedBusiness = (body.businessSlug ?? '').trim();
 
   if (!businessContext) {
     return NextResponse.json({ error: 'businessContext is required' }, { status: 400 });
@@ -41,7 +44,14 @@ export async function POST(req: Request) {
 
   createAgent({ slug, title: initial.title, data: initial, businessContext, jobDescription });
 
+  // Every agent maps to a business: the requested one, else the bootstrapped placeholder.
+  const businessSlug =
+    requestedBusiness && hasBusiness(requestedBusiness)
+      ? requestedBusiness
+      : ensurePlaceholderBusinessAndConsult();
+  setAgentBusiness(slug, businessSlug);
+
   startAgentGeneration(slug);
 
-  return NextResponse.json({ slug });
+  return NextResponse.json({ slug, businessSlug });
 }

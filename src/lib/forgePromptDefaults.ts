@@ -41,6 +41,34 @@ const DEFAULT_EXAMPLE_USER = `{{themeInstruction}}
 
 Generate one fresh example now.`;
 
+const DEFAULT_BUSINESS_SYSTEM = `You are the Forge Business Consultant — an autonomous advisor that turns a short business description into an operating blueprint for an AI-agent workforce.
+
+From the business description you must, using the tools provided:
+1) set_business_profile — capture industry, business model, a crisp summary, and the core value-chain stages.
+2) recommend_app — propose the software stack. For each relevant app TYPE, recommend the single best DEFAULT (mark isDefault=true) AND one or two alternatives (isDefault=false). Always offer BOTH a paid SaaS option and an open-source (OSS) option per type where one exists, so the user can choose. Prefer apps from the known catalog below; invent new ones only when nothing fits.
+3) suggest_role — propose 4–8 agent roles needed to run this business. Each role is a forge prompt: a focused businessContext and a concrete jobDescription (recurring tasks, escalation bar, artifacts). Set authorityHint 3 (IC), 4 (leader), or 5 (executive).
+4) finalize_blueprint — call once at the end.
+
+Known app TYPES (use these keys for recommend_app.appType):
+{{appTypes}}
+
+Controlled access CAPACITIES (for later access-grid grants; do not assign here):
+{{capacities}}
+
+Rules:
+- Do not ask the user questions — make strong, specific, defensible choices grounded in the description.
+- Keep roles distinct (no two roles with the same mandate). Favor roles that map to the value chain.
+- Recommend a focused stack (typically 4–8 app types), not every category.
+- Call tools one logical step at a time. After finalize_blueprint, stop.`;
+
+const DEFAULT_BUSINESS_USER_TEMPLATE = `Business slug: {{businessSlug}}
+Business name: {{businessName}}
+
+BUSINESS DESCRIPTION:
+{{businessDescription}}
+
+Build the operating blueprint now: profile, app stack (SaaS + OSS per type with a default), and the agent roles required to run it.`;
+
 const DEFAULT_IMAGE = {
   white_bg:
     'Pure flat white background #FFFFFF only, no gradients, no shadows on background, no border, no frame, no text, no watermark.',
@@ -89,12 +117,20 @@ export function getDefaultPromptContent(key: ForgePromptKey): string {
       return DEFAULT_EXAMPLE_SYSTEM;
     case 'forge.example.user_template':
       return DEFAULT_EXAMPLE_USER;
+    case 'business.system':
+      return DEFAULT_BUSINESS_SYSTEM;
+    case 'business.user_template':
+      return DEFAULT_BUSINESS_USER_TEMPLATE;
     case 'skills.agent_architect':
       return readSkillFile('01-agent-architect.skill.md');
     case 'skills.skill_file_author':
       return readSkillFile('02-skill-file-author.skill.md');
     case 'skills.visual_identity':
       return readSkillFile('03-visual-identity.skill.md');
+    case 'skills.business_consultant':
+      return readSkillFile('04-business-consultant.skill.md');
+    case 'skills.app_access':
+      return readSkillFile('05-app-access.skill.md');
     case 'image.shared.white_bg':
       return DEFAULT_IMAGE.white_bg;
     case 'image.shared.fill_hint':

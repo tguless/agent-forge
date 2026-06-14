@@ -122,7 +122,8 @@ npm run dev                  # http://localhost:3030
 | `GEMINI_IMAGE_MODEL` | No | `gemini-3-pro-image-preview` (Pro) or `gemini-3.1-flash-image-preview` (Flash). |
 | `GEMINI_IMAGE_SIZE` | No | `2K` by default (Gemini 3 models). |
 | `REMBG_PYTHON` | No | Path to a Python venv with `rembg` + `Pillow`. Auto-detects the repo's shared rembg venv. |
-| `ICON_WHITE_FUZZ` | No | ImageMagick white→alpha fuzz (default `14%`). |
+| `ICON_WHITE_FUZZ` | No | ImageMagick white→alpha fuzz for icons (default `14%`). |
+| `EMBLEM_WHITE_FUZZ` | No | Same for emblems — slightly higher tolerance for off-white Gemini backgrounds (default `14%`). |
 
 > **Note:** Nano Banana runs on Gemini, so visual generation needs a `GEMINI_API_KEY` in addition to your Anthropic key. Background removal additionally needs a `rembg` venv and `ImageMagick` (`magick`); all three steps degrade gracefully if a tool is missing.
 
@@ -142,17 +143,29 @@ src/
     page.tsx                  index grid (live)
     new/page.tsx              forge form + generation progress
     config/page.tsx           LLM prompt editor
-    agent/[slug]/page.tsx     command card (live while forging)
-    api/agents/...            generate, list, detail, skill, events
+    agent/[slug]/page.tsx     command card + SaaS access grid (live while forging)
+    business/page.tsx         business roster
+    business/new/page.tsx     describe a business + live consulting timeline (SSE)
+    business/[slug]/page.tsx  blueprint: profile, app-stack override, roles, access grids
+    api/agents/...            generate, list, detail, skill, events, access
+    api/businesses/...        CRUD, SSE stream, turns, app override, forge
+    api/catalog/...           apps + capacities (controlled vocabulary)
     api/forge/config/         prompt CRUD + reset
   components/                 ForgeHudHeader, HudBox, AgentCommandCard,
-                              ForgeNewAgentCard, AgentSkillsOverlay,
-                              AgentDetailCommandCard, ForgeMarkdown
+                              AgentDetailCommandCard, AgentAccessGrid, TurnTimeline, ...
   lib/
-    db.ts, agentStore.ts, forgeConfigStore.ts, forgePrompts.ts
+    db.ts, agentStore.ts, businessStore.ts, catalogStore.ts, accessStore.ts
+    catalogSeed.ts            seed capacities + app types + starter SaaS/OSS apps
+    forgeConfigStore.ts, forgePrompts.ts
+    agent/                    shared ToolLoopAgent runtime
+      runtime.ts              generic ToolLoopAgent driver -> turn stream
+      turns.ts, runRegistry.ts, types.ts
     server/
-      agentRunner.ts          Anthropic loop + configurable prompts
-      tools.ts                tool defs + handlers (DB writes, image gen)
+      agentRunner.ts          forge loop (ToolLoopAgent) + app-stack injection
+      forgeTools.ts           forge Zod tools incl. set_app_access (access grid)
+      businessRunner.ts       consulting loop (ToolLoopAgent) + placeholder bootstrap
+      businessTools.ts        consulting Zod tools (profile, recommend_app, suggest_role)
+      turnStream.ts           SSE helper (tails the turn timeline)
       imagePipeline.ts        Gemini + rembg + ImageMagick (graceful degrade)
   styles/                     operations-dashboard.css, operations-detail.css, forge.css
 skills/                       generator meta-skills (defaults for system prompt)
@@ -163,9 +176,24 @@ public/
 data/forge.db                 SQLite (gitignored)
 ```
 
+### Business blueprints (multi-turn consulting + SaaS access grid)
+
+Beyond forging single agents, Agent Forge can design a whole **agent workforce** for a business:
+
+1. **Describe the business** at `/business/new`. A multi-turn **business-consulting agent** (Vercel AI SDK [`ToolLoopAgent`](https://ai-sdk.dev/docs/agents/overview) on Claude) profiles it, then via tools:
+   - recommends a **software stack** — a paid **SaaS** default plus an **open-source (OSS)** alternative per category (you can override the default per type), and
+   - proposes **agent roles** to run the business (each role is a ready-to-forge prompt).
+   The run streams as a live turn timeline over SSE; turns are persisted (`agent_turns`) so a refresh replays them.
+2. **Forge roles.** Forging a role creates an agent linked to the business. The forge loop (also migrated to `ToolLoopAgent`) is given the business's **selected** app stack and populates a per-agent **SaaS access grid** (`set_app_access`) — which apps the agent touches and at what **capacity** (least privilege).
+3. **Capacities** are a controlled superset (`viewer → editor → … → admin → owner`); each app type exposes its own subset, and grants are validated against it. The consulting agent may extend the catalog (new apps) or the vocabulary (`define_capacity`) on the fly.
+
+Every agent maps to a business: a **placeholder business** ("House Operations") is bootstrapped on first run and adopts any pre-existing/standalone agents. New prompts live under the **Business Consultant** category in `/config`.
+
+Relevant env: `ANTHROPIC_API_KEY` (required), `ANTHROPIC_MODEL` (default `claude-sonnet-4-5`), `FORGE_MAX_STEPS` (default 40).
+
 ### Notes
 
-- Generation runs as a fire-and-forget background task in the Node server process; the UI polls for progress. Run with `npm run dev` / `npm run start` (a long-lived Node process), not a serverless host.
+- Both the consulting agent and the forge run as background tasks in the Node server process; the UI streams turns over SSE (consulting) and polls events (forge). Run with `npm run dev` / `npm run start` (a long-lived Node process), not a serverless host.
 - Generated images are written under `public/agents/<slug>/` and served statically.
 - The UI/CSS is lifted from the PaperIQ operations command center; data comes from SQLite instead of a hard-coded registry.
 - Prompt overrides are stored in the `forge_config` SQLite table; **Reset to default** restores shipped values from `forgePromptDefaults.ts` and `skills/*.md`.

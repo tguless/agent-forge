@@ -18,6 +18,16 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/*
+ * Default font for the HUD scope (carried on the body element). Without this,
+ * any text not wearing a forge or ops class inherits the browser default
+ * (serif). Classed elements set their own family and still win via direct rules.
+ */
+.ops-font-scope {
+  font-family: var(--font-ops-ui, 'Chakra Petch'), ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
 a {
   color: inherit;
   text-decoration: none;

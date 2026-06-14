@@ -1,0 +1,360 @@
+/**
+ * Persistence for the business blueprint layer: businesses, suggested roles,
+ * the selected app stack, agent↔business linking, and placeholder bootstrap.
+ */
+import { getDb } from './db';
+import { uniqueSlug } from './slug';
+import { getApp } from './catalogStore';
+import type {
+  Business,
+  BusinessApp,
+  BusinessProfile,
+  BusinessRole,
+  BusinessRoleStatus,
+  BusinessStatus,
+  BusinessSummary,
+} from './businessTypes';
+
+type BusinessRow = {
+  slug: string;
+  name: string;
+  description: string;
+  profile: string;
+  status: BusinessStatus;
+  is_placeholder: number;
+  error: string | null;
+  created_at: number;
+  updated_at: number;
+};
+
+function rowToBusiness(row: BusinessRow): Business {
+  let profile: BusinessProfile = {};
+  try {
+    profile = JSON.parse(row.profile || '{}') as BusinessProfile;
+  } catch {
+    profile = {};
+  }
+  return {
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    profile,
+    status: row.status,
+    isPlaceholder: !!row.is_placeholder,
+    error: row.error,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function hasBusiness(slug: string): boolean {
+  return !!getDb().prepare('SELECT 1 FROM businesses WHERE slug = ?').get(slug);
+}
+
+export function countBusinesses(): number {
+  return (getDb().prepare('SELECT COUNT(*) AS n FROM businesses').get() as { n: number }).n;
+}
+
+export function createBusiness(input: {
+  name: string;
+  description: string;
+  isPlaceholder?: boolean;
+}): string {
+  const db = getDb();
+  const slug = uniqueSlug(input.name || input.description || 'business', hasBusiness);
+  const now = Date.now();
+  db.prepare(
+    `INSERT INTO businesses (slug, name, description, profile, status, is_placeholder, error, created_at, updated_at)
+     VALUES (?, ?, ?, '{}', 'queued', ?, NULL, ?, ?)`,
+  ).run(slug, input.name || slug, input.description, input.isPlaceholder ? 1 : 0, now, now);
+  return slug;
+}
+
+export function getBusiness(slug: string): Business | null {
+  const row = getDb().prepare('SELECT * FROM businesses WHERE slug = ?').get(slug) as
+    | BusinessRow
+    | undefined;
+  return row ? rowToBusiness(row) : null;
+}
+
+export function listBusinesses(): BusinessSummary[] {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM businesses ORDER BY created_at DESC').all() as BusinessRow[];
+  return rows.map((row) => {
+    const roleCount = (db.prepare('SELECT COUNT(*) AS n FROM business_roles WHERE business_slug = ?').get(row.slug) as { n: number }).n;
+    const agentCount = (db.prepare('SELECT COUNT(*) AS n FROM agents WHERE business_slug = ?').get(row.slug) as { n: number }).n;
+    const appCount = (db.prepare('SELECT COUNT(*) AS n FROM business_apps WHERE business_slug = ? AND is_selected = 1').get(row.slug) as { n: number }).n;
+    return {
+      slug: row.slug,
+      name: row.name,
+      description: row.description,
+      status: row.status,
+      isPlaceholder: !!row.is_placeholder,
+      roleCount,
+      agentCount,
+      appCount,
+      updatedAt: row.updated_at,
+    };
+  });
+}
+
+export function setBusinessStatus(slug: string, status: BusinessStatus, error?: string | null): void {
+  getDb()
+    .prepare('UPDATE businesses SET status = ?, error = ?, updated_at = ? WHERE slug = ?')
+    .run(status, error ?? null, Date.now(), slug);
+}
+
+export function patchBusinessProfile(slug: string, patch: Partial<BusinessProfile>): void {
+  const current = getBusiness(slug);
+  if (!current) return;
+  const next = { ...current.profile, ...patch };
+  getDb()
+    .prepare('UPDATE businesses SET profile = ?, updated_at = ? WHERE slug = ?')
+    .run(JSON.stringify(next), Date.now(), slug);
+}
+
+// ── Roles ─────────────────────────────────────────────────────────────────────
+
+type RoleRow = {
+  id: number;
+  business_slug: string;
+  title: string;
+  business_context: string;
+  job_description: string;
+  authority_hint: number;
+  rationale: string;
+  status: BusinessRoleStatus;
+  agent_slug: string | null;
+  created_at: number;
+};
+
+function rowToRole(row: RoleRow): BusinessRole {
+  return {
+    id: row.id,
+    businessSlug: row.business_slug,
+    title: row.title,
+    businessContext: row.business_context,
+    jobDescription: row.job_description,
+    authorityHint: row.authority_hint,
+    rationale: row.rationale,
+    status: row.status,
+    agentSlug: row.agent_slug,
+    createdAt: row.created_at,
+  };
+}
+
+export function addRole(input: {
+  businessSlug: string;
+  title: string;
+  businessContext: string;
+  jobDescription: string;
+  authorityHint?: number;
+  rationale?: string;
+}): BusinessRole {
+  const info = getDb()
+    .prepare(
+      `INSERT INTO business_roles
+         (business_slug, title, business_context, job_description, authority_hint, rationale, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'suggested', ?)`,
+    )
+    .run(
+      input.businessSlug,
+      input.title,
+      input.businessContext,
+      input.jobDescription,
+      input.authorityHint ?? 3,
+      input.rationale ?? '',
+      Date.now(),
+    );
+  return getRole(Number(info.lastInsertRowid))!;
+}
+
+export function getRole(id: number): BusinessRole | null {
+  const row = getDb().prepare('SELECT * FROM business_roles WHERE id = ?').get(id) as RoleRow | undefined;
+  return row ? rowToRole(row) : null;
+}
+
+export function listRoles(businessSlug: string): BusinessRole[] {
+  const rows = getDb()
+    .prepare('SELECT * FROM business_roles WHERE business_slug = ? ORDER BY id ASC')
+    .all(businessSlug) as RoleRow[];
+  return rows.map(rowToRole);
+}
+
+export function setRoleStatus(id: number, status: BusinessRoleStatus, agentSlug?: string | null): void {
+  if (agentSlug !== undefined) {
+    getDb().prepare('UPDATE business_roles SET status = ?, agent_slug = ? WHERE id = ?').run(status, agentSlug, id);
+  } else {
+    getDb().prepare('UPDATE business_roles SET status = ? WHERE id = ?').run(status, id);
+  }
+}
+
+// ── App stack ───────────────────────────────────────────────────────────────
+
+type BusinessAppRow = {
+  id: number;
+  business_slug: string;
+  app_type_key: string;
+  app_id: number;
+  is_agent_default: number;
+  is_selected: number;
+  rationale: string;
+};
+
+export function listBusinessApps(businessSlug: string): BusinessApp[] {
+  const rows = getDb()
+    .prepare('SELECT * FROM business_apps WHERE business_slug = ? ORDER BY app_type_key, id')
+    .all(businessSlug) as BusinessAppRow[];
+  return rows
+    .map((row) => {
+      const app = getApp(row.app_id);
+      if (!app) return null;
+      return {
+        id: row.id,
+        businessSlug: row.business_slug,
+        appTypeKey: row.app_type_key,
+        appId: row.app_id,
+        isAgentDefault: !!row.is_agent_default,
+        isSelected: !!row.is_selected,
+        rationale: row.rationale,
+        app,
+      } satisfies BusinessApp;
+    })
+    .filter((x): x is BusinessApp => x !== null);
+}
+
+/**
+ * Add an app to a business's stack. When `isDefault`, it becomes the agent's
+ * default + the selected app for its type (clearing prior default/selection).
+ */
+export function addBusinessApp(input: {
+  businessSlug: string;
+  appId: number;
+  appTypeKey: string;
+  isDefault?: boolean;
+  rationale?: string;
+}): void {
+  const db = getDb();
+  const existing = db
+    .prepare('SELECT id FROM business_apps WHERE business_slug = ? AND app_id = ?')
+    .get(input.businessSlug, input.appId) as { id: number } | undefined;
+
+  if (!existing) {
+    db.prepare(
+      `INSERT INTO business_apps (business_slug, app_type_key, app_id, is_agent_default, is_selected, rationale)
+       VALUES (?, ?, ?, 0, 0, ?)`,
+    ).run(input.businessSlug, input.appTypeKey, input.appId, input.rationale ?? '');
+  } else if (input.rationale) {
+    db.prepare('UPDATE business_apps SET rationale = ? WHERE id = ?').run(input.rationale, existing.id);
+  }
+
+  if (input.isDefault) {
+    db.prepare(
+      'UPDATE business_apps SET is_agent_default = 0, is_selected = 0 WHERE business_slug = ? AND app_type_key = ?',
+    ).run(input.businessSlug, input.appTypeKey);
+    db.prepare(
+      'UPDATE business_apps SET is_agent_default = 1, is_selected = 1 WHERE business_slug = ? AND app_id = ?',
+    ).run(input.businessSlug, input.appId);
+  }
+}
+
+/** User override: select a specific app for its type (clears siblings). Returns false if invalid. */
+export function selectBusinessApp(businessSlug: string, appId: number): boolean {
+  const db = getDb();
+  const row = db
+    .prepare('SELECT app_type_key FROM business_apps WHERE business_slug = ? AND app_id = ?')
+    .get(businessSlug, appId) as { app_type_key: string } | undefined;
+  if (!row) return false;
+  db.prepare('UPDATE business_apps SET is_selected = 0 WHERE business_slug = ? AND app_type_key = ?').run(
+    businessSlug,
+    row.app_type_key,
+  );
+  db.prepare('UPDATE business_apps SET is_selected = 1 WHERE business_slug = ? AND app_id = ?').run(
+    businessSlug,
+    appId,
+  );
+  return true;
+}
+
+/** The effective (user-overridable) selected stack for a business. */
+export function selectedBusinessApps(businessSlug: string): BusinessApp[] {
+  return listBusinessApps(businessSlug).filter((a) => a.isSelected);
+}
+
+// ── Agent ↔ business linking + placeholder bootstrap ──────────────────────────
+
+export function setAgentBusiness(agentSlug: string, businessSlug: string): void {
+  getDb().prepare('UPDATE agents SET business_slug = ? WHERE slug = ?').run(businessSlug, agentSlug);
+}
+
+export type BusinessAgentSummary = {
+  slug: string;
+  title: string;
+  status: string;
+  iconPath?: string;
+  authority: number;
+  roleId?: number | null;
+  updatedAt: number;
+};
+
+export function listAgentsByBusiness(businessSlug: string): BusinessAgentSummary[] {
+  const rows = getDb()
+    .prepare('SELECT slug, title, status, data, updated_at FROM agents WHERE business_slug = ? ORDER BY created_at DESC')
+    .all(businessSlug) as { slug: string; title: string; status: string; data: string; updated_at: number }[];
+  return rows.map((r) => {
+    let data: { title?: string; iconPath?: string; authority?: number } = {};
+    try {
+      data = JSON.parse(r.data || '{}');
+    } catch {
+      data = {};
+    }
+    return {
+      slug: r.slug,
+      title: data.title || r.title || r.slug,
+      status: r.status,
+      iconPath: data.iconPath,
+      authority: data.authority ?? 3,
+      updatedAt: r.updated_at,
+    };
+  });
+}
+
+export function getAgentBusinessSlug(agentSlug: string): string | null {
+  const row = getDb().prepare('SELECT business_slug FROM agents WHERE slug = ?').get(agentSlug) as
+    | { business_slug: string | null }
+    | undefined;
+  return row?.business_slug ?? null;
+}
+
+export function backfillOrphanAgents(toSlug: string): number {
+  const info = getDb()
+    .prepare("UPDATE agents SET business_slug = ? WHERE business_slug IS NULL OR business_slug = ''")
+    .run(toSlug);
+  return info.changes;
+}
+
+export const PLACEHOLDER_DESCRIPTION =
+  'Internal back-office operations for a generic small business — the default home for agents forged without a specific business attached.';
+
+/**
+ * Ensure at least one (placeholder) business exists and adopt any orphan agents.
+ * Returns the placeholder slug. The consulting run kickoff is wired by the caller
+ * (it lives in the agent layer to avoid a store→runner import cycle).
+ */
+export function ensurePlaceholderBusiness(): { slug: string; created: boolean } {
+  const db = getDb();
+  const existing = db
+    .prepare("SELECT slug FROM businesses WHERE is_placeholder = 1 ORDER BY created_at ASC LIMIT 1")
+    .get() as { slug: string } | undefined;
+  if (existing) {
+    backfillOrphanAgents(existing.slug);
+    return { slug: existing.slug, created: false };
+  }
+  const slug = createBusiness({
+    name: 'House Operations',
+    description: PLACEHOLDER_DESCRIPTION,
+    isPlaceholder: true,
+  });
+  backfillOrphanAgents(slug);
+  return { slug, created: true };
+}

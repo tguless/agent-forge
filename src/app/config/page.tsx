@@ -19,9 +19,10 @@ type PromptRecord = {
   updatedAt: number | null;
 };
 
-const CATEGORY_ORDER: ForgePromptCategory[] = ['forge', 'skills', 'image'];
+const CATEGORY_ORDER: ForgePromptCategory[] = ['forge', 'business', 'skills', 'image'];
 const CATEGORY_LABELS: Record<ForgePromptCategory, string> = {
   forge: 'Agent Forge',
+  business: 'Business Consultant',
   skills: 'Meta skills',
   image: 'Image prompts',
 };

@@ -4,9 +4,13 @@ export type ForgePromptKey =
   | 'forge.user_template'
   | 'forge.example.system'
   | 'forge.example.user_template'
+  | 'business.system'
+  | 'business.user_template'
   | 'skills.agent_architect'
   | 'skills.skill_file_author'
   | 'skills.visual_identity'
+  | 'skills.business_consultant'
+  | 'skills.app_access'
   | 'image.shared.white_bg'
   | 'image.shared.fill_hint'
   | 'image.icon.template'
@@ -23,7 +27,7 @@ export type ForgePromptKey =
   | 'image.portrait.rank_uniform_5'
   | 'image.portrait.template';
 
-export type ForgePromptCategory = 'forge' | 'skills' | 'image';
+export type ForgePromptCategory = 'forge' | 'business' | 'skills' | 'image';
 
 export type ForgePromptDef = {
   key: ForgePromptKey;
@@ -37,6 +41,7 @@ export type ForgePromptDef = {
 
 const CATEGORY_LABELS: Record<ForgePromptCategory, string> = {
   forge: 'Agent Forge (Anthropic)',
+  business: 'Business Consultant (Anthropic)',
   skills: 'Meta skills (Anthropic system)',
   image: 'Image generation (Gemini)',
 };
@@ -80,6 +85,25 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     format: 'markdown',
   },
   {
+    key: 'business.system',
+    label: 'Business consultant · system',
+    category: 'business',
+    categoryLabel: CATEGORY_LABELS.business,
+    description:
+      'System prompt for the multi-turn consulting agent. Designs roles + a SaaS/OSS app stack from a business description. The consultant skill is appended after this block.',
+    placeholders: ['{{appTypes}}', '{{capacities}}'],
+    format: 'markdown',
+  },
+  {
+    key: 'business.user_template',
+    label: 'Business consultant · user template',
+    category: 'business',
+    categoryLabel: CATEGORY_LABELS.business,
+    description: 'First user turn sent when consulting on a business. {{businessSlug}} and {{businessDescription}} substitute at runtime.',
+    placeholders: ['{{businessSlug}}', '{{businessName}}', '{{businessDescription}}'],
+    format: 'markdown',
+  },
+  {
     key: 'skills.agent_architect',
     label: 'Agent architect skill',
     category: 'skills',
@@ -103,6 +127,24 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     category: 'skills',
     categoryLabel: CATEGORY_LABELS.skills,
     description: 'How to commission emblem, portrait, and icon subjects via generate_image.',
+    placeholders: [],
+    format: 'markdown',
+  },
+  {
+    key: 'skills.business_consultant',
+    label: 'Business consultant skill',
+    category: 'skills',
+    categoryLabel: CATEGORY_LABELS.skills,
+    description: 'How to profile a business, suggest agent roles, and recommend a SaaS/OSS app stack.',
+    placeholders: [],
+    format: 'markdown',
+  },
+  {
+    key: 'skills.app_access',
+    label: 'App access (least privilege) skill',
+    category: 'skills',
+    categoryLabel: CATEGORY_LABELS.skills,
+    description: 'How to populate the per-agent SaaS access grid (which apps, at what capacity) using least privilege.',
     placeholders: [],
     format: 'markdown',
   },

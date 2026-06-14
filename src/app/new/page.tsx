@@ -47,6 +47,8 @@ export default function NewAgentPage() {
   const [jobDescription, setJobDescription] = React.useState('');
   const [titleHint, setTitleHint] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
+  const [generatingExample, setGeneratingExample] = React.useState(false);
+  const [exampleTheme, setExampleTheme] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
 
   const [slug, setSlug] = React.useState<string | null>(null);
@@ -160,6 +162,32 @@ export default function NewAgentPage() {
     setError(null);
   };
 
+  const generateExample = async () => {
+    setGeneratingExample(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/forge/examples/generate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ theme: exampleTheme.trim() || undefined }),
+      });
+      const json = (await res.json()) as {
+        example?: { businessContext: string; jobDescription: string; titleHint: string };
+        error?: string;
+      };
+      if (!res.ok || !json.example) {
+        throw new Error(json.error || `Server error ${res.status}`);
+      }
+      setBusinessContext(json.example.businessContext);
+      setJobDescription(json.example.jobDescription);
+      setTitleHint(json.example.titleHint);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate example');
+    } finally {
+      setGeneratingExample(false);
+    }
+  };
+
   const running = status === 'queued' || status === 'generating';
 
   return (
@@ -228,17 +256,52 @@ export default function NewAgentPage() {
             </div>
           </HudBox>
 
+          <HudBox variant="rect">
+            <div className="forge-field">
+              <label className="forge-label" htmlFor="example-theme">
+                Example theme (optional)
+              </label>
+              <p className="forge-hint">
+                Used by <strong>Generate example</strong> only — e.g. &quot;insurance claims&quot;,
+                &quot;legal contract review&quot;. Leave blank for a surprise industry.
+              </p>
+              <input
+                id="example-theme"
+                className="forge-input"
+                value={exampleTheme}
+                onChange={(e) => setExampleTheme(e.target.value)}
+                placeholder="e.g. maritime logistics, insurance FNOL, municipal permitting"
+                disabled={generatingExample}
+              />
+            </div>
+          </HudBox>
+
           {error && <p className="forge-error">{error}</p>}
 
           <div className="forge-actions">
-            <button type="submit" className="forge-cta" disabled={submitting}>
+            <button type="submit" className="forge-cta" disabled={submitting || generatingExample}>
               {submitting ? 'Igniting forge…' : '⚡ Forge agent'}
+            </button>
+            <button
+              type="button"
+              className="forge-cta forge-cta--ghost forge-cta--generate"
+              disabled={submitting || generatingExample}
+              onClick={() => void generateExample()}
+            >
+              {generatingExample ? (
+                <>
+                  <span className="forge-spinner" aria-hidden /> Generating…
+                </>
+              ) : (
+                '✦ Generate example'
+              )}
             </button>
             {FORGE_EXAMPLES.map((ex, i) => (
               <button
                 key={ex.titleHint}
                 type="button"
                 className="forge-cta forge-cta--ghost"
+                disabled={submitting || generatingExample}
                 onClick={() => useExample(i)}
               >
                 {ex.label}

@@ -40,6 +40,9 @@ export default function IndexPage() {
           <Link href="/config" className="forge-cta forge-cta--ghost">
             Configuration
           </Link>
+          <Link href="/business" className="forge-cta forge-cta--ghost">
+            Businesses
+          </Link>
           <Link href="/new" className="forge-cta">
             + Forge new agent
           </Link>
