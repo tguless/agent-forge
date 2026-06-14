@@ -531,6 +531,32 @@
   color: var(--ops-text, #d7e6dd);
 }
 
+.forge-markdown--role .ops-skills-p {
+  margin: 4px 0 0;
+  max-width: 760px;
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.72rem;
+  color: var(--ops-muted, #8aa);
+  line-height: 1.55;
+}
+
+.forge-markdown--role .ops-skills-strong {
+  color: #b8e8d4;
+  font-weight: 600;
+}
+
+.forge-markdown--role .ops-skills-ul,
+.forge-markdown--role .ops-skills-ol {
+  margin: 6px 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.72rem;
+  color: var(--ops-muted, #8aa);
+}
+
+.forge-markdown--role .ops-skills-li {
+  margin-bottom: 4px;
+}
+
 /*
  * Default inner padding for HudBox panels on the forge / business / agent
  * pages so content does not sit flush against the L-bracket frame. The header
@@ -838,4 +864,60 @@
   padding-left: 1.1rem;
   font-size: 0.72rem;
   word-break: break-all;
+}
+
+/* ── Business blueprint detail — sector plaque (top-right mount) ─────────── */
+.forge-blueprint-page .ops-detail-shell {
+  max-width: 980px;
+}
+
+.forge-blueprint-body {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.forge-blueprint-page .ops-detail-header.forge-blueprint-header {
+  grid-template-columns: minmax(180px, 240px) 1fr 140px;
+}
+
+.forge-business-plaque {
+  justify-self: end;
+  width: 140px;
+  min-height: unset;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.forge-business-plaque.ops-detail-emblem {
+  width: 140px;
+  min-height: unset;
+}
+
+.forge-business-plaque .ops-detail-emblem-img,
+.forge-business-plaque-img {
+  width: 140px;
+  height: 140px;
+}
+
+.forge-business-plaque .ops-detail-emblem-regen {
+  font-size: 0.55rem;
+  padding: 4px 8px;
+}
+
+.forge-business-plaque .ops-detail-emblem-error {
+  max-width: 140px;
+  font-size: 0.58rem;
+}
+
+@media (max-width: 768px) {
+  .forge-blueprint-page .ops-detail-header {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .forge-business-plaque {
+    justify-self: center;
+  }
 }

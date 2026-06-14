@@ -14,6 +14,8 @@ next-env.d.ts
 /data/*.db-*
 /public/agents/*
 !/public/agents/.gitkeep
+/public/businesses/*
+!/public/businesses/.gitkeep
 
 # scratch image work dir
 /.forge_tmp

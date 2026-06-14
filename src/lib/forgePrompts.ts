@@ -27,7 +27,11 @@ export type ForgePromptKey =
   | 'image.portrait.rank_uniform_3'
   | 'image.portrait.rank_uniform_4'
   | 'image.portrait.rank_uniform_5'
-  | 'image.portrait.template';
+  | 'image.portrait.template'
+  | 'image.business.plaque_white_bg'
+  | 'image.business.plaque_base'
+  | 'image.business.plaque_forbidden'
+  | 'image.business.plaque_template';
 
 export type ForgePromptCategory = 'forge' | 'business' | 'skills' | 'image';
 
@@ -93,7 +97,7 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     categoryLabel: CATEGORY_LABELS.business,
     description:
       'System prompt for the multi-turn consulting agent. Designs roles + a SaaS/OSS app stack from a business description. The consultant skill is appended after this block.',
-    placeholders: ['{{appTypes}}', '{{capacities}}'],
+    placeholders: ['{{appTypes}}', '{{capacities}}', '{{visualNote}}'],
     format: 'markdown',
   },
   {
@@ -315,6 +319,50 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     categoryLabel: CATEGORY_LABELS.image,
     description: 'Gemini prompt wrapper for commander portraits.',
     placeholders: ['{{portrait_base}}', '{{rank_uniform}}', '{{accent}}', '{{subject}}'],
+    format: 'text',
+  },
+  {
+    key: 'image.business.plaque_white_bg',
+    label: 'Business plaque · white background',
+    category: 'image',
+    categoryLabel: CATEGORY_LABELS.image,
+    description: 'Background framing for sector plaque renders.',
+    placeholders: [],
+    format: 'text',
+  },
+  {
+    key: 'image.business.plaque_base',
+    label: 'Business plaque · riveted mount style',
+    category: 'image',
+    categoryLabel: CATEGORY_LABELS.image,
+    description: 'Square riveted metal business identity plaque (not winged commander badge).',
+    placeholders: ['{{accent}}'],
+    format: 'text',
+  },
+  {
+    key: 'image.business.plaque_forbidden',
+    label: 'Business plaque · forbidden elements',
+    category: 'image',
+    categoryLabel: CATEGORY_LABELS.image,
+    description: 'Negative constraints for sector plaques.',
+    placeholders: [],
+    format: 'text',
+  },
+  {
+    key: 'image.business.plaque_template',
+    label: 'Business plaque · full prompt template',
+    category: 'image',
+    categoryLabel: CATEGORY_LABELS.image,
+    description: 'Gemini prompt wrapper for business sector plaques.',
+    placeholders: [
+      '{{plaque_white_bg}}',
+      '{{business_plaque_base}}',
+      '{{business_plaque_forbidden}}',
+      '{{business_name}}',
+      '{{business_context}}',
+      '{{accent}}',
+      '{{subject}}',
+    ],
     format: 'text',
   },
 ];

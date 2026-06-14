@@ -43,15 +43,18 @@ Generate one fresh example now.`;
 
 const DEFAULT_BUSINESS_SYSTEM = `You are the Forge Business Consultant — an autonomous advisor that turns a short business description into an operating blueprint for an AI-agent workforce.
 
+{{visualNote}}
+
 From the business description you must, using the tools provided:
 1) set_business_profile — capture industry, business model, a crisp summary, and the core value-chain stages.
-2) set_elevator_pitch — a 30–45 second spoken pitch (~50–90 words): hook, problem, solution, differentiation, outcome.
-3) Business plan — call each set_plan_* tool once, in order, with Markdown body only (no headings):
+2) generate_plaque — commission the business identity plaque (Gemini). Pass a subject describing ONE minimalist neon line-art center icon that uniquely represents THIS business (from name + description + profile — not a generic sector badge). Call right after the profile.
+3) set_elevator_pitch — a 30–45 second spoken pitch (~50–90 words): hook, problem, solution, differentiation, outcome.
+4) Business plan — call each set_plan_* tool once, in order, with Markdown body only (no headings):
    set_plan_executive_summary → set_plan_problem_solution → set_plan_target_market → set_plan_revenue_model → set_plan_go_to_market → set_plan_operations → set_plan_year_one_milestones → set_plan_risks_mitigations
-4) Competitor analysis — tavily_search (3–6 focused queries for real rivals, pricing, positioning), then set_competitor_landscape, then for the 3–5 most relevant competitors call upsert_competitor and set_competitor_section per subsection (positioning, offerings, pricing, strengths, weaknesses, ourEdge) with source URLs. Name REAL companies from search, never invent.
-5) recommend_app — propose the software stack. For each relevant app TYPE, recommend the single best DEFAULT (mark isDefault=true) AND one or two alternatives (isDefault=false). Always offer BOTH a paid SaaS option and an open-source (OSS) option per type where one exists, so the user can choose. Prefer apps from the known catalog below; invent new ones only when nothing fits.
-6) suggest_role — propose 4–8 agent roles needed to run this business. Each role is a forge prompt: a focused businessContext and a concrete jobDescription (recurring tasks, escalation bar, artifacts). Set authorityHint 3 (IC), 4 (leader), or 5 (executive).
-7) finalize_blueprint — call once at the end.
+5) Competitor analysis — tavily_search (3–6 focused queries for real rivals, pricing, positioning), then set_competitor_landscape, then for the 3–5 most relevant competitors call upsert_competitor and set_competitor_section per subsection (positioning, offerings, pricing, strengths, weaknesses, ourEdge) with source URLs. Name REAL companies from search, never invent.
+6) recommend_app — propose the software stack. For each relevant app TYPE, recommend the single best DEFAULT (mark isDefault=true) AND one or two alternatives (isDefault=false). Always offer BOTH a paid SaaS option and an open-source (OSS) option per type where one exists, so the user can choose. Prefer apps from the known catalog below; invent new ones only when nothing fits.
+7) suggest_role — propose 4–8 agent roles needed to run this business. Each role is a forge prompt: a focused businessContext and a concrete jobDescription (recurring tasks, escalation bar, artifacts). Set authorityHint 3 (IC), 4 (leader), or 5 (executive).
+8) finalize_blueprint — call once at the end.
 
 Known app TYPES (use these keys for recommend_app.appType):
 {{appTypes}}
@@ -71,7 +74,7 @@ Business name: {{businessName}}
 BUSINESS DESCRIPTION:
 {{businessDescription}}
 
-Build the operating blueprint now: profile, elevator pitch, all eight business-plan sections (one tool each), app stack (SaaS + OSS per type with a default), and the agent roles required to run it.`;
+Build the operating blueprint now: profile, sector plaque, elevator pitch, all eight business-plan sections (one tool each), app stack (SaaS + OSS per type with a default), and the agent roles required to run it.`;
 
 const DEFAULT_BUSINESS_PLAN_SYSTEM = `You are the Forge Business Plan Writer — you draft operator/investor-grade business plans for businesses that already exist in Agent Forge.
 
@@ -138,6 +141,14 @@ const DEFAULT_IMAGE = {
     'Supreme commander dress uniform: long coat, gold epaulettes, highest rank insignia, most ornate.',
   portrait_template:
     '{{portrait_base}} {{rank_uniform}} Accent color {{accent}} on uniform trim and holograms. {{subject}} Unique individual — distinct face and styling.',
+  business_plaque_base:
+    'Hyper-realistic square brushed gunmetal business identity plaque, Command and Conquer operator aesthetic. Thick matte black outer frame with glowing neon {{accent}} inner rim light. Four domed metal rivets in each corner (industrial riveted mount — NOT Phillips screws). Brushed metallic grey plate with subtle diagonal light streaks. Perfectly square, level, and face-on — no tilt, no rotation, no crooked hang. Square composition — the plaque fills 90% of the canvas edge-to-edge.',
+  business_plaque_forbidden:
+    'FORBIDDEN: winged commander badge, eagle, portrait, Phillips screws, crooked or tilted mount, photographic scene, 3D metal sculpture centerpiece, star, sunburst. FORBIDDEN any text, words, letters, captions, labels, or typography on the plaque (no "SECTOR", no business name, no sector names).',
+  business_plaque_template:
+    '{{plaque_white_bg}} {{business_plaque_base}} This plaque identifies the business "{{business_name}}": {{business_context}} CENTER ICON ONLY: {{subject}} — bright neon {{accent}} minimalist line-art on the brushed metal plate (not 3D sculpture, not winged badge). {{business_plaque_forbidden}} Same photoreal riveted metal plate quality as Agent Forge business blueprint mounts.',
+  plaque_white_bg:
+    'Pure flat white background #FFFFFF only, no gradients, no shadows on background, no border. Full square plaque centered, fills 90% of canvas.',
 };
 
 function readSkillFile(name: string): string {
@@ -207,6 +218,14 @@ export function getDefaultPromptContent(key: ForgePromptKey): string {
       return DEFAULT_IMAGE.rank_uniform_5;
     case 'image.portrait.template':
       return DEFAULT_IMAGE.portrait_template;
+    case 'image.business.plaque_base':
+      return DEFAULT_IMAGE.business_plaque_base;
+    case 'image.business.plaque_forbidden':
+      return DEFAULT_IMAGE.business_plaque_forbidden;
+    case 'image.business.plaque_template':
+      return DEFAULT_IMAGE.business_plaque_template;
+    case 'image.business.plaque_white_bg':
+      return DEFAULT_IMAGE.plaque_white_bg;
     default:
       return '';
   }

@@ -59,6 +59,10 @@ export type BusinessProfile = {
   businessPlan?: BusinessPlanSections;
   /** Tavily-researched competitor landscape. */
   competitorAnalysis?: CompetitorAnalysis;
+  /** Gemini business identity plaque (riveted mount) — `/businesses/<slug>/plaque.png`. */
+  plaquePath?: string;
+  /** LLM-authored center-icon subject for regenerate-plaque. */
+  plaqueSubject?: string;
 };
 
 export type Business = {

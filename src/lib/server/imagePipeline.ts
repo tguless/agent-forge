@@ -41,6 +41,7 @@ export type GenerateImageResult = {
 const CWD = process.cwd();
 const TMP = path.join(CWD, '.forge_tmp');
 const PUBLIC_AGENTS = path.join(CWD, 'public', 'agents');
+const PUBLIC_BUSINESSES = path.join(CWD, 'public', 'businesses');
 
 const MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
 const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '2K';
@@ -604,6 +605,83 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
     return { webPath, generated: true, notes };
   }
   if (python && pilNormalizeSquare(python, source, finalPath, 512, input.kind)) {
+    return { webPath, generated: true, notes };
+  }
+  fs.copyFileSync(source, finalPath);
+  if (!magick && !python) notes.push('Normalize skipped; saved intermediate PNG.');
+  return { webPath, generated: true, notes };
+}
+
+export type GenerateBusinessPlaqueInput = {
+  slug: string;
+  subject: string;
+  accent: string;
+  businessName: string;
+  businessContext: string;
+};
+
+function buildBusinessPlaquePrompt(input: GenerateBusinessPlaqueInput): string {
+  return applyPromptTemplate(getPromptContent('image.business.plaque_template'), {
+    plaque_white_bg: getPromptContent('image.business.plaque_white_bg'),
+    business_plaque_base: applyPromptTemplate(getPromptContent('image.business.plaque_base'), {
+      accent: input.accent,
+    }),
+    business_plaque_forbidden: getPromptContent('image.business.plaque_forbidden'),
+    accent: input.accent,
+    subject: input.subject,
+    business_name: input.businessName,
+    business_context: input.businessContext,
+  });
+}
+
+/** Gemini sector plaque for business blueprints — icon-style transparency pipeline. */
+export async function generateBusinessPlaque(input: GenerateBusinessPlaqueInput): Promise<GenerateImageResult> {
+  const notes: string[] = [];
+  const outDir = path.join(PUBLIC_BUSINESSES, input.slug);
+  fs.mkdirSync(TMP, { recursive: true });
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const finalPath = path.join(outDir, 'plaque.png');
+  const webPath = `/businesses/${input.slug}/plaque.png`;
+  const rawPath = path.join(TMP, `${input.slug}-plaque-raw.png`);
+
+  const python = findPython();
+  const rembgPy = resolveRembgPython();
+  const magick = findMagick();
+
+  const prompt = buildBusinessPlaquePrompt(input);
+  const { buf, error: geminiError } = await geminiGenerate(prompt, '1:1');
+
+  if (!buf) {
+    notes.push(geminiError ? `${geminiError}; used placeholder.` : 'Used placeholder.');
+    drawPlaceholder(magick, 'icon', input.accent, input.subject, finalPath);
+    return { webPath, generated: false, notes };
+  }
+
+  if (!ensurePngRaw(magick, buf, rawPath)) {
+    notes.push('Could not decode Gemini bytes to PNG; transparency pipeline may fail.');
+  }
+
+  let source = rawPath;
+  if (rembgPy) {
+    const rembgPath = path.join(TMP, `${input.slug}-plaque-rembg.png`);
+    if (rembgRemove(rembgPy, source, rembgPath)) source = rembgPath;
+    else notes.push('rembg pass failed; continuing.');
+  }
+  if (magick) {
+    const alphaPath = path.join(TMP, `${input.slug}-plaque-alpha.png`);
+    if (magickWhiteToAlpha(magick, source, alphaPath, WHITE_FUZZ)) {
+      source = alphaPath;
+    } else {
+      notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
+    }
+  } else {
+    notes.push('ImageMagick not found; skipped white→alpha.');
+  }
+  if (magick && magickNormalizeSquare(magick, source, finalPath, 512, 'icon')) {
+    return { webPath, generated: true, notes };
+  }
+  if (python && pilNormalizeSquare(python, source, finalPath, 512, 'icon')) {
     return { webPath, generated: true, notes };
   }
   fs.copyFileSync(source, finalPath);

@@ -11,6 +11,7 @@ import {
   setBusinessStatus,
   listRoles,
   ensurePlaceholderBusiness,
+  patchBusinessProfile,
 } from '@/lib/businessStore';
 import { listAppTypes, listCapacities } from '@/lib/catalogStore';
 import { getPromptContent } from '@/lib/forgeConfigStore';
@@ -21,6 +22,12 @@ import {
   tryAcquireBusinessRun,
 } from './businessRunLock';
 import { createBusinessTools } from './businessTools';
+import { generateBusinessPlaque, imageToolingStatus } from './imagePipeline';
+import {
+  buildPlaqueBusinessContext,
+  derivePlaqueSubject,
+  plaqueAccent,
+} from '@/lib/businessPlaqueMotif';
 
 export { isConsultInFlight } from './businessRunLock';
 
@@ -31,7 +38,14 @@ function buildInstructions(): string {
   const capacities = listCapacities()
     .map((c) => `- ${c.key}: ${c.label}`)
     .join('\n');
-  const core = applyPromptTemplate(getPromptContent('business.system'), { appTypes, capacities });
+  const visualNote = imageToolingStatus().gemini
+    ? 'Business plaque generation is ONLINE (Gemini). After set_business_profile, call generate_plaque with a subject describing ONE minimalist neon center icon unique to THIS business (from name + description — not a generic sector badge).'
+    : 'Business plaque generation has NO GEMINI_API_KEY — generate_plaque will save a placeholder plaque.';
+  const core = applyPromptTemplate(getPromptContent('business.system'), {
+    appTypes,
+    capacities,
+    visualNote,
+  });
   return `${core}\n\n===== business-consultant skill =====\n${getPromptContent('skills.business_consultant')}`;
 }
 
@@ -92,6 +106,23 @@ async function runBusinessConsult(slug: string): Promise<void> {
 
     const ok = listRoles(slug).length > 0;
     setBusinessStatus(slug, ok ? 'ready' : 'error', ok ? null : 'Consulting ended without any roles.');
+
+    const refreshed = getBusiness(slug);
+    if (ok && refreshed && !refreshed.profile.plaquePath) {
+      const accent = plaqueAccent(refreshed.slug);
+      const subject = derivePlaqueSubject(refreshed);
+      const result = await generateBusinessPlaque({
+        slug: refreshed.slug,
+        subject,
+        accent,
+        businessName: refreshed.name,
+        businessContext: buildPlaqueBusinessContext(refreshed),
+      });
+      patchBusinessProfile(slug, {
+        plaquePath: result.webPath,
+        plaqueSubject: subject,
+      });
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     setBusinessStatus(slug, 'error', message);

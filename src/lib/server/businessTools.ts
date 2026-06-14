@@ -12,11 +12,17 @@ import {
   setCompetitorLandscape,
   upsertCompetitor,
   setCompetitorSection,
+  getBusiness,
 } from '@/lib/businessStore';
 import { BUSINESS_PLAN_SECTIONS } from '@/lib/businessPlanSections';
 import { COMPETITOR_SECTION_KEYS } from '@/lib/competitorSections';
 import { upsertApp, ensureCapacity, appTypeExists } from '@/lib/catalogStore';
 import { searchWeb, webSearchProvider } from './webSearch';
+import { generateBusinessPlaque } from './imagePipeline';
+import {
+  buildPlaqueBusinessContext,
+  plaqueAccent,
+} from '@/lib/businessPlaqueMotif';
 
 export type BusinessToolContext = {
   businessSlug: string;
@@ -193,6 +199,43 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
           rationale: input.rationale,
         });
         return `${input.isDefault ? 'Default' : 'Alternative'} for ${app.appTypeKey}: ${app.name} (${input.kind})${newType ? ' [new type]' : ''}.`;
+      },
+    }),
+
+    generate_plaque: tool({
+      description:
+        'Generate the riveted business identity plaque (Gemini / Nano Banana). Call once right after set_business_profile. Pass subject = ONE minimalist neon line-art center icon that uniquely represents THIS business (from its name, description, and profile — e.g. magnifying glass over patent pages for a patent researcher, not a generic sector badge). Not a winged commander badge, not a portrait.',
+      inputSchema: z.object({
+        subject: z
+          .string()
+          .describe(
+            'Minimalist neon line-art center icon unique to this business — must reflect what it does, not a generic compliance/sector label',
+          ),
+        accent: z
+          .string()
+          .optional()
+          .describe('Hex accent color, e.g. #8ee85a — omit to use a stable default for this business'),
+      }),
+      execute: async (input) => {
+        const business = getBusiness(ctx.businessSlug);
+        if (!business) return { error: 'Business not found' };
+        const accent = input.accent?.trim() || plaqueAccent(business.slug);
+        const result = await generateBusinessPlaque({
+          slug: ctx.businessSlug,
+          subject: input.subject.trim(),
+          accent,
+          businessName: business.name,
+          businessContext: buildPlaqueBusinessContext(business),
+        });
+        patchBusinessProfile(ctx.businessSlug, {
+          plaquePath: result.webPath,
+          plaqueSubject: input.subject.trim(),
+        });
+        return {
+          webPath: result.webPath,
+          generated: result.generated,
+          notes: result.notes,
+        };
       },
     }),
 

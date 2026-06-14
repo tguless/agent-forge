@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { absoluteUrl, getSiteUrl } from '@/lib/site-url';
+import type { Business } from '@/lib/businessTypes';
 
 const SITE_NAME = 'Agent Forge';
 const DEFAULT_TITLE = 'Agent Forge — Tactical AI agent card generator';
@@ -93,6 +94,35 @@ export function buildAgentMetadata(agent: {
       imageAlt,
       imageWidth: isPortrait ? 480 : 512,
       imageHeight: isPortrait ? 600 : 512,
+    }),
+  };
+}
+
+/** Per-business blueprint — sector plaque for link previews (matches header mount). */
+export function buildBusinessMetadata(business: Business): Metadata {
+  const title = `${business.name} · ${SITE_NAME}`;
+  const description =
+    business.profile.summary?.trim() ||
+    business.profile.elevatorPitch?.trim() ||
+    business.description.trim() ||
+    DEFAULT_DESCRIPTION;
+  const pageUrl = absoluteUrl(`/business/${business.slug}`);
+  const imagePath = business.profile.plaquePath || OG_IMAGE_PATH;
+  const imageAlt = `${business.name} — business identity plaque`;
+  const hasPlaque = !!business.profile.plaquePath;
+
+  return {
+    title: business.name,
+    description,
+    alternates: { canonical: pageUrl },
+    ...buildSocialMetadata({
+      title,
+      description,
+      url: pageUrl,
+      imageUrl: absoluteUrl(imagePath),
+      imageAlt,
+      imageWidth: hasPlaque ? 512 : 1200,
+      imageHeight: hasPlaque ? 512 : 630,
     }),
   };
 }

@@ -8,6 +8,8 @@ import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer'
 import { competitorAnalysisHasContent } from '@/lib/competitorSections';
 import { TurnTimeline, useBusinessPlanStream } from '@/components/TurnTimeline';
 import { AgentAccessGrid } from '@/components/AgentAccessGrid';
+import { BusinessPlaque } from '@/components/BusinessPlaque';
+import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import type {
   Business,
   BusinessApp,
@@ -158,10 +160,12 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const { business, roles, appStack, agents, planInFlight, hasBusinessPlan, planComplete } = detail;
   const suggestedRoles = roles.filter((r) => r.status === 'suggested');
 
+  const industryTag = business.profile.industry ?? 'Business blueprint';
+
   return (
-    <div className="ops-font-scope forge-page">
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 18 }}>
-        <Link href="/business" className="ops-detail-back" style={{ position: 'static' }}>
+    <div className="ops-detail-page forge-blueprint-page">
+      <div className="ops-detail-toolbar">
+        <Link href="/business" className="ops-detail-back">
           ← All businesses
         </Link>
         <Link href="/business/new" className="forge-cta forge-cta--ghost" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
@@ -169,10 +173,29 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         </Link>
       </div>
 
-      <div className="forge-wordmark forge-wordmark--lg" style={{ marginBottom: 6 }}>
-        {business.name}
-      </div>
-      <p className="forge-hint" style={{ maxWidth: 760 }}>{business.description}</p>
+      <div className="ops-detail-shell">
+        <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />
+        <span className="ops-detail-corner ops-detail-corner-tr" aria-hidden />
+        <span className="ops-detail-corner ops-detail-corner-bl" aria-hidden />
+        <span className="ops-detail-corner ops-detail-corner-br" aria-hidden />
+
+        <div className="ops-detail-inner">
+          <header className="ops-detail-header forge-blueprint-header">
+            <div className="ops-detail-brand">
+              <div className="forge-wordmark">
+                AGENT<span>FORGE</span>
+              </div>
+              <div className="ops-detail-brand-tag">Business blueprint</div>
+            </div>
+            <div className="ops-detail-title-block">
+              <h1 className="ops-detail-title">{business.name}</h1>
+              <p className="ops-detail-subtitle">{industryTag}</p>
+            </div>
+            <BusinessPlaque business={business} disabled={detail.consultInFlight} />
+          </header>
+
+          <div className="forge-blueprint-body">
+            <p className="forge-hint" style={{ maxWidth: 760, marginTop: 0 }}>{business.description}</p>
 
       {detail.consultInFlight && (
         <div className="forge-status-line" style={{ marginTop: 12 }}>
@@ -361,7 +384,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
                   <span className="forge-hint" style={{ fontSize: '0.7rem' }}>{role.status}</span>
                 )}
               </div>
-              <p className="forge-hint" style={{ margin: '4px 0 0', maxWidth: 760 }}>{role.jobDescription}</p>
+              <ForgeMarkdown className="forge-markdown--role">{role.jobDescription}</ForgeMarkdown>
             </div>
           ))}
           {roles.length === 0 && <p className="forge-hint">No roles suggested yet.</p>}
@@ -388,6 +411,9 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           </div>
         </CollapsibleSection>
       )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
