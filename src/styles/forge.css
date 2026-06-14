@@ -658,6 +658,64 @@
   margin: 0;
 }
 
+/* ── Collapsible blueprint sections ──────────────────────────────────────── */
+.forge-collapse-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.forge-collapse-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: #dffaf0;
+}
+
+.forge-collapse-chevron {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.9rem;
+  color: #7fe7ff;
+  width: 1rem;
+  flex-shrink: 0;
+}
+
+.forge-collapse-title {
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7fe7ff;
+}
+
+.forge-collapse-count {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.66rem;
+  color: rgba(223, 250, 240, 0.7);
+  background: rgba(120, 200, 170, 0.12);
+  border: 1px solid rgba(120, 200, 170, 0.25);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.forge-collapse-actions {
+  flex-shrink: 0;
+}
+
+.forge-collapse-body {
+  margin-top: 14px;
+}
+
 /* ── New-business sample loaders ─────────────────────────────────────────── */
 .forge-sample-row {
   display: flex;

@@ -83,12 +83,21 @@ function AuthorityStars({ value = 0 }: { value?: number }) {
   );
 }
 
-export function AgentDetailCommandCard({ agent }: { agent: AgentData }) {
+export function AgentDetailCommandCard({
+  agent,
+  forging = false,
+}: {
+  agent: AgentData;
+  forging?: boolean;
+}) {
   const router = useRouter();
   const accent = agent.accent ?? '#8ee85a';
   const [portraitFailed, setPortraitFailed] = React.useState(false);
   const [skillsOpen, setSkillsOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
+  const [regeneratingEmblem, setRegeneratingEmblem] = React.useState(false);
+  const [emblemError, setEmblemError] = React.useState<string | null>(null);
+  const [emblemSrc, setEmblemSrc] = React.useState(agent.emblemPath);
   const showPortrait = !portraitFailed && !!agent.portraitPath;
   const outputs = (agent.outputs ?? agent.deliverables).filter(Boolean);
   const skillsAgent = {
@@ -97,6 +106,43 @@ export function AgentDetailCommandCard({ agent }: { agent: AgentData }) {
     skillsFile: agent.skillsFile,
     accent,
   };
+
+  React.useEffect(() => {
+    setEmblemSrc(agent.emblemPath);
+  }, [agent.emblemPath]);
+
+  async function handleRegenerateEmblem() {
+    setRegeneratingEmblem(true);
+    setEmblemError(null);
+    try {
+      const res = await fetch(`/api/agents/${encodeURIComponent(agent.slug)}/regenerate-images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kinds: ['emblem'] }),
+      });
+      const json = (await res.json()) as {
+        error?: string;
+        results?: { emblem?: { webPath?: string; generated?: boolean; notes?: string[] } };
+      };
+      if (!res.ok) {
+        setEmblemError(json.error ?? `Server error ${res.status}`);
+        return;
+      }
+      const emblem = json.results?.emblem;
+      if (emblem?.webPath) {
+        setEmblemSrc(`${emblem.webPath}?t=${Date.now()}`);
+      }
+      if (emblem && !emblem.generated) {
+        setEmblemError(
+          emblem.notes?.join(' ') || 'Gemini unavailable — placeholder emblem was used.',
+        );
+      }
+    } catch (err) {
+      setEmblemError(err instanceof Error ? err.message : 'Failed to regenerate emblem');
+    } finally {
+      setRegeneratingEmblem(false);
+    }
+  }
 
   async function handleDelete() {
     const label = agent.title || agent.slug;
@@ -166,9 +212,9 @@ export function AgentDetailCommandCard({ agent }: { agent: AgentData }) {
               <p className="ops-detail-subtitle">{agent.subtitle}</p>
             </div>
             <div className="ops-detail-emblem">
-              {agent.emblemPath ? (
+              {emblemSrc ? (
                 <img
-                  src={agent.emblemPath}
+                  src={emblemSrc}
                   alt=""
                   className="ops-detail-emblem-img"
                   width={252}
@@ -183,10 +229,25 @@ export function AgentDetailCommandCard({ agent }: { agent: AgentData }) {
               <span
                 className="ops-detail-emblem-fallback"
                 aria-hidden
-                style={{ display: agent.emblemPath ? 'none' : 'flex' }}
+                style={{ display: emblemSrc ? 'none' : 'flex' }}
               >
                 ◆
               </span>
+              <button
+                type="button"
+                className="ops-detail-emblem-regen"
+                disabled={forging || deleting || regeneratingEmblem}
+                aria-busy={regeneratingEmblem}
+                title="Re-run Gemini emblem generation (uses saved subject when available)"
+                onClick={() => void handleRegenerateEmblem()}
+              >
+                {regeneratingEmblem ? 'Regenerating…' : '↻ Regenerate emblem'}
+              </button>
+              {emblemError && (
+                <p className="ops-detail-emblem-error" role="alert">
+                  {emblemError}
+                </p>
+              )}
             </div>
           </header>
 

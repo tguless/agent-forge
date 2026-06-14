@@ -41,6 +41,44 @@ type Detail = {
   capacities: Capacity[];
 };
 
+function CollapsibleSection({
+  title,
+  count,
+  defaultOpen = false,
+  actions,
+  children,
+  marginTop = 16,
+}: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  marginTop?: number;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  return (
+    <HudBox variant="rect" style={{ marginTop }}>
+      <div className="forge-collapse-head">
+        <button
+          type="button"
+          className="forge-collapse-toggle"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <span className="forge-collapse-chevron" aria-hidden>
+            {open ? '▾' : '▸'}
+          </span>
+          <span className="forge-collapse-title">{title}</span>
+          {typeof count === 'number' && <span className="forge-collapse-count">{count}</span>}
+        </button>
+        {actions && <div className="forge-collapse-actions">{actions}</div>}
+      </div>
+      {open && <div className="forge-collapse-body">{children}</div>}
+    </HudBox>
+  );
+}
+
 export default function BlueprintPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
   const [detail, setDetail] = React.useState<Detail | null>(null);
@@ -146,16 +184,14 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
       )}
 
       {business.profile.elevatorPitch && (
-        <HudBox variant="rect" style={{ marginTop: 18 }}>
-          <h2 className="forge-label">Elevator pitch</h2>
+        <CollapsibleSection title="Elevator pitch" defaultOpen marginTop={18}>
           <p className="forge-elevator-pitch">{business.profile.elevatorPitch}</p>
-        </HudBox>
+        </CollapsibleSection>
       )}
 
       {/* Profile */}
       {(business.profile.industry || business.profile.summary) && (
-        <HudBox variant="rect" style={{ marginTop: 18 }}>
-          <h2 className="forge-label">Profile</h2>
+        <CollapsibleSection title="Profile" defaultOpen>
           {business.profile.industry && (
             <p className="forge-hint"><strong>Industry:</strong> {business.profile.industry}</p>
           )}
@@ -168,13 +204,14 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
               <strong>Value chain:</strong> {business.profile.valueChain.join(' → ')}
             </p>
           )}
-        </HudBox>
+        </CollapsibleSection>
       )}
 
-      <HudBox variant="rect" style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <h2 className="forge-label" style={{ margin: 0 }}>Business plan</h2>
-          {!planComplete && !planInFlight && !detail.consultInFlight && (
+      <CollapsibleSection
+        title="Business plan"
+        defaultOpen={planInFlight || (hasBusinessPlan && !planComplete)}
+        actions={
+          !planComplete && !planInFlight && !detail.consultInFlight ? (
             <button
               type="button"
               className="forge-cta"
@@ -184,36 +221,36 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
             >
               {planBusy ? 'Starting…' : hasBusinessPlan ? 'Complete business plan' : 'Generate business plan'}
             </button>
-          )}
-        </div>
-
+          ) : null
+        }
+      >
         {planComplete && (
-          <p className="forge-hint" style={{ marginTop: 8 }}>
+          <p className="forge-hint">
             Eight-section operator plan — expand any section from the table of contents.
           </p>
         )}
 
         {!planComplete && !hasBusinessPlan && !planInFlight && (
-          <p className="forge-hint" style={{ marginTop: 10 }}>
+          <p className="forge-hint">
             No business plan yet. Generate one from the business description and profile — eight collapsible sections with a table of contents.
           </p>
         )}
 
         {!planComplete && hasBusinessPlan && !planInFlight && (
-          <p className="forge-hint" style={{ marginTop: 8 }}>
+          <p className="forge-hint">
             Plan is incomplete — generate the remaining sections.
           </p>
         )}
 
         {detail.consultInFlight && !planInFlight && !planComplete && (
-          <p className="forge-hint" style={{ marginTop: 8 }}>
+          <p className="forge-hint">
             Blueprint consult is running; you can generate the plan once it finishes.
           </p>
         )}
 
         {planInFlight && (
           <>
-            <div className="forge-status-line" style={{ marginTop: 12 }}>
+            <div className="forge-status-line">
               <span className="forge-spinner" aria-hidden /> Drafting business plan sections…
             </div>
             <div style={{ marginTop: 10 }}>
@@ -225,7 +262,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         {planError && <p className="forge-error" style={{ marginTop: 10 }}>{planError}</p>}
 
         {hasBusinessPlan && (
-          <div style={{ marginTop: planInFlight ? 14 : 10 }}>
+          <div style={{ marginTop: planInFlight ? 14 : 0 }}>
             <BusinessPlanViewer plan={business.profile.businessPlan} />
           </div>
         )}
@@ -238,11 +275,10 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
             <CompetitorAnalysisViewer analysis={business.profile.competitorAnalysis} />
           </div>
         )}
-      </HudBox>
+      </CollapsibleSection>
 
       {/* App stack override grid */}
-      <HudBox variant="rect" style={{ marginTop: 16 }}>
-        <h2 className="forge-label">Software stack</h2>
+      <CollapsibleSection title="Software stack" count={appStack.length}>
         <p className="forge-hint">
           One default per category (★). Click an alternative to override what agents get access to.
         </p>
@@ -282,19 +318,28 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           ))}
           {appStack.length === 0 && <p className="forge-hint">No apps recommended yet.</p>}
         </div>
-      </HudBox>
+      </CollapsibleSection>
 
       {/* Roles */}
-      <HudBox variant="rect" style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <h2 className="forge-label" style={{ margin: 0 }}>Agent roles</h2>
-          {suggestedRoles.length > 0 && (
-            <button type="button" className="forge-cta" disabled={busy} onClick={() => void forge()}>
+      <CollapsibleSection
+        title="Agent roles"
+        count={roles.length}
+        defaultOpen={suggestedRoles.length > 0}
+        actions={
+          suggestedRoles.length > 0 ? (
+            <button
+              type="button"
+              className="forge-cta"
+              disabled={busy}
+              onClick={() => void forge()}
+              style={{ fontSize: '0.72rem', padding: '6px 12px' }}
+            >
               {busy ? 'Forging…' : `⚡ Forge all (${suggestedRoles.length})`}
             </button>
-          )}
-        </div>
-        <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+          ) : null
+        }
+      >
+        <div style={{ display: 'grid', gap: 10 }}>
           {roles.map((role) => (
             <div key={role.id} style={{ borderBottom: '1px solid rgba(120,200,170,0.12)', paddingBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
@@ -321,13 +366,12 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           ))}
           {roles.length === 0 && <p className="forge-hint">No roles suggested yet.</p>}
         </div>
-      </HudBox>
+      </CollapsibleSection>
 
       {/* Forged agents + access grids */}
       {agents.length > 0 && (
-        <HudBox variant="rect" style={{ marginTop: 16 }}>
-          <h2 className="forge-label">Forged agents &amp; access grid</h2>
-          <div style={{ display: 'grid', gap: 16, marginTop: 12 }}>
+        <CollapsibleSection title="Forged agents & access grid" count={agents.length}>
+          <div style={{ display: 'grid', gap: 16 }}>
             {agents.map((a) => (
               <div key={a.slug}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
@@ -342,7 +386,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
               </div>
             ))}
           </div>
-        </HudBox>
+        </CollapsibleSection>
       )}
     </div>
   );

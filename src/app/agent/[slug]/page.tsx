@@ -79,7 +79,7 @@ export default function AgentDetailPage({ params }: { params: { slug: string } }
           Generation failed: {detail.error}
         </p>
       )}
-      <AgentDetailCommandCard agent={detail.data} />
+      <AgentDetailCommandCard agent={detail.data} forging={forging} />
       <div style={{ maxWidth: 1180, margin: '18px auto 40px', padding: '0 16px' }}>
         <HudBox variant="rect">
           <h2 className="forge-label">SaaS access grid</h2>

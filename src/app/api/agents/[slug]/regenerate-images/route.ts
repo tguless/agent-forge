@@ -36,7 +36,7 @@ function deriveSubjects(data: AgentData): Record<ImageKind, string> {
     icon:
       data.iconSubject?.trim() ||
       `flat vector HUD glyph: one bold symbol for ${role}${focus}`,
-    emblem: deriveEmblemSubject(data),
+    emblem: data.emblemSubject?.trim() || deriveEmblemSubject(data),
     portrait:
       data.portraitSubject?.trim() ||
       `${data.callsign ?? 'Commander'} tactical commander for ${role}${focus}, ${data.accent} gear`,
@@ -44,17 +44,35 @@ function deriveSubjects(data: AgentData): Record<ImageKind, string> {
 }
 
 /** Re-run Gemini image pipeline for an existing agent (repair missing/broken assets). */
-export async function POST(_req: Request, ctx: { params: Promise<{ slug: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
   const agent = getAgent(slug);
   if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+
+  let kinds: ImageKind[] = ['emblem', 'portrait', 'icon'];
+  const raw = await req.text();
+  if (raw.trim()) {
+    try {
+      const body = JSON.parse(raw) as { kinds?: unknown };
+      if (Array.isArray(body.kinds) && body.kinds.length > 0) {
+        kinds = body.kinds.filter(
+          (k): k is ImageKind => k === 'icon' || k === 'emblem' || k === 'portrait',
+        );
+        if (kinds.length === 0) {
+          return NextResponse.json({ error: 'Invalid kinds — use icon, emblem, and/or portrait.' }, { status: 400 });
+        }
+      }
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+  }
 
   const subjects = deriveSubjects(agent.data);
   const accent = agent.data.accent || '#38bdf8';
   const authority = agent.data.authority ?? 3;
   const results: Record<string, unknown> = {};
 
-  for (const kind of ['emblem', 'portrait', 'icon'] as const) {
+  for (const kind of kinds) {
     addEvent(slug, 'image', `Regenerating ${kind}…`);
     const result = await generateAgentImage({
       slug,
