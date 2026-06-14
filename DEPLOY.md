@@ -91,7 +91,7 @@ Commit `public/og-image.png` and redeploy for CloudFront to serve the new previe
 
 ## Image pipeline notes
 
-- **ImageMagick** white→alpha for icon/emblem transparency (pure `#FFFFFF` Gemini backgrounds).
+- **ImageMagick** white→alpha for icon/emblem transparency (pure `#FFFFFF` Gemini backgrounds). Emblems use 2% pre + 3% post-resize white key and 65% alpha threshold defringe; icons stay at `ICON_WHITE_FUZZ=14%`.
 - **Emblem normalize** scales the full 2K winged badge to 512×512 (no trim+extent crop — that was zooming into the center sculpture only).
 - **rembg** is installed in Docker (`/app/.venv-rembg`) but **not used** for icon/emblem — it crops winged plaques to the center sculpture and breaks multi-part HUD glyphs. ImageMagick fuzz handles both.
 - Without `GEMINI_API_KEY`, agents still generate text/skills; images use placeholders.

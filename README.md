@@ -123,7 +123,9 @@ npm run dev                  # http://localhost:3030
 | `GEMINI_IMAGE_SIZE` | No | `2K` by default (Gemini 3 models). |
 | `REMBG_PYTHON` | No | Path to a Python venv with `rembg` + `Pillow`. Auto-detects the repo's shared rembg venv. |
 | `ICON_WHITE_FUZZ` | No | ImageMagick white→alpha fuzz for icons (default `14%`). |
-| `EMBLEM_WHITE_FUZZ` | No | Same for emblems — slightly higher tolerance for off-white Gemini backgrounds (default `14%`). |
+| `EMBLEM_WHITE_FUZZ` | No | Pre-resize white key (default `2%`). |
+| `EMBLEM_POST_WHITE_FUZZ` | No | Post-resize edge cleanup (default `3%`; set `0%` to disable). |
+| `EMBLEM_ALPHA_THRESHOLD` | No | Binarize alpha after resize to remove ghost fringe (default `65%`). |
 
 > **Note:** Nano Banana runs on Gemini, so visual generation needs a `GEMINI_API_KEY` in addition to your Anthropic key. Background removal additionally needs a `rembg` venv and `ImageMagick` (`magick`); all three steps degrade gracefully if a tool is missing.
 

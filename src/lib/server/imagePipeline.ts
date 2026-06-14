@@ -8,7 +8,8 @@
  *
  * rembg is available in Docker but skipped for icon/emblem: Gemini uses pure #FFFFFF
  * backgrounds and rembg isolates a single salient object (destroys winged plaques and
- * multi-part flat HUD glyphs). Icons/emblems use ImageMagick white→alpha only.
+ * multi-part flat HUD glyphs). Icons use global fuzz white→alpha; emblems use 2% pre +
+ * post-resize 3% white key, alpha-background resize, and 65% alpha threshold defringe.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -45,7 +46,12 @@ const MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
 const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '2K';
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_IMAGE_TIMEOUT_MS || 600_000);
 const WHITE_FUZZ = process.env.ICON_WHITE_FUZZ || '14%';
-const EMBLEM_WHITE_FUZZ = process.env.EMBLEM_WHITE_FUZZ || '14%';
+/** Pre-resize white key (2% clears Gemini bg without eating wing metal). */
+const EMBLEM_WHITE_FUZZ = process.env.EMBLEM_WHITE_FUZZ || '2%';
+/** Post-resize edge cleanup — catches halos introduced by downscale. */
+const EMBLEM_POST_WHITE_FUZZ = process.env.EMBLEM_POST_WHITE_FUZZ || '3%';
+/** Binarize alpha after resize to drop semi-transparent fringe (ghost noise on dark UI). */
+const EMBLEM_ALPHA_THRESHOLD = process.env.EMBLEM_ALPHA_THRESHOLD || '65%';
 
 // ── prompt fragments (configurable via Forge Configuration) ─────────────────
 
@@ -206,6 +212,66 @@ function magickWhiteToAlpha(magick: string, src: string, dst: string, fuzz = WHI
   return result.status === 0;
 }
 
+/**
+ * Emblem pipeline: pre white key → resize → post edge white key → alpha threshold defringe.
+ */
+function magickEmblemPipeline(
+  magick: string,
+  src: string,
+  dst: string,
+  outPx = 512,
+  whiteFuzz = EMBLEM_WHITE_FUZZ,
+  postWhiteFuzz = EMBLEM_POST_WHITE_FUZZ,
+  alphaThreshold = EMBLEM_ALPHA_THRESHOLD,
+): boolean {
+  const args: string[] = [
+    src,
+    '-alpha',
+    'set',
+    '-channel',
+    'RGBA',
+    '-fuzz',
+    whiteFuzz,
+    '-fill',
+    'none',
+    '-opaque',
+    'white',
+    '-background',
+    'none',
+    '-alpha',
+    'background',
+    '-gravity',
+    'center',
+    '-resize',
+    `${outPx}x${outPx}`,
+    '-extent',
+    `${outPx}x${outPx}`,
+  ];
+  if (postWhiteFuzz && postWhiteFuzz !== '0%') {
+    args.push('-channel', 'RGBA', '-fuzz', postWhiteFuzz, '-fill', 'none', '-opaque', 'white');
+  }
+  args.push(
+    '(',
+    '+clone',
+    '-alpha',
+    'extract',
+    '-threshold',
+    alphaThreshold,
+    ')',
+    '-alpha',
+    'off',
+    '-compose',
+    'CopyOpacity',
+    '-composite',
+    `PNG32:${dst}`,
+  );
+  const result = spawnSync(magick, args, { encoding: 'utf8' });
+  if (result.status !== 0) {
+    console.error('[imagePipeline] emblem pipeline:', (result.stderr || result.stdout || '').trim().slice(0, 300));
+  }
+  return result.status === 0;
+}
+
 /** Icons: trim empty margins then scale down. Emblems: scale full frame — trim+extent alone center-crops wings off 2K renders. */
 function magickNormalizeSquare(
   magick: string,
@@ -251,7 +317,32 @@ function pilNormalizeSquare(
 from PIL import Image
 from pathlib import Path
 s, d = Path(${JSON.stringify(src)}), Path(${JSON.stringify(dst)})
-Image.open(s).convert("RGBA").resize((${outPx}, ${outPx}), Image.Resampling.LANCZOS).save(d, format="PNG", optimize=True)
+out_px = ${outPx}
+white_min = 250  # ~2% fuzz vs #FFFFFF
+post_white_min = 247  # ~3% post-resize edge pass
+alpha_cut = 166  # 65% threshold
+im = Image.open(s).convert("RGBA")
+px = im.load()
+for y in range(im.height):
+    for x in range(im.width):
+        r, g, b, a = px[x, y]
+        if r >= white_min and g >= white_min and b >= white_min:
+            px[x, y] = (0, 0, 0, 0)
+w, h = im.size
+scale = min(out_px / w, out_px / h)
+nw, nh = max(1, int(w * scale)), max(1, int(h * scale))
+im = im.resize((nw, nh), Image.Resampling.LANCZOS)
+canvas = Image.new("RGBA", (out_px, out_px), (0, 0, 0, 0))
+canvas.paste(im, ((out_px - nw) // 2, (out_px - nh) // 2), im)
+px = canvas.load()
+for y in range(out_px):
+    for x in range(out_px):
+        r, g, b, a = px[x, y]
+        if r >= post_white_min and g >= post_white_min and b >= post_white_min:
+            px[x, y] = (0, 0, 0, 0)
+        elif a < alpha_cut:
+            px[x, y] = (r, g, b, 0)
+canvas.save(d, format="PNG", optimize=True)
 `
       : `
 from PIL import Image
@@ -420,12 +511,28 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
     return { webPath, generated: true, notes };
   }
 
-  // icon / emblem → transparency pipeline (pure white Gemini bg → magick fuzz, no rembg)
+  // icon → white key + trim/normalize; emblem → single v2 pipeline (no rembg)
+  if (input.kind === 'emblem') {
+    if (magick && magickEmblemPipeline(magick, rawPath, finalPath)) {
+      notes.push(
+        `emblem: white ${EMBLEM_WHITE_FUZZ}, post ${EMBLEM_POST_WHITE_FUZZ}, alpha ${EMBLEM_ALPHA_THRESHOLD}`,
+      );
+      return { webPath, generated: true, notes };
+    }
+    if (magick) notes.push('ImageMagick emblem pipeline failed.');
+    if (python && pilNormalizeSquare(python, rawPath, finalPath, 512, 'emblem')) {
+      notes.push('emblem PIL fallback.');
+      return { webPath, generated: true, notes };
+    }
+    fs.copyFileSync(rawPath, finalPath);
+    notes.push('Emblem normalize skipped; saved raw PNG.');
+    return { webPath, generated: true, notes };
+  }
+
   let source = rawPath;
   if (magick) {
     const alphaPath = path.join(TMP, `${input.slug}-${input.kind}-alpha.png`);
-    const fuzz = input.kind === 'emblem' ? EMBLEM_WHITE_FUZZ : WHITE_FUZZ;
-    if (magickWhiteToAlpha(magick, source, alphaPath, fuzz)) {
+    if (magickWhiteToAlpha(magick, source, alphaPath, WHITE_FUZZ)) {
       source = alphaPath;
     } else {
       notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
