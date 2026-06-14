@@ -650,10 +650,12 @@ export async function generateBusinessPlaque(input: GenerateBusinessPlaqueInput)
   const magick = findMagick();
 
   const prompt = buildBusinessPlaquePrompt(input);
+  console.log(`[imagePipeline] business plaque start slug=${input.slug}`);
   const { buf, error: geminiError } = await geminiGenerate(prompt, '1:1');
 
   if (!buf) {
     notes.push(geminiError ? `${geminiError}; used placeholder.` : 'Used placeholder.');
+    console.warn(`[imagePipeline] business plaque placeholder slug=${input.slug}: ${notes.join(' ')}`);
     drawPlaceholder(magick, 'icon', input.accent, input.subject, finalPath);
     return { webPath, generated: false, notes };
   }
@@ -679,9 +681,11 @@ export async function generateBusinessPlaque(input: GenerateBusinessPlaqueInput)
     notes.push('ImageMagick not found; skipped white→alpha.');
   }
   if (magick && magickNormalizeSquare(magick, source, finalPath, 512, 'icon')) {
+    console.log(`[imagePipeline] business plaque ok slug=${input.slug} path=${webPath}`);
     return { webPath, generated: true, notes };
   }
   if (python && pilNormalizeSquare(python, source, finalPath, 512, 'icon')) {
+    console.log(`[imagePipeline] business plaque ok slug=${input.slug} path=${webPath} (PIL)`);
     return { webPath, generated: true, notes };
   }
   fs.copyFileSync(source, finalPath);

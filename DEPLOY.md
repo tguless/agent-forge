@@ -69,6 +69,7 @@ Docker volumes:
 
 - `agent_forge_data` — SQLite (`forge.db`)
 - `agent_forge_agents` — generated PNG assets under `/public/agents`
+- `agent_forge_businesses` — generated business plaque PNGs under `/public/businesses`
 - `agent_forge_tmp` — image pipeline temp files
 
 ## Open Graph banner

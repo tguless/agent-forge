@@ -22,9 +22,11 @@ services:
     volumes:
       - agent_forge_data:/app/data
       - agent_forge_agents:/app/public/agents
+      - agent_forge_businesses:/app/public/businesses
       - agent_forge_tmp:/app/.forge_tmp
 
 volumes:
   agent_forge_data:
   agent_forge_agents:
+  agent_forge_businesses:
   agent_forge_tmp:
