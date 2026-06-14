@@ -6,10 +6,10 @@
  *   2. Generate via Gemini "Nano Banana" image model (@google/genai)
  *   3. Decode Gemini JPEG → PNG, then ImageMagick fuzz white→alpha → normalize
  *
- * rembg is available in Docker but skipped for icon/emblem: Gemini uses pure #FFFFFF
- * backgrounds and rembg isolates a single salient object (destroys winged plaques and
- * multi-part flat HUD glyphs). Icons use global fuzz white→alpha; emblems use 2% pre +
- * post-resize 3% white key, alpha-background resize, and 65% alpha threshold defringe.
+ * rembg is available in Docker. Icons: rembg → 14% white→alpha → trim/normalize.
+ * Emblems (classic default): rembg when it preserves wing span → 14% white→alpha →
+ * PIL trim/normalize (May 2026 look). Sharp mode (EMBLEM_PIPELINE=sharp): magick-only
+ * defringe without rembg. rembg is skipped when it shrinks the winged plaque bbox.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -46,11 +46,17 @@ const MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image-preview';
 const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '2K';
 const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_IMAGE_TIMEOUT_MS || 600_000);
 const WHITE_FUZZ = process.env.ICON_WHITE_FUZZ || '14%';
-/** Pre-resize white key (2% clears Gemini bg without eating wing metal). */
-const EMBLEM_WHITE_FUZZ = process.env.EMBLEM_WHITE_FUZZ || '2%';
-/** Post-resize edge cleanup — catches halos introduced by downscale. */
+/** classic = rembg + 14% fuzz + PIL trim (May 2026). sharp = magick defringe only. */
+const EMBLEM_PIPELINE = (process.env.EMBLEM_PIPELINE || 'classic').toLowerCase();
+const EMBLEM_USE_REMBG = process.env.EMBLEM_USE_REMBG !== '0';
+/** White key fuzz for classic emblem path (default matches May 31 forge). */
+const EMBLEM_WHITE_FUZZ = process.env.EMBLEM_WHITE_FUZZ || '14%';
+/** Min rembg/raw trim-bbox ratio — reject rembg when wings were cropped to center only. */
+const EMBLEM_REMBG_MIN_RATIO = Number(process.env.EMBLEM_REMBG_MIN_RATIO || 0.72);
+const EMBLEM_MARGIN_PCT = Number(process.env.EMBLEM_MARGIN_PCT || 5);
+/** Sharp pipeline only — see EMBLEM_PIPELINE=sharp */
+const EMBLEM_SHARP_WHITE_FUZZ = process.env.EMBLEM_SHARP_WHITE_FUZZ || '2%';
 const EMBLEM_POST_WHITE_FUZZ = process.env.EMBLEM_POST_WHITE_FUZZ || '3%';
-/** Binarize alpha after resize to drop semi-transparent fringe (ghost noise on dark UI). */
 const EMBLEM_ALPHA_THRESHOLD = process.env.EMBLEM_ALPHA_THRESHOLD || '65%';
 
 // ── prompt fragments (configurable via Forge Configuration) ─────────────────
@@ -212,15 +218,59 @@ function magickWhiteToAlpha(magick: string, src: string, dst: string, fuzz = WHI
   return result.status === 0;
 }
 
+/** Max side of alpha bbox after white key + trim — used to detect rembg wing crop. */
+function measureEmblemTrimMax(magick: string, src: string, fuzz = EMBLEM_WHITE_FUZZ): number | null {
+  const result = spawnSync(
+    magick,
+    [
+      src,
+      '-alpha',
+      'set',
+      '-channel',
+      'RGBA',
+      '-fuzz',
+      fuzz,
+      '-fill',
+      'none',
+      '-opaque',
+      'white',
+      '-alpha',
+      'extract',
+      '-trim',
+      '+repage',
+      '-format',
+      '%w %h',
+      'info:',
+    ],
+    { encoding: 'utf8' },
+  );
+  if (result.status !== 0) return null;
+  const parts = (result.stdout || '').trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  const w = Number(parts[0]);
+  const h = Number(parts[1]);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+  return Math.max(w, h);
+}
+
+/** True when rembg isolated the center sculpture and dropped the winged plaque span. */
+function emblemRembgLooksCropped(magick: string, rawPath: string, rembgPath: string): boolean {
+  const rawMax = measureEmblemTrimMax(magick, rawPath);
+  const rembgMax = measureEmblemTrimMax(magick, rembgPath);
+  if (rawMax == null || rembgMax == null) return true;
+  if (rawMax <= 0) return false;
+  return rembgMax / rawMax < EMBLEM_REMBG_MIN_RATIO;
+}
+
 /**
- * Emblem pipeline: pre white key → resize → post edge white key → alpha threshold defringe.
+ * Sharp emblem pipeline (opt-in): pre white key → resize → post edge white key → alpha threshold.
  */
-function magickEmblemPipeline(
+function magickEmblemPipelineSharp(
   magick: string,
   src: string,
   dst: string,
   outPx = 512,
-  whiteFuzz = EMBLEM_WHITE_FUZZ,
+  whiteFuzz = EMBLEM_SHARP_WHITE_FUZZ,
   postWhiteFuzz = EMBLEM_POST_WHITE_FUZZ,
   alphaThreshold = EMBLEM_ALPHA_THRESHOLD,
 ): boolean {
@@ -311,51 +361,24 @@ function pilNormalizeSquare(
   outPx = 512,
   kind: ImageKind = 'icon',
 ): boolean {
-  const script =
-    kind === 'emblem'
-      ? `
+  const marginPct = kind === 'emblem' ? EMBLEM_MARGIN_PCT : 5;
+  const script = `
 from PIL import Image
 from pathlib import Path
 s, d = Path(${JSON.stringify(src)}), Path(${JSON.stringify(dst)})
 out_px = ${outPx}
-white_min = 250  # ~2% fuzz vs #FFFFFF
-post_white_min = 247  # ~3% post-resize edge pass
-alpha_cut = 166  # 65% threshold
-im = Image.open(s).convert("RGBA")
-px = im.load()
-for y in range(im.height):
-    for x in range(im.width):
-        r, g, b, a = px[x, y]
-        if r >= white_min and g >= white_min and b >= white_min:
-            px[x, y] = (0, 0, 0, 0)
-w, h = im.size
-scale = min(out_px / w, out_px / h)
-nw, nh = max(1, int(w * scale)), max(1, int(h * scale))
-im = im.resize((nw, nh), Image.Resampling.LANCZOS)
-canvas = Image.new("RGBA", (out_px, out_px), (0, 0, 0, 0))
-canvas.paste(im, ((out_px - nw) // 2, (out_px - nh) // 2), im)
-px = canvas.load()
-for y in range(out_px):
-    for x in range(out_px):
-        r, g, b, a = px[x, y]
-        if r >= post_white_min and g >= post_white_min and b >= post_white_min:
-            px[x, y] = (0, 0, 0, 0)
-        elif a < alpha_cut:
-            px[x, y] = (r, g, b, 0)
-canvas.save(d, format="PNG", optimize=True)
-`
-      : `
-from PIL import Image
-from pathlib import Path
-s, d = Path(${JSON.stringify(src)}), Path(${JSON.stringify(dst)})
+margin_pct = ${marginPct}
 im = Image.open(s).convert("RGBA")
 bbox = im.split()[-1].getbbox()
-if bbox: im = im.crop(bbox)
-w, h = im.size
-side = max(w, h); margin = max(4, int(side * 0.05))
-canvas = Image.new("RGBA", (side + margin*2, side + margin*2), (0,0,0,0))
-canvas.paste(im, (margin + (side - w)//2, margin + (side - h)//2), im)
-canvas.resize((${outPx}, ${outPx}), Image.Resampling.LANCZOS).save(d, format="PNG", optimize=True)
+if not bbox:
+    raise SystemExit("no opaque pixels")
+cropped = im.crop(bbox)
+w, h = cropped.size
+side = max(w, h)
+margin = max(4, int(side * margin_pct / 100))
+canvas = Image.new("RGBA", (side + margin * 2, side + margin * 2), (0, 0, 0, 0))
+canvas.paste(cropped, (margin + (side - w) // 2, margin + (side - h) // 2), cropped)
+canvas.resize((out_px, out_px), Image.Resampling.LANCZOS).save(d, format="PNG", optimize=True)
 `;
   return spawnSync(python, ['-c', script], { encoding: 'utf8' }).status === 0;
 }
@@ -511,17 +534,49 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
     return { webPath, generated: true, notes };
   }
 
-  // icon → white key + trim/normalize; emblem → single v2 pipeline (no rembg)
+  // emblem → classic (May 2026) or sharp (magick defringe)
   if (input.kind === 'emblem') {
-    if (magick && magickEmblemPipeline(magick, rawPath, finalPath)) {
-      notes.push(
-        `emblem: white ${EMBLEM_WHITE_FUZZ}, post ${EMBLEM_POST_WHITE_FUZZ}, alpha ${EMBLEM_ALPHA_THRESHOLD}`,
-      );
-      return { webPath, generated: true, notes };
+    if (EMBLEM_PIPELINE === 'sharp') {
+      if (magick && magickEmblemPipelineSharp(magick, rawPath, finalPath)) {
+        notes.push(
+          `emblem sharp: white ${EMBLEM_SHARP_WHITE_FUZZ}, post ${EMBLEM_POST_WHITE_FUZZ}, alpha ${EMBLEM_ALPHA_THRESHOLD}`,
+        );
+        return { webPath, generated: true, notes };
+      }
+      if (magick) notes.push('ImageMagick sharp emblem pipeline failed.');
+    } else {
+      let source = rawPath;
+      if (EMBLEM_USE_REMBG && rembgPy) {
+        const rembgPath = path.join(TMP, `${input.slug}-${input.kind}-rembg.png`);
+        if (rembgRemove(rembgPy, rawPath, rembgPath)) {
+          if (magick && emblemRembgLooksCropped(magick, rawPath, rembgPath)) {
+            notes.push('rembg cropped wing span; using raw + magick.');
+          } else {
+            source = rembgPath;
+          }
+        } else {
+          notes.push('rembg pass failed; continuing on raw.');
+        }
+      } else if (!rembgPy && EMBLEM_USE_REMBG) {
+        notes.push('rembg venv not found; skipped AI bg removal.');
+      }
+      const alphaPath = path.join(TMP, `${input.slug}-${input.kind}-alpha.png`);
+      if (magick && magickWhiteToAlpha(magick, source, alphaPath, EMBLEM_WHITE_FUZZ)) {
+        source = alphaPath;
+      } else if (magick) {
+        notes.push('ImageMagick white→alpha failed (check imagemagick-jpeg).');
+      }
+      if (python && pilNormalizeSquare(python, source, finalPath, 512, 'emblem')) {
+        notes.push(`emblem classic: rembg=${source.includes('-rembg')}, fuzz ${EMBLEM_WHITE_FUZZ}, PIL trim`);
+        return { webPath, generated: true, notes };
+      }
+      if (magick && magickNormalizeSquare(magick, source, finalPath, 512, 'emblem')) {
+        notes.push('emblem classic PIL unavailable; full-frame magick normalize.');
+        return { webPath, generated: true, notes };
+      }
     }
-    if (magick) notes.push('ImageMagick emblem pipeline failed.');
     if (python && pilNormalizeSquare(python, rawPath, finalPath, 512, 'emblem')) {
-      notes.push('emblem PIL fallback.');
+      notes.push('emblem PIL fallback (raw).');
       return { webPath, generated: true, notes };
     }
     fs.copyFileSync(rawPath, finalPath);
@@ -530,6 +585,11 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
   }
 
   let source = rawPath;
+  if (rembgPy && input.kind === 'icon') {
+    const rembgPath = path.join(TMP, `${input.slug}-${input.kind}-rembg.png`);
+    if (rembgRemove(rembgPy, source, rembgPath)) source = rembgPath;
+    else notes.push('rembg pass failed; continuing.');
+  }
   if (magick) {
     const alphaPath = path.join(TMP, `${input.slug}-${input.kind}-alpha.png`);
     if (magickWhiteToAlpha(magick, source, alphaPath, WHITE_FUZZ)) {

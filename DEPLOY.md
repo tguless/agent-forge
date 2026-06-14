@@ -91,9 +91,11 @@ Commit `public/og-image.png` and redeploy for CloudFront to serve the new previe
 
 ## Image pipeline notes
 
-- **ImageMagick** white→alpha for icon/emblem transparency (pure `#FFFFFF` Gemini backgrounds). Emblems use 2% pre + 3% post-resize white key and 65% alpha threshold defringe; icons stay at `ICON_WHITE_FUZZ=14%`.
-- **Emblem normalize** scales the full 2K winged badge to 512×512 (no trim+extent crop — that was zooming into the center sculpture only).
-- **rembg** is installed in Docker (`/app/.venv-rembg`) but **not used** for icon/emblem — it crops winged plaques to the center sculpture and breaks multi-part HUD glyphs. ImageMagick fuzz handles both.
+- **ImageMagick** white→alpha for icon/emblem transparency (pure `#FFFFFF` Gemini backgrounds).
+- **Emblem classic (default):** rembg → `EMBLEM_WHITE_FUZZ=14%` → PIL trim/normalize — matches May 2026 Prior Auth look (soft glow preserved). rembg is auto-skipped when wing bbox shrinks below `EMBLEM_REMBG_MIN_RATIO` (default 72%) to avoid center-sculpture crop.
+- **Emblem sharp:** `EMBLEM_PIPELINE=sharp` — magick-only defringe (no rembg); use when classic leaves too much white fringe.
+- **Emblem normalize:** classic uses PIL alpha-bbox trim; magick fallback scales the **full frame** (no `-trim` crop — that was the Jun 8 wing crop bug).
+- **rembg** is installed in Docker (`/app/.venv-rembg`). Icons always use rembg when available; emblems use rembg in classic mode with wing-span guard.
 - Without `GEMINI_API_KEY`, agents still generate text/skills; images use placeholders.
 - **Gemini image timeout:** default **10 minutes** per asset (`GEMINI_IMAGE_TIMEOUT_MS=600000`). 2K winged emblems can be slow; raise in `.env.local` if needed.
 - **Stale forge detection:** default **45 minutes** without progress (`FORGE_STALE_GENERATING_MS`) — should exceed 3× image timeout plus skill-file writing.

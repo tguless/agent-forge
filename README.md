@@ -123,9 +123,13 @@ npm run dev                  # http://localhost:3030
 | `GEMINI_IMAGE_SIZE` | No | `2K` by default (Gemini 3 models). |
 | `REMBG_PYTHON` | No | Path to a Python venv with `rembg` + `Pillow`. Auto-detects the repo's shared rembg venv. |
 | `ICON_WHITE_FUZZ` | No | ImageMagick white→alpha fuzz for icons (default `14%`). |
-| `EMBLEM_WHITE_FUZZ` | No | Pre-resize white key (default `2%`). |
-| `EMBLEM_POST_WHITE_FUZZ` | No | Post-resize edge cleanup (default `3%`; set `0%` to disable). |
-| `EMBLEM_ALPHA_THRESHOLD` | No | Binarize alpha after resize to remove ghost fringe (default `65%`). |
+| `EMBLEM_PIPELINE` | No | `classic` (default): rembg + 14% fuzz + PIL trim. `sharp`: magick defringe only. |
+| `EMBLEM_WHITE_FUZZ` | No | White key fuzz for emblems (default `14%` in classic mode). |
+| `EMBLEM_USE_REMBG` | No | Run rembg on emblems in classic mode (default on; set `0` to disable). |
+| `EMBLEM_REMBG_MIN_RATIO` | No | Skip rembg when wing bbox shrinks below this fraction of raw (default `0.72`). |
+| `EMBLEM_MARGIN_PCT` | No | PIL trim margin for emblems (default `5`). |
+| `EMBLEM_POST_WHITE_FUZZ` | No | Sharp mode only: post-resize edge cleanup (default `3%`). |
+| `EMBLEM_ALPHA_THRESHOLD` | No | Sharp mode only: alpha binarize after resize (default `65%`). |
 
 > **Note:** Nano Banana runs on Gemini, so visual generation needs a `GEMINI_API_KEY` in addition to your Anthropic key. Background removal additionally needs a `rembg` venv and `ImageMagick` (`magick`); all three steps degrade gracefully if a tool is missing.
 
