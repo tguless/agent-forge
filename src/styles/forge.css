@@ -540,3 +540,244 @@
 .ops-hud-box-body {
   padding: 18px 22px;
 }
+
+.forge-elevator-pitch {
+  margin: 0;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: #eafff4;
+  font-style: italic;
+  max-width: 52rem;
+}
+
+/* Structured business plan: TOC + collapsible sections */
+.forge-plan {
+  display: grid;
+  gap: 18px;
+  margin-top: 8px;
+}
+
+@media (min-width: 760px) {
+  .forge-plan {
+    grid-template-columns: minmax(160px, 220px) 1fr;
+    align-items: start;
+    gap: 24px;
+  }
+}
+
+.forge-plan-toc-label {
+  margin: 0 0 8px;
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(159, 216, 196, 0.75);
+}
+
+.forge-plan-toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.forge-plan-toc-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #9fd8c4;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.forge-plan-toc-link:hover {
+  color: #eafff4;
+}
+
+.forge-plan-sections {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.forge-plan-section {
+  border: 1px solid rgba(120, 200, 170, 0.18);
+  border-radius: 4px;
+  background: rgba(5, 12, 18, 0.55);
+  scroll-margin-top: 80px;
+}
+
+.forge-plan-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: #dffaf0;
+}
+
+.forge-plan-section-toggle:hover {
+  background: rgba(120, 200, 170, 0.06);
+}
+
+.forge-plan-section-chevron {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.85rem;
+  color: #7fe7ff;
+  width: 1rem;
+  flex-shrink: 0;
+}
+
+.forge-plan-section-title {
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.forge-plan-section-body {
+  padding: 0 12px 12px 2rem;
+  border-top: 1px solid rgba(120, 200, 170, 0.1);
+}
+
+.forge-plan-pending {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* ── New-business sample loaders ─────────────────────────────────────────── */
+.forge-sample-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.forge-sample-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.66rem;
+}
+
+.forge-sample-btn {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.74rem;
+  padding: 5px 10px;
+  border: 1px solid rgba(127, 231, 255, 0.32);
+  border-radius: 4px;
+  background: rgba(8, 18, 26, 0.6);
+  color: #cdeefb;
+  cursor: pointer;
+}
+
+.forge-sample-btn:hover {
+  border-color: rgba(127, 231, 255, 0.7);
+  background: rgba(20, 40, 54, 0.7);
+}
+
+/* ── Competitor analysis ─────────────────────────────────────────────────── */
+.forge-competitors {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.forge-competitors-landscape {
+  border-left: 2px solid rgba(127, 231, 255, 0.4);
+  padding-left: 12px;
+}
+
+.forge-competitors-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.forge-competitor-card {
+  border: 1px solid rgba(120, 200, 170, 0.18);
+  border-radius: 4px;
+  background: rgba(5, 12, 18, 0.55);
+}
+
+.forge-competitor-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: #dffaf0;
+  flex-wrap: wrap;
+}
+
+.forge-competitor-toggle:hover {
+  background: rgba(120, 200, 170, 0.06);
+}
+
+.forge-competitor-chevron {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.85rem;
+  color: #7fe7ff;
+  width: 1rem;
+  flex-shrink: 0;
+}
+
+.forge-competitor-name {
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.forge-competitor-oneliner {
+  font-size: 0.74rem;
+  color: rgba(223, 250, 240, 0.6);
+}
+
+.forge-competitor-body {
+  padding: 0 12px 12px 2rem;
+  border-top: 1px solid rgba(120, 200, 170, 0.1);
+}
+
+.forge-competitor-website {
+  margin: 8px 0 0;
+}
+
+.forge-competitor-subsection {
+  margin-top: 10px;
+}
+
+.forge-competitor-subtitle {
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7fe7ff;
+  margin: 0 0 4px;
+}
+
+.forge-competitor-sources {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.72rem;
+  word-break: break-all;
+}

@@ -146,7 +146,7 @@ src/
     agent/[slug]/page.tsx     command card + SaaS access grid (live while forging)
     business/page.tsx         business roster
     business/new/page.tsx     describe a business + live consulting timeline (SSE)
-    business/[slug]/page.tsx  blueprint: profile, app-stack override, roles, access grids
+    business/[slug]/page.tsx  blueprint: pitch, plan, profile, app-stack override, roles, access grids
     api/agents/...            generate, list, detail, skill, events, access
     api/businesses/...        CRUD, SSE stream, turns, app override, forge
     api/catalog/...           apps + capacities (controlled vocabulary)
@@ -164,7 +164,7 @@ src/
       agentRunner.ts          forge loop (ToolLoopAgent) + app-stack injection
       forgeTools.ts           forge Zod tools incl. set_app_access (access grid)
       businessRunner.ts       consulting loop (ToolLoopAgent) + placeholder bootstrap
-      businessTools.ts        consulting Zod tools (profile, recommend_app, suggest_role)
+      businessTools.ts        consulting Zod tools (profile, pitch, plan sections, apps, roles)
       turnStream.ts           SSE helper (tails the turn timeline)
       imagePipeline.ts        Gemini + rembg + ImageMagick (graceful degrade)
   styles/                     operations-dashboard.css, operations-detail.css, forge.css
@@ -181,11 +181,13 @@ data/forge.db                 SQLite (gitignored)
 Beyond forging single agents, Agent Forge can design a whole **agent workforce** for a business:
 
 1. **Describe the business** at `/business/new`. A multi-turn **business-consulting agent** (Vercel AI SDK [`ToolLoopAgent`](https://ai-sdk.dev/docs/agents/overview) on Claude) profiles it, then via tools:
+   - writes an **elevator pitch** and eight **business-plan sections** (one tool each, rendered as a TOC with collapsible panels),
    - recommends a **software stack** — a paid **SaaS** default plus an **open-source (OSS)** alternative per category (you can override the default per type), and
    - proposes **agent roles** to run the business (each role is a ready-to-forge prompt).
    The run streams as a live turn timeline over SSE; turns are persisted (`agent_turns`) so a refresh replays them.
 2. **Forge roles.** Forging a role creates an agent linked to the business. The forge loop (also migrated to `ToolLoopAgent`) is given the business's **selected** app stack and populates a per-agent **SaaS access grid** (`set_app_access`) — which apps the agent touches and at what **capacity** (least privilege).
-3. **Capacities** are a controlled superset (`viewer → editor → … → admin → owner`); each app type exposes its own subset, and grants are validated against it. The consulting agent may extend the catalog (new apps) or the vocabulary (`define_capacity`) on the fly.
+3. **Generate plan on demand.** On `/business/[slug]`, if the plan is missing or incomplete, click **Generate business plan** to run a focused plan-only agent (eight section tools, live SSE timeline). Does not alter apps, roles, or business status.
+4. **Capacities** are a controlled superset (`viewer → editor → … → admin → owner`); each app type exposes its own subset, and grants are validated against it. The consulting agent may extend the catalog (new apps) or the vocabulary (`define_capacity`) on the fly.
 
 Every agent maps to a business: a **placeholder business** ("House Operations") is bootstrapped on first run and adopts any pre-existing/standalone agents. New prompts live under the **Business Consultant** category in `/config`.
 

@@ -3,17 +3,21 @@
  * the selected app stack, agent↔business linking, and placeholder bootstrap.
  */
 import { getDb } from './db';
-import { uniqueSlug } from './slug';
+import { uniqueSlug, slugify } from './slug';
 import { getApp } from './catalogStore';
 import type {
   Business,
   BusinessApp,
   BusinessProfile,
+  BusinessPlanSectionKey,
   BusinessRole,
   BusinessRoleStatus,
   BusinessStatus,
   BusinessSummary,
+  CompetitorAnalysis,
+  CompetitorSectionKey,
 } from './businessTypes';
+import { normalizeBusinessPlan } from './businessPlanSections';
 
 type BusinessRow = {
   slug: string;
@@ -30,7 +34,11 @@ type BusinessRow = {
 function rowToBusiness(row: BusinessRow): Business {
   let profile: BusinessProfile = {};
   try {
-    profile = JSON.parse(row.profile || '{}') as BusinessProfile;
+    const parsed = JSON.parse(row.profile || '{}') as BusinessProfile;
+    profile = {
+      ...parsed,
+      businessPlan: normalizeBusinessPlan(parsed.businessPlan),
+    };
   } catch {
     profile = {};
   }
@@ -111,6 +119,89 @@ export function patchBusinessProfile(slug: string, patch: Partial<BusinessProfil
   getDb()
     .prepare('UPDATE businesses SET profile = ?, updated_at = ? WHERE slug = ?')
     .run(JSON.stringify(next), Date.now(), slug);
+}
+
+export function patchBusinessPlanSection(
+  slug: string,
+  section: BusinessPlanSectionKey,
+  content: string,
+): void {
+  const current = getBusiness(slug);
+  if (!current) return;
+  const plan = { ...(current.profile.businessPlan ?? {}), [section]: content.trim() };
+  patchBusinessProfile(slug, { businessPlan: plan });
+}
+
+// ── Competitor analysis ─────────────────────────────────────────────────────
+
+function currentAnalysis(slug: string): CompetitorAnalysis {
+  const business = getBusiness(slug);
+  return business?.profile.competitorAnalysis ?? { competitors: [] };
+}
+
+export function setCompetitorLandscape(slug: string, landscape: string): void {
+  const analysis = currentAnalysis(slug);
+  patchBusinessProfile(slug, {
+    competitorAnalysis: { ...analysis, landscape: landscape.trim() },
+  });
+}
+
+/** Create or update a competitor by name; returns its stable id. */
+export function upsertCompetitor(
+  slug: string,
+  input: { name: string; website?: string; oneLiner?: string },
+): string {
+  const analysis = currentAnalysis(slug);
+  const id = slugify(input.name) || `competitor-${analysis.competitors.length + 1}`;
+  const competitors = [...analysis.competitors];
+  const existing = competitors.find((c) => c.id === id);
+  if (existing) {
+    existing.name = input.name;
+    if (input.website !== undefined) existing.website = input.website;
+    if (input.oneLiner !== undefined) existing.oneLiner = input.oneLiner;
+  } else {
+    competitors.push({
+      id,
+      name: input.name,
+      website: input.website,
+      oneLiner: input.oneLiner,
+      sections: {},
+      sources: [],
+    });
+  }
+  patchBusinessProfile(slug, { competitorAnalysis: { ...analysis, competitors } });
+  return id;
+}
+
+/** Resolve a competitor by id or (slugified) name. */
+function findCompetitorId(analysis: CompetitorAnalysis, idOrName: string): string | null {
+  const slug = slugify(idOrName);
+  return analysis.competitors.find((c) => c.id === idOrName || c.id === slug)?.id ?? null;
+}
+
+export function setCompetitorSection(
+  slug: string,
+  idOrName: string,
+  section: CompetitorSectionKey,
+  content: string,
+  sources?: string[],
+): boolean {
+  const analysis = currentAnalysis(slug);
+  const id = findCompetitorId(analysis, idOrName);
+  if (!id) return false;
+  const competitors = analysis.competitors.map((c) => {
+    if (c.id !== id) return c;
+    const mergedSources = sources?.length
+      ? Array.from(new Set([...c.sources, ...sources]))
+      : c.sources;
+    return {
+      ...c,
+      sections: { ...c.sections, [section]: content.trim() },
+      sources: mergedSources,
+    };
+  });
+  patchBusinessProfile(slug, { competitorAnalysis: { ...analysis, competitors } });
+  return true;
 }
 
 // ── Roles ─────────────────────────────────────────────────────────────────────

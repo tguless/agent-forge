@@ -6,7 +6,11 @@ import {
   listAgentsByBusiness,
 } from '@/lib/businessStore';
 import { listAppTypes, listCapacities } from '@/lib/catalogStore';
-import { isConsultInFlight } from '@/lib/server/businessRunner';
+import { isConsultInFlight, isPlanGenerationInFlight } from '@/lib/server/businessRunLock';
+import {
+  businessPlanHasContent,
+  businessPlanIsComplete,
+} from '@/lib/businessPlanSections';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,6 +39,9 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
   return NextResponse.json({
     business,
     consultInFlight: isConsultInFlight(params.slug),
+    planInFlight: isPlanGenerationInFlight(params.slug),
+    hasBusinessPlan: businessPlanHasContent(business.profile.businessPlan),
+    planComplete: businessPlanIsComplete(business.profile.businessPlan),
     roles: listRoles(params.slug),
     appStack,
     agents: listAgentsByBusiness(params.slug),

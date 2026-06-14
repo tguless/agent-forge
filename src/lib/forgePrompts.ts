@@ -6,6 +6,8 @@ export type ForgePromptKey =
   | 'forge.example.user_template'
   | 'business.system'
   | 'business.user_template'
+  | 'business.plan.system'
+  | 'business.plan.user_template'
   | 'skills.agent_architect'
   | 'skills.skill_file_author'
   | 'skills.visual_identity'
@@ -104,6 +106,31 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     format: 'markdown',
   },
   {
+    key: 'business.plan.system',
+    label: 'Business plan · system',
+    category: 'business',
+    categoryLabel: CATEGORY_LABELS.business,
+    description:
+      'System prompt for on-demand business-plan generation on an existing blueprint. Only the eight set_plan_* tools are available.',
+    placeholders: [],
+    format: 'markdown',
+  },
+  {
+    key: 'business.plan.user_template',
+    label: 'Business plan · user template',
+    category: 'business',
+    categoryLabel: CATEGORY_LABELS.business,
+    description:
+      'User turn for plan-only generation. Includes business description and any existing profile context.',
+    placeholders: [
+      '{{businessSlug}}',
+      '{{businessName}}',
+      '{{businessDescription}}',
+      '{{profileContext}}',
+    ],
+    format: 'markdown',
+  },
+  {
     key: 'skills.agent_architect',
     label: 'Agent architect skill',
     category: 'skills',
@@ -135,7 +162,7 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     label: 'Business consultant skill',
     category: 'skills',
     categoryLabel: CATEGORY_LABELS.skills,
-    description: 'How to profile a business, suggest agent roles, and recommend a SaaS/OSS app stack.',
+    description: 'How to profile a business, write pitch & plan, suggest agent roles, and recommend a SaaS/OSS app stack.',
     placeholders: [],
     format: 'markdown',
   },

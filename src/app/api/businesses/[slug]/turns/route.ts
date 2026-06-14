@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getBusiness } from '@/lib/businessStore';
-import { isConsultInFlight } from '@/lib/server/businessRunner';
+import { isConsultInFlight } from '@/lib/server/businessRunLock';
 import { listTurns } from '@/lib/agent/turns';
 
 export const runtime = 'nodejs';

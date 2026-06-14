@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getBusiness } from '@/lib/businessStore';
-import { isConsultInFlight } from '@/lib/server/businessRunLock';
+import { businessPlanIsComplete } from '@/lib/businessPlanSections';
+import { isPlanGenerationInFlight } from '@/lib/server/businessRunLock';
 import { turnStreamResponse } from '@/lib/server/turnStream';
 
 export const runtime = 'nodejs';
@@ -12,9 +13,14 @@ export async function GET(req: Request, { params }: { params: { slug: string } }
 
   const after = Number(new URL(req.url).searchParams.get('after') ?? 0);
   const isTerminal = () => {
-    if (isConsultInFlight(params.slug)) return false;
+    if (isPlanGenerationInFlight(params.slug)) return false;
     const b = getBusiness(params.slug);
-    return !b || b.status === 'ready' || b.status === 'error';
+    return !b || businessPlanIsComplete(b.profile.businessPlan);
   };
-  return turnStreamResponse('business', params.slug, isTerminal, Number.isFinite(after) ? after : 0);
+  return turnStreamResponse(
+    'business-plan',
+    params.slug,
+    isTerminal,
+    Number.isFinite(after) ? after : 0,
+  );
 }

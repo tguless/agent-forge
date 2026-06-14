@@ -3,6 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { HudBox } from '@/components/HudBox';
+import { BusinessPlanViewer } from '@/components/BusinessPlanViewer';
+import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
+import { competitorAnalysisHasContent } from '@/lib/competitorSections';
+import { TurnTimeline, useBusinessPlanStream } from '@/components/TurnTimeline';
 import { AgentAccessGrid } from '@/components/AgentAccessGrid';
 import type {
   Business,
@@ -28,6 +32,9 @@ type BusinessAgent = {
 type Detail = {
   business: Business;
   consultInFlight: boolean;
+  planInFlight: boolean;
+  hasBusinessPlan: boolean;
+  planComplete: boolean;
   roles: BusinessRole[];
   appStack: StackGroup[];
   agents: BusinessAgent[];
@@ -38,6 +45,11 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const { slug } = params;
   const [detail, setDetail] = React.useState<Detail | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [planBusy, setPlanBusy] = React.useState(false);
+  const [planError, setPlanError] = React.useState<string | null>(null);
+
+  const planStreamActive = detail?.planInFlight ?? false;
+  const { turns: planTurns, done: planDone } = useBusinessPlanStream(slug, planStreamActive);
 
   const load = React.useCallback(async () => {
     const res = await fetch(`/api/businesses/${slug}`, { cache: 'no-store' });
@@ -45,7 +57,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
     const json = (await res.json()) as Detail;
     setDetail(json);
     const agentsSettling = json.agents.some((a) => a.status === 'queued' || a.status === 'generating');
-    return !json.consultInFlight && !agentsSettling;
+    return !json.consultInFlight && !json.planInFlight && !agentsSettling;
   }, [slug]);
 
   React.useEffect(() => {
@@ -57,6 +69,10 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
     });
     return () => timer && clearInterval(timer);
   }, [load]);
+
+  React.useEffect(() => {
+    if (planDone) void load();
+  }, [planDone, load]);
 
   const selectApp = async (appId: number) => {
     await fetch(`/api/businesses/${slug}/apps`, {
@@ -81,9 +97,27 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
     }
   };
 
+  const requestPlan = async () => {
+    setPlanBusy(true);
+    setPlanError(null);
+    try {
+      const res = await fetch(`/api/businesses/${slug}/plan`, { method: 'POST' });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setPlanError(json.error ?? `Server error ${res.status}`);
+        return;
+      }
+      await load();
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : 'Failed to start plan generation');
+    } finally {
+      setPlanBusy(false);
+    }
+  };
+
   if (!detail) return <div className="ops-font-scope forge-empty">Loading blueprint…</div>;
 
-  const { business, roles, appStack, agents } = detail;
+  const { business, roles, appStack, agents, planInFlight, hasBusinessPlan, planComplete } = detail;
   const suggestedRoles = roles.filter((r) => r.status === 'suggested');
 
   return (
@@ -111,6 +145,13 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         <p className="forge-error" style={{ marginTop: 12 }}>Consulting failed: {business.error}</p>
       )}
 
+      {business.profile.elevatorPitch && (
+        <HudBox variant="rect" style={{ marginTop: 18 }}>
+          <h2 className="forge-label">Elevator pitch</h2>
+          <p className="forge-elevator-pitch">{business.profile.elevatorPitch}</p>
+        </HudBox>
+      )}
+
       {/* Profile */}
       {(business.profile.industry || business.profile.summary) && (
         <HudBox variant="rect" style={{ marginTop: 18 }}>
@@ -129,6 +170,75 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           )}
         </HudBox>
       )}
+
+      <HudBox variant="rect" style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <h2 className="forge-label" style={{ margin: 0 }}>Business plan</h2>
+          {!planComplete && !planInFlight && !detail.consultInFlight && (
+            <button
+              type="button"
+              className="forge-cta"
+              disabled={planBusy || detail.consultInFlight || planInFlight}
+              onClick={() => void requestPlan()}
+              style={{ fontSize: '0.72rem', padding: '6px 12px' }}
+            >
+              {planBusy ? 'Starting…' : hasBusinessPlan ? 'Complete business plan' : 'Generate business plan'}
+            </button>
+          )}
+        </div>
+
+        {planComplete && (
+          <p className="forge-hint" style={{ marginTop: 8 }}>
+            Eight-section operator plan — expand any section from the table of contents.
+          </p>
+        )}
+
+        {!planComplete && !hasBusinessPlan && !planInFlight && (
+          <p className="forge-hint" style={{ marginTop: 10 }}>
+            No business plan yet. Generate one from the business description and profile — eight collapsible sections with a table of contents.
+          </p>
+        )}
+
+        {!planComplete && hasBusinessPlan && !planInFlight && (
+          <p className="forge-hint" style={{ marginTop: 8 }}>
+            Plan is incomplete — generate the remaining sections.
+          </p>
+        )}
+
+        {detail.consultInFlight && !planInFlight && !planComplete && (
+          <p className="forge-hint" style={{ marginTop: 8 }}>
+            Blueprint consult is running; you can generate the plan once it finishes.
+          </p>
+        )}
+
+        {planInFlight && (
+          <>
+            <div className="forge-status-line" style={{ marginTop: 12 }}>
+              <span className="forge-spinner" aria-hidden /> Drafting business plan sections…
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <TurnTimeline turns={planTurns} />
+            </div>
+          </>
+        )}
+
+        {planError && <p className="forge-error" style={{ marginTop: 10 }}>{planError}</p>}
+
+        {hasBusinessPlan && (
+          <div style={{ marginTop: planInFlight ? 14 : 10 }}>
+            <BusinessPlanViewer plan={business.profile.businessPlan} />
+          </div>
+        )}
+
+        {competitorAnalysisHasContent(business.profile.competitorAnalysis) && (
+          <div style={{ marginTop: 18 }}>
+            <h3 className="forge-label" style={{ marginBottom: 6 }}>
+              Competitor analysis
+            </h3>
+            <CompetitorAnalysisViewer analysis={business.profile.competitorAnalysis} />
+          </div>
+        )}
+      </HudBox>
 
       {/* App stack override grid */}
       <HudBox variant="rect" style={{ marginTop: 16 }}>

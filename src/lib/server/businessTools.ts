@@ -4,12 +4,128 @@
  */
 import { tool, type ToolSet } from 'ai';
 import { z } from 'zod';
-import { patchBusinessProfile, addRole, addBusinessApp } from '@/lib/businessStore';
+import {
+  patchBusinessProfile,
+  patchBusinessPlanSection,
+  addRole,
+  addBusinessApp,
+  setCompetitorLandscape,
+  upsertCompetitor,
+  setCompetitorSection,
+} from '@/lib/businessStore';
+import { BUSINESS_PLAN_SECTIONS } from '@/lib/businessPlanSections';
+import { COMPETITOR_SECTION_KEYS } from '@/lib/competitorSections';
 import { upsertApp, ensureCapacity, appTypeExists } from '@/lib/catalogStore';
+import { searchWeb, webSearchProvider } from './webSearch';
 
 export type BusinessToolContext = {
   businessSlug: string;
 };
+
+/** Web search + per-competitor/subsection tools for competitor analysis. */
+function createCompetitorTools(ctx: BusinessToolContext): ToolSet {
+  return {
+    tavily_search: tool({
+      description:
+        'Search the web (Tavily) for competitor intelligence: rivals, pricing, positioning, reviews. Call several times with focused queries before writing the analysis. Returns titles, URLs, and snippets — cite the URLs as sources.',
+      inputSchema: z.object({
+        query: z.string().describe('Focused search query, e.g. "<competitor> pricing 2026"'),
+        maxResults: z.number().int().min(1).max(10).optional(),
+      }),
+      execute: async (input) => {
+        try {
+          const results = await searchWeb(input.query, input.maxResults ?? 5);
+          return {
+            provider: webSearchProvider(),
+            query: input.query,
+            results: results.map((r) => ({ title: r.title, url: r.url, snippet: r.snippet })),
+          };
+        } catch (err) {
+          return {
+            provider: webSearchProvider(),
+            query: input.query,
+            error: err instanceof Error ? err.message : String(err),
+            results: [],
+          };
+        }
+      },
+    }),
+
+    set_competitor_landscape: tool({
+      description:
+        'Write the competitive-landscape overview (Markdown): how many players, the main categories/segments, and where this business fits. Call once.',
+      inputSchema: z.object({
+        landscape: z.string().describe('Markdown overview of the competitive landscape'),
+      }),
+      execute: async (input) => {
+        setCompetitorLandscape(ctx.businessSlug, input.landscape);
+        return 'Competitive landscape overview saved.';
+      },
+    }),
+
+    upsert_competitor: tool({
+      description:
+        'Add or update one competitor. Call before set_competitor_section for that competitor. Returns the competitorId to use for subsections.',
+      inputSchema: z.object({
+        name: z.string().describe('Competitor / product name'),
+        website: z.string().optional(),
+        oneLiner: z.string().optional().describe('One-line summary of who they are'),
+      }),
+      execute: async (input) => {
+        const id = upsertCompetitor(ctx.businessSlug, {
+          name: input.name,
+          website: input.website,
+          oneLiner: input.oneLiner,
+        });
+        return { competitorId: id, name: input.name };
+      },
+    }),
+
+    set_competitor_section: tool({
+      description:
+        'Fill ONE subsection of ONE competitor (Markdown body, no heading). Provide source URLs from tavily_search where possible.',
+      inputSchema: z.object({
+        competitorId: z.string().describe('competitorId returned by upsert_competitor (or the name)'),
+        section: z
+          .enum(COMPETITOR_SECTION_KEYS as [string, ...string[]])
+          .describe('Which subsection to fill'),
+        content: z.string().describe('Markdown body for this subsection'),
+        sources: z.array(z.string()).optional().describe('Source URLs'),
+      }),
+      execute: async (input) => {
+        const ok = setCompetitorSection(
+          ctx.businessSlug,
+          input.competitorId,
+          input.section as (typeof COMPETITOR_SECTION_KEYS)[number],
+          input.content,
+          input.sources,
+        );
+        return ok
+          ? `${input.section} saved for ${input.competitorId}.`
+          : `No competitor matched "${input.competitorId}" — call upsert_competitor first.`;
+      },
+    }),
+  };
+}
+
+function createPlanSectionTools(ctx: BusinessToolContext): ToolSet {
+  const tools: ToolSet = {};
+  for (const section of BUSINESS_PLAN_SECTIONS) {
+    tools[section.toolName] = tool({
+      description: section.toolDescription,
+      inputSchema: z.object({
+        content: z
+          .string()
+          .describe('Markdown body for this section only — no ## heading (the UI adds the title)'),
+      }),
+      execute: async (input) => {
+        patchBusinessPlanSection(ctx.businessSlug, section.key, input.content);
+        return `${section.label} saved.`;
+      },
+    });
+  }
+  return tools;
+}
 
 export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
   return {
@@ -32,6 +148,21 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
         return `Profile saved: ${input.industry} · ${input.businessModel}.`;
       },
     }),
+
+    set_elevator_pitch: tool({
+      description:
+        'Write the elevator pitch. One paragraph, 30–45 seconds when spoken (~50–90 words): hook → problem → solution → differentiation → outcome or ask.',
+      inputSchema: z.object({
+        pitch: z.string().describe('Spoken elevator pitch, no bullet lists'),
+      }),
+      execute: async (input) => {
+        patchBusinessProfile(ctx.businessSlug, { elevatorPitch: input.pitch.trim() });
+        return 'Elevator pitch saved.';
+      },
+    }),
+
+    ...createPlanSectionTools(ctx),
+    ...createCompetitorTools(ctx),
 
     recommend_app: tool({
       description:
@@ -109,7 +240,22 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
     }),
 
     finalize_blueprint: tool({
-      description: 'Call once after the profile, app stack, and roles are recorded. Marks the blueprint complete.',
+      description:
+        'Call once after the profile, elevator pitch, all eight business-plan sections, app stack, and roles are recorded. Marks the blueprint complete.',
+      inputSchema: z.object({}),
+      execute: async () => ({ completed: true }),
+    }),
+  };
+}
+
+/** Plan-only tools for on-demand business plan generation on existing blueprints. */
+export function createBusinessPlanTools(ctx: BusinessToolContext): ToolSet {
+  return {
+    ...createPlanSectionTools(ctx),
+    ...createCompetitorTools(ctx),
+    finalize_plan: tool({
+      description:
+        'Call once all eight plan sections are saved and the competitor analysis (landscape + competitors) is recorded.',
       inputSchema: z.object({}),
       execute: async () => ({ completed: true }),
     }),

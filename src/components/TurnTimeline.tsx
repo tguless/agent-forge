@@ -77,3 +77,39 @@ export function useBusinessStream(slug: string | null) {
 
   return { turns, done };
 }
+
+/** Subscribe to on-demand business-plan generation SSE. Pass `active=false` to skip. */
+export function useBusinessPlanStream(slug: string | null, active = true) {
+  const [turns, setTurns] = React.useState<AgentTurnPayload[]>([]);
+  const [done, setDone] = React.useState(false);
+  const seen = React.useRef<Set<number>>(new Set());
+
+  React.useEffect(() => {
+    if (!slug || !active) return;
+    setTurns([]);
+    setDone(false);
+    seen.current = new Set();
+
+    const es = new EventSource(`/api/businesses/${slug}/plan/stream`);
+    es.addEventListener('turn', (ev) => {
+      try {
+        const turn = JSON.parse((ev as MessageEvent).data) as AgentTurnPayload;
+        if (seen.current.has(turn.id)) return;
+        seen.current.add(turn.id);
+        setTurns((prev) => [...prev, turn]);
+      } catch {
+        /* ignore */
+      }
+    });
+    es.addEventListener('done', () => {
+      setDone(true);
+      es.close();
+    });
+    es.onerror = () => {
+      /* browser auto-reconnects */
+    };
+    return () => es.close();
+  }, [slug, active]);
+
+  return { turns, done };
+}

@@ -4,7 +4,7 @@
  * multi-turn log for any agent run.
  */
 
-export type TurnScopeType = 'business' | 'agent';
+export type TurnScopeType = 'business' | 'business-plan' | 'agent';
 
 export type TurnRole = 'AGENT' | 'TOOL' | 'SYSTEM';
 

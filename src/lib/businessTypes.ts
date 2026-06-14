@@ -6,11 +6,59 @@
 
 export type BusinessStatus = 'queued' | 'consulting' | 'ready' | 'error';
 
+/** One section of the structured business plan (each filled by its own consulting tool). */
+export type BusinessPlanSectionKey =
+  | 'executiveSummary'
+  | 'problemAndSolution'
+  | 'targetMarket'
+  | 'revenueModel'
+  | 'goToMarket'
+  | 'operations'
+  | 'yearOneMilestones'
+  | 'risksAndMitigations';
+
+export type BusinessPlanSections = Partial<Record<BusinessPlanSectionKey, string>>;
+
+/** Per-competitor subsection (each filled by its own tool call). */
+export type CompetitorSectionKey =
+  | 'positioning'
+  | 'offerings'
+  | 'pricing'
+  | 'strengths'
+  | 'weaknesses'
+  | 'ourEdge';
+
+export type CompetitorSections = Partial<Record<CompetitorSectionKey, string>>;
+
+export type Competitor = {
+  /** Slug derived from name; stable id for subsection updates. */
+  id: string;
+  name: string;
+  website?: string;
+  /** One-line summary of who they are. */
+  oneLiner?: string;
+  sections: CompetitorSections;
+  /** Source URLs gathered via web search. */
+  sources: string[];
+};
+
+export type CompetitorAnalysis = {
+  /** Markdown landscape overview of the competitive set. */
+  landscape?: string;
+  competitors: Competitor[];
+};
+
 export type BusinessProfile = {
   industry?: string;
   businessModel?: string;
   summary?: string;
   valueChain?: string[];
+  /** 30–45 second spoken pitch (~50–90 words). */
+  elevatorPitch?: string;
+  /** Structured plan sections (Markdown bodies, no headings — UI adds labels). */
+  businessPlan?: BusinessPlanSections;
+  /** Tavily-researched competitor landscape. */
+  competitorAnalysis?: CompetitorAnalysis;
 };
 
 export type Business = {

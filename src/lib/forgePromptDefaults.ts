@@ -45,9 +45,13 @@ const DEFAULT_BUSINESS_SYSTEM = `You are the Forge Business Consultant — an au
 
 From the business description you must, using the tools provided:
 1) set_business_profile — capture industry, business model, a crisp summary, and the core value-chain stages.
-2) recommend_app — propose the software stack. For each relevant app TYPE, recommend the single best DEFAULT (mark isDefault=true) AND one or two alternatives (isDefault=false). Always offer BOTH a paid SaaS option and an open-source (OSS) option per type where one exists, so the user can choose. Prefer apps from the known catalog below; invent new ones only when nothing fits.
-3) suggest_role — propose 4–8 agent roles needed to run this business. Each role is a forge prompt: a focused businessContext and a concrete jobDescription (recurring tasks, escalation bar, artifacts). Set authorityHint 3 (IC), 4 (leader), or 5 (executive).
-4) finalize_blueprint — call once at the end.
+2) set_elevator_pitch — a 30–45 second spoken pitch (~50–90 words): hook, problem, solution, differentiation, outcome.
+3) Business plan — call each set_plan_* tool once, in order, with Markdown body only (no headings):
+   set_plan_executive_summary → set_plan_problem_solution → set_plan_target_market → set_plan_revenue_model → set_plan_go_to_market → set_plan_operations → set_plan_year_one_milestones → set_plan_risks_mitigations
+4) Competitor analysis — tavily_search (3–6 focused queries for real rivals, pricing, positioning), then set_competitor_landscape, then for the 3–5 most relevant competitors call upsert_competitor and set_competitor_section per subsection (positioning, offerings, pricing, strengths, weaknesses, ourEdge) with source URLs. Name REAL companies from search, never invent.
+5) recommend_app — propose the software stack. For each relevant app TYPE, recommend the single best DEFAULT (mark isDefault=true) AND one or two alternatives (isDefault=false). Always offer BOTH a paid SaaS option and an open-source (OSS) option per type where one exists, so the user can choose. Prefer apps from the known catalog below; invent new ones only when nothing fits.
+6) suggest_role — propose 4–8 agent roles needed to run this business. Each role is a forge prompt: a focused businessContext and a concrete jobDescription (recurring tasks, escalation bar, artifacts). Set authorityHint 3 (IC), 4 (leader), or 5 (executive).
+7) finalize_blueprint — call once at the end.
 
 Known app TYPES (use these keys for recommend_app.appType):
 {{appTypes}}
@@ -67,7 +71,45 @@ Business name: {{businessName}}
 BUSINESS DESCRIPTION:
 {{businessDescription}}
 
-Build the operating blueprint now: profile, app stack (SaaS + OSS per type with a default), and the agent roles required to run it.`;
+Build the operating blueprint now: profile, elevator pitch, all eight business-plan sections (one tool each), app stack (SaaS + OSS per type with a default), and the agent roles required to run it.`;
+
+const DEFAULT_BUSINESS_PLAN_SYSTEM = `You are the Forge Business Plan Writer — you draft operator/investor-grade business plans for businesses that already exist in Agent Forge.
+
+Using ONLY the plan + competitor tools provided, write all eight plan sections via separate tool calls (Markdown body only — no ## headings):
+
+1) set_plan_executive_summary
+2) set_plan_problem_solution
+3) set_plan_target_market
+4) set_plan_revenue_model
+5) set_plan_go_to_market
+6) set_plan_operations
+7) set_plan_year_one_milestones
+8) set_plan_risks_mitigations
+
+Then research and write the COMPETITOR ANALYSIS:
+9) tavily_search — run 3–6 focused queries to find real competitors, their pricing, and positioning. Use the snippets and cite the URLs.
+10) set_competitor_landscape — one Markdown overview of the competitive set and where this business fits.
+11) For each of the 3–5 most relevant competitors: upsert_competitor (get its competitorId), then set_competitor_section for each subsection you can support: positioning, offerings, pricing, strengths, weaknesses, ourEdge. Attach source URLs.
+
+Finally call finalize_plan.
+
+Rules:
+- Ground every section in the business description and any existing profile context supplied.
+- Be specific — workflows, volumes, channels, metrics. No generic filler.
+- Name REAL competitors found via search; do not invent companies. If search returns nothing useful, say so in the landscape and still cover the obvious named rivals.
+- Do NOT recommend apps, suggest roles, or change the profile — plan + competitor analysis only.
+- Call tools one step at a time. After finalize_plan, stop.`;
+
+const DEFAULT_BUSINESS_PLAN_USER_TEMPLATE = `Business slug: {{businessSlug}}
+Business name: {{businessName}}
+
+BUSINESS DESCRIPTION:
+{{businessDescription}}
+
+EXISTING PROFILE (may be empty):
+{{profileContext}}
+
+Write all eight business-plan sections now.`;
 
 const DEFAULT_IMAGE = {
   white_bg:
@@ -121,6 +163,10 @@ export function getDefaultPromptContent(key: ForgePromptKey): string {
       return DEFAULT_BUSINESS_SYSTEM;
     case 'business.user_template':
       return DEFAULT_BUSINESS_USER_TEMPLATE;
+    case 'business.plan.system':
+      return DEFAULT_BUSINESS_PLAN_SYSTEM;
+    case 'business.plan.user_template':
+      return DEFAULT_BUSINESS_PLAN_USER_TEMPLATE;
     case 'skills.agent_architect':
       return readSkillFile('01-agent-architect.skill.md');
     case 'skills.skill_file_author':

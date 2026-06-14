@@ -4,7 +4,7 @@
  * over SSE. Cancellation flows through the shared run registry.
  */
 import { runToolLoop } from '@/lib/agent/runtime';
-import { registerRun, isRunActive } from '@/lib/agent/runRegistry';
+import { registerRun } from '@/lib/agent/runRegistry';
 import { persistTurn, nextTurnIndex } from '@/lib/agent/turns';
 import {
   getBusiness,
@@ -15,9 +15,14 @@ import {
 import { listAppTypes, listCapacities } from '@/lib/catalogStore';
 import { getPromptContent } from '@/lib/forgeConfigStore';
 import { applyPromptTemplate } from '@/lib/forgePrompts';
+import {
+  isConsultInFlight,
+  releaseBusinessRun,
+  tryAcquireBusinessRun,
+} from './businessRunLock';
 import { createBusinessTools } from './businessTools';
 
-const inFlight = new Set<string>();
+export { isConsultInFlight } from './businessRunLock';
 
 function buildInstructions(): string {
   const appTypes = listAppTypes()
@@ -30,24 +35,23 @@ function buildInstructions(): string {
   return `${core}\n\n===== business-consultant skill =====\n${getPromptContent('skills.business_consultant')}`;
 }
 
-/** Fire-and-forget: start (or restart) the consulting run for a business. */
-export function startBusinessConsult(slug: string, opts?: { force?: boolean }): void {
-  if (inFlight.has(slug) && !opts?.force) return;
-  void runBusinessConsult(slug).catch((err) => {
-    console.error('runBusinessConsult crashed', err);
-  });
-}
-
-export function isConsultInFlight(slug: string): boolean {
-  return inFlight.has(slug) || isRunActive('business', slug);
+/** Fire-and-forget: start the consulting run. Returns false if blocked by the business run lock. */
+export function startBusinessConsult(slug: string, opts?: { force?: boolean }): boolean {
+  if (!tryAcquireBusinessRun(slug, 'consult', opts)) return false;
+  void runBusinessConsult(slug)
+    .catch((err) => {
+      console.error('runBusinessConsult crashed', err);
+    })
+    .finally(() => {
+      releaseBusinessRun(slug, 'consult');
+    });
+  return true;
 }
 
 async function runBusinessConsult(slug: string): Promise<void> {
-  if (inFlight.has(slug)) return;
   const business = getBusiness(slug);
   if (!business) return;
 
-  inFlight.add(slug);
   setBusinessStatus(slug, 'consulting');
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -57,7 +61,6 @@ async function runBusinessConsult(slug: string): Promise<void> {
       turnType: 'ERROR',
       content: 'ANTHROPIC_API_KEY missing — add it to .env.local and retry.',
     });
-    inFlight.delete(slug);
     return;
   }
 
@@ -77,10 +80,11 @@ async function runBusinessConsult(slug: string): Promise<void> {
       prompt,
       tools: createBusinessTools({ businessSlug: slug }),
       signal: controller.signal,
-      startNote: 'Business consultant online — profiling, recommending a stack, and designing roles…',
+      maxSteps: Number(process.env.FORGE_CONSULT_MAX_STEPS || 80),
+      startNote:
+        'Business consultant online — profiling, drafting pitch, plan & competitor analysis, recommending a stack, and designing roles…',
     });
 
-    // Drive the run; turns are persisted inside the runtime.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for await (const _event of generator) {
       /* persisted by runtime; SSE tails the table */
@@ -91,8 +95,6 @@ async function runBusinessConsult(slug: string): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     setBusinessStatus(slug, 'error', message);
-  } finally {
-    inFlight.delete(slug);
   }
 }
 

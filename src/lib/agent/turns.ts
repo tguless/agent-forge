@@ -108,6 +108,13 @@ export function listTurns(
   return rows.map(rowToPayload);
 }
 
+/** Delete persisted turns for a scope (before a fresh run). */
+export function clearTurns(scopeType: TurnScopeType, scopeSlug: string): void {
+  getDb()
+    .prepare('DELETE FROM agent_turns WHERE scope_type = ? AND scope_slug = ?')
+    .run(scopeType, scopeSlug);
+}
+
 /** Next turn index for a scope (so background + SSE share a monotonic counter). */
 export function nextTurnIndex(scopeType: TurnScopeType, scopeSlug: string): number {
   const row = getDb()
