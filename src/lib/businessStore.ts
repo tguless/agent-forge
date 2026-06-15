@@ -383,17 +383,41 @@ export type BusinessAgentSummary = {
   title: string;
   status: string;
   iconPath?: string;
+  portraitPath?: string;
+  emblemPath?: string;
+  callsign?: string;
+  accent?: string;
   authority: number;
+  skillsFile?: string;
+  department?: string;
   roleId?: number | null;
+  createdAt: number;
   updatedAt: number;
 };
 
 export function listAgentsByBusiness(businessSlug: string): BusinessAgentSummary[] {
   const rows = getDb()
-    .prepare('SELECT slug, title, status, data, updated_at FROM agents WHERE business_slug = ? ORDER BY created_at DESC')
-    .all(businessSlug) as { slug: string; title: string; status: string; data: string; updated_at: number }[];
+    .prepare('SELECT slug, title, status, data, created_at, updated_at FROM agents WHERE business_slug = ? ORDER BY created_at DESC')
+    .all(businessSlug) as {
+    slug: string;
+    title: string;
+    status: string;
+    data: string;
+    created_at: number;
+    updated_at: number;
+  }[];
   return rows.map((r) => {
-    let data: { title?: string; iconPath?: string; authority?: number } = {};
+    let data: {
+      title?: string;
+      iconPath?: string;
+      portraitPath?: string;
+      emblemPath?: string;
+      callsign?: string;
+      accent?: string;
+      authority?: number;
+      skillsFile?: string;
+      department?: string;
+    } = {};
     try {
       data = JSON.parse(r.data || '{}');
     } catch {
@@ -404,7 +428,14 @@ export function listAgentsByBusiness(businessSlug: string): BusinessAgentSummary
       title: data.title || r.title || r.slug,
       status: r.status,
       iconPath: data.iconPath,
+      portraitPath: data.portraitPath,
+      emblemPath: data.emblemPath,
+      callsign: data.callsign,
+      accent: data.accent,
       authority: data.authority ?? 3,
+      skillsFile: data.skillsFile,
+      department: data.department,
+      createdAt: r.created_at,
       updatedAt: r.updated_at,
     };
   });

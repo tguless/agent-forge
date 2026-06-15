@@ -4,7 +4,15 @@ import React from 'react';
 import type { AgentAppAccess } from '@/lib/businessTypes';
 
 /** Per-agent SaaS access grid: groups capacities by app. Self-fetching. */
-export function AgentAccessGrid({ slug, compact = false }: { slug: string; compact?: boolean }) {
+export function AgentAccessGrid({
+  slug,
+  compact = false,
+  variant = 'default',
+}: {
+  slug: string;
+  compact?: boolean;
+  variant?: 'default' | 'license';
+}) {
   const [access, setAccess] = React.useState<AgentAppAccess[] | null>(null);
 
   const load = React.useCallback(async () => {
@@ -22,18 +30,25 @@ export function AgentAccessGrid({ slug, compact = false }: { slug: string; compa
     void load();
   }, [load]);
 
-  const nestedStyle = compact ? { paddingLeft: 22, borderLeft: '2px solid rgba(120,200,170,0.18)' } : undefined;
+  const nestedStyle =
+    variant === 'license'
+      ? undefined
+      : compact
+        ? { paddingLeft: 22, borderLeft: '2px solid rgba(120,200,170,0.18)' }
+        : undefined;
+
+  const capClass = variant === 'license' ? 'forge-access-tag forge-access-tag--license' : undefined;
 
   if (!access) {
     return (
-      <p className="forge-hint" style={nestedStyle}>
+      <p className={`forge-hint${variant === 'license' ? ' forge-agent-license__loading' : ''}`} style={nestedStyle}>
         Loading access grid…
       </p>
     );
   }
   if (access.length === 0) {
     return (
-      <p className="forge-hint" style={nestedStyle}>
+      <p className={`forge-hint${variant === 'license' ? ' forge-agent-license__empty' : ''}`} style={nestedStyle}>
         No SaaS access granted yet (populated when the agent is forged under a business).
       </p>
     );
@@ -52,7 +67,20 @@ export function AgentAccessGrid({ slug, compact = false }: { slug: string; compa
   }
 
   return (
-    <div style={{ display: 'grid', gap: compact ? 6 : 10, ...nestedStyle }}>
+    variant === 'license' ? (
+      <div className="forge-access-tags forge-access-tags--license">
+        {Array.from(byApp.values()).flatMap((app) =>
+          app.caps.map((c) => (
+            <span key={c.id} className={capClass} title={`${app.name}: ${c.rationale ?? c.capacityLabel ?? c.capacityKey}`}>
+              {app.name}: {c.capacityLabel ?? c.capacityKey}
+            </span>
+          )),
+        )}
+      </div>
+    ) : (
+    <div
+      style={{ display: 'grid', gap: compact ? 6 : 10, ...nestedStyle }}
+    >
       {Array.from(byApp.values()).map((app) => (
         <div
           key={app.name}
@@ -85,5 +113,6 @@ export function AgentAccessGrid({ slug, compact = false }: { slug: string; compa
         </div>
       ))}
     </div>
+    )
   );
 }

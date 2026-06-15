@@ -12,6 +12,8 @@ type DetailResponse = {
   status: AgentStatus;
   data: AgentData;
   error: string | null;
+  businessSlug: string | null;
+  businessName: string | null;
 };
 
 export default function AgentDetailPage({ params }: { params: { slug: string } }) {
@@ -79,7 +81,12 @@ export default function AgentDetailPage({ params }: { params: { slug: string } }
           Generation failed: {detail.error}
         </p>
       )}
-      <AgentDetailCommandCard agent={detail.data} forging={forging} />
+      <AgentDetailCommandCard
+        agent={detail.data}
+        forging={forging}
+        businessSlug={detail.businessSlug}
+        businessName={detail.businessName}
+      />
       <div style={{ maxWidth: 1180, margin: '18px auto 40px', padding: '0 16px' }}>
         <HudBox variant="rect">
           <h2 className="forge-label">SaaS access grid</h2>

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { AgentData } from '@/lib/types';
 import { AgentSkillsPanel, AgentSkillsPortraitTrigger } from '@/components/AgentSkillsOverlay';
 import { SegmentedProgress } from '@/components/SegmentedProgress';
@@ -86,9 +87,13 @@ function AuthorityStars({ value = 0 }: { value?: number }) {
 export function AgentDetailCommandCard({
   agent,
   forging = false,
+  businessSlug,
+  businessName,
 }: {
   agent: AgentData;
   forging?: boolean;
+  businessSlug?: string | null;
+  businessName?: string | null;
 }) {
   const router = useRouter();
   const accent = agent.accent ?? '#8ee85a';
@@ -186,9 +191,16 @@ export function AgentDetailCommandCard({
   return (
     <div className="ops-detail-page" style={{ ['--card-accent' as string]: accent }}>
       <div className="ops-detail-toolbar">
-        <button type="button" className="ops-detail-back" onClick={() => router.push('/')} disabled={deleting}>
-          ← All agents
-        </button>
+        <div className="ops-detail-toolbar-nav">
+          {businessSlug ? (
+            <Link href={`/business/${businessSlug}`} className="ops-detail-back">
+              ← {businessName ?? 'Business blueprint'}
+            </Link>
+          ) : null}
+          <Link href="/" className="ops-detail-back">
+            ← All agents
+          </Link>
+        </div>
         <button
           type="button"
           className="ops-detail-delete"

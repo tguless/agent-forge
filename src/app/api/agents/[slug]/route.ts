@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAgentBusinessSlug, getBusiness } from '@/lib/businessStore';
 import { deleteAgent, getAgent } from '@/lib/agentStore';
 
 export const runtime = 'nodejs';
@@ -8,6 +9,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
   const { slug } = await ctx.params;
   const agent = getAgent(slug);
   if (!agent) return NextResponse.json({ error: 'not found' }, { status: 404 });
+  const businessSlug = getAgentBusinessSlug(slug);
+  const business = businessSlug ? getBusiness(businessSlug) : null;
   return NextResponse.json({
     slug: agent.slug,
     status: agent.status,
@@ -15,6 +18,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
     error: agent.error,
     hasSkill: agent.skillMarkdown.length > 0,
     updatedAt: agent.updatedAt,
+    businessSlug,
+    businessName: business?.name ?? null,
   });
 }
 

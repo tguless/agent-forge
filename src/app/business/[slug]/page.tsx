@@ -7,7 +7,8 @@ import { BusinessPlanViewer } from '@/components/BusinessPlanViewer';
 import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
 import { competitorAnalysisHasContent } from '@/lib/competitorSections';
 import { TurnTimeline, useBusinessPlanStream } from '@/components/TurnTimeline';
-import { AgentAccessGrid } from '@/components/AgentAccessGrid';
+import { ForgedAgentLicense } from '@/components/ForgedAgentLicense';
+import type { BusinessAgentSummary } from '@/lib/businessStore';
 import { BusinessPlaque } from '@/components/BusinessPlaque';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import type {
@@ -24,12 +25,7 @@ type StackGroup = {
   options: BusinessApp[];
 };
 
-type BusinessAgent = {
-  slug: string;
-  title: string;
-  status: string;
-  authority: number;
-};
+type BusinessAgent = BusinessAgentSummary;
 
 type Detail = {
   business: Business;
@@ -49,18 +45,16 @@ function CollapsibleSection({
   defaultOpen = false,
   actions,
   children,
-  marginTop = 16,
 }: {
   title: string;
   count?: number;
   defaultOpen?: boolean;
   actions?: React.ReactNode;
   children: React.ReactNode;
-  marginTop?: number;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
   return (
-    <HudBox variant="rect" style={{ marginTop }}>
+    <HudBox variant="rect" className="forge-blueprint-section">
       <div className="forge-collapse-head">
         <button
           type="button"
@@ -195,19 +189,20 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           </header>
 
           <div className="forge-blueprint-body">
-            <p className="forge-hint" style={{ maxWidth: 760, marginTop: 0 }}>{business.description}</p>
+            <p className="forge-hint forge-blueprint-lead">{business.description}</p>
 
       {detail.consultInFlight && (
-        <div className="forge-status-line" style={{ marginTop: 12 }}>
+        <div className="forge-status-line forge-blueprint-status">
           <span className="forge-spinner" aria-hidden /> Consultant is still building this blueprint…
         </div>
       )}
       {business.status === 'error' && (
-        <p className="forge-error" style={{ marginTop: 12 }}>Consulting failed: {business.error}</p>
+        <p className="forge-error forge-blueprint-status">Consulting failed: {business.error}</p>
       )}
 
+      <div className="forge-blueprint-sections">
       {business.profile.elevatorPitch && (
-        <CollapsibleSection title="Elevator pitch" defaultOpen marginTop={18}>
+        <CollapsibleSection title="Elevator pitch" defaultOpen>
           <p className="forge-elevator-pitch">{business.profile.elevatorPitch}</p>
         </CollapsibleSection>
       )}
@@ -362,27 +357,29 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           ) : null
         }
       >
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div className="forge-role-list">
           {roles.map((role) => (
-            <div key={role.id} style={{ borderBottom: '1px solid rgba(120,200,170,0.12)', paddingBottom: 10 }}>
+            <div key={role.id} className="forge-role-item">
               <div className="forge-role-row">
                 <div className="forge-role-title">
                   {role.title}
-                  <span className="forge-hint" style={{ marginLeft: 8, fontSize: '0.66rem' }}>
+                  <span className="forge-hint forge-role-meta">
                     authority {role.authorityHint}
                   </span>
                 </div>
+                <div className="forge-role-action">
                 {role.status === 'suggested' ? (
-                  <button type="button" className="forge-cta forge-cta--ghost" disabled={busy} onClick={() => void forge(role.id)} style={{ fontSize: '0.7rem', padding: '4px 12px' }}>
+                  <button type="button" className="forge-cta forge-cta--ghost forge-cta--sm" disabled={busy} onClick={() => void forge(role.id)}>
                     Forge
                   </button>
                 ) : role.agentSlug ? (
-                  <Link href={`/agent/${role.agentSlug}`} className="forge-hint" style={{ fontSize: '0.7rem' }}>
+                  <Link href={`/agent/${role.agentSlug}`} className="forge-hint forge-role-status">
                     {role.status} →
                   </Link>
                 ) : (
-                  <span className="forge-hint" style={{ fontSize: '0.7rem' }}>{role.status}</span>
+                  <span className="forge-hint forge-role-status">{role.status}</span>
                 )}
+                </div>
               </div>
               <ForgeMarkdown className="forge-markdown--role">{role.jobDescription}</ForgeMarkdown>
             </div>
@@ -393,24 +390,15 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
       {/* Forged agents + access grids */}
       {agents.length > 0 && (
-        <CollapsibleSection title="Forged agents & access grid" count={agents.length}>
-          <div style={{ display: 'grid', gap: 16 }}>
+        <CollapsibleSection title="Forged agents" count={agents.length}>
+          <div className="forge-agent-license-grid">
             {agents.map((a) => (
-              <div key={a.slug}>
-                <div className="forge-agent-row">
-                  <Link href={`/agent/${a.slug}`} style={{ fontWeight: 600, color: '#dffaf0', textDecoration: 'none' }}>
-                    {a.title}
-                  </Link>
-                  <span className="forge-hint" style={{ fontSize: '0.68rem' }}>{a.status}</span>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <AgentAccessGrid slug={a.slug} compact />
-                </div>
-              </div>
+              <ForgedAgentLicense key={a.slug} agent={a} businessName={business.name} />
             ))}
           </div>
         </CollapsibleSection>
       )}
+      </div>
           </div>
         </div>
       </div>
