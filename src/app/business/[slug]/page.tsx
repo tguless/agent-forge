@@ -7,6 +7,7 @@ import { BusinessPlanViewer } from '@/components/BusinessPlanViewer';
 import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
 import { competitorAnalysisHasContent } from '@/lib/competitorSections';
 import { TurnTimeline, useBusinessPlanStream } from '@/components/TurnTimeline';
+import { ForgeQueueProgress, type ForgeQueueSnapshot } from '@/components/ForgeQueueProgress';
 import { ForgedAgentLicense } from '@/components/ForgedAgentLicense';
 import type { BusinessAgentSummary } from '@/lib/businessStore';
 import { BusinessPlaque } from '@/components/BusinessPlaque';
@@ -31,6 +32,8 @@ type Detail = {
   business: Business;
   consultInFlight: boolean;
   planInFlight: boolean;
+  forgeQueueActive: boolean;
+  forgeQueue: ForgeQueueSnapshot | null;
   hasBusinessPlan: boolean;
   planComplete: boolean;
   roles: BusinessRole[];
@@ -79,6 +82,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const { slug } = params;
   const [detail, setDetail] = React.useState<Detail | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [forgeError, setForgeError] = React.useState<string | null>(null);
   const [planBusy, setPlanBusy] = React.useState(false);
   const [planError, setPlanError] = React.useState<string | null>(null);
 
@@ -90,8 +94,9 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
     if (!res.ok) return true;
     const json = (await res.json()) as Detail;
     setDetail(json);
+    const queueActive = json.forgeQueueActive || !!json.forgeQueue?.active;
     const agentsSettling = json.agents.some((a) => a.status === 'queued' || a.status === 'generating');
-    return !json.consultInFlight && !json.planInFlight && !agentsSettling;
+    return !json.consultInFlight && !json.planInFlight && !queueActive && !agentsSettling;
   }, [slug]);
 
   React.useEffect(() => {
@@ -118,13 +123,19 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   };
 
   const forge = async (roleId?: number) => {
+    setForgeError(null);
     setBusy(true);
     try {
-      await fetch(`/api/businesses/${slug}/forge`, {
+      const res = await fetch(`/api/businesses/${slug}/forge`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(roleId != null ? { roleId } : {}),
       });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setForgeError(json.error ?? `Server error ${res.status}`);
+        return;
+      }
       await load();
     } finally {
       setBusy(false);
@@ -151,8 +162,9 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
   if (!detail) return <div className="ops-font-scope forge-empty">Loading blueprint…</div>;
 
-  const { business, roles, appStack, agents, planInFlight, hasBusinessPlan, planComplete } = detail;
+  const { business, roles, appStack, agents, planInFlight, hasBusinessPlan, planComplete, forgeQueueActive, forgeQueue } = detail;
   const suggestedRoles = roles.filter((r) => r.status === 'suggested');
+  const forgeBusy = busy || forgeQueueActive;
 
   const industryTag = business.profile.industry ?? 'Business blueprint';
 
@@ -342,21 +354,23 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
       <CollapsibleSection
         title="Agent roles"
         count={roles.length}
-        defaultOpen={suggestedRoles.length > 0}
+        defaultOpen={suggestedRoles.length > 0 || !!forgeQueue?.active}
         actions={
           suggestedRoles.length > 0 ? (
             <button
               type="button"
               className="forge-cta"
-              disabled={busy}
+              disabled={forgeBusy}
               onClick={() => void forge()}
               style={{ fontSize: '0.72rem', padding: '6px 12px' }}
             >
-              {busy ? 'Forging…' : `⚡ Forge all (${suggestedRoles.length})`}
+              {forgeQueueActive ? 'Forging…' : busy ? 'Starting…' : `⚡ Forge all (${suggestedRoles.length})`}
             </button>
           ) : null
         }
       >
+        {forgeQueue?.active ? <ForgeQueueProgress queue={forgeQueue} /> : null}
+        {forgeError ? <p className="forge-error" style={{ marginTop: 10 }}>{forgeError}</p> : null}
         <div className="forge-role-list">
           {roles.map((role) => (
             <div key={role.id} className="forge-role-item">
@@ -369,7 +383,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
                 </div>
                 <div className="forge-role-action">
                 {role.status === 'suggested' ? (
-                  <button type="button" className="forge-cta forge-cta--ghost forge-cta--sm" disabled={busy} onClick={() => void forge(role.id)}>
+                  <button type="button" className="forge-cta forge-cta--ghost forge-cta--sm" disabled={forgeBusy} onClick={() => void forge(role.id)}>
                     Forge
                   </button>
                 ) : role.agentSlug ? (

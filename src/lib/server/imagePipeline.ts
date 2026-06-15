@@ -61,6 +61,10 @@ const EMBLEM_REMBG_MIN_RATIO = Number(process.env.EMBLEM_REMBG_MIN_RATIO || 0.72
 /** Extra inset around emblem alpha bbox before crop — preserves wing tips after white key. */
 const EMBLEM_BBOX_PAD_PCT = Number(process.env.EMBLEM_BBOX_PAD_PCT || 8);
 const EMBLEM_MARGIN_PCT = Number(process.env.EMBLEM_MARGIN_PCT || 8);
+/** Auto-regenerate when Gemini renders the winged emblem touching the frame edge (wings clipped at source). */
+const EMBLEM_MAX_GEN_ATTEMPTS = Math.max(1, Number(process.env.EMBLEM_MAX_GEN_ATTEMPTS || 3));
+/** Content within this % of any frame edge is treated as source-clipped and triggers a regen. */
+const EMBLEM_EDGE_MARGIN_PCT = Number(process.env.EMBLEM_EDGE_MARGIN_PCT || 1.5);
 /** Sharp pipeline only — see EMBLEM_PIPELINE=sharp */
 const EMBLEM_SHARP_WHITE_FUZZ = process.env.EMBLEM_SHARP_WHITE_FUZZ || '2%';
 const EMBLEM_POST_WHITE_FUZZ = process.env.EMBLEM_POST_WHITE_FUZZ || '3%';
@@ -283,6 +287,35 @@ function measureEmblemAlphaBox(
   const y = Number(m[4]);
   if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
   return { w, h, x, y };
+}
+
+/** Full pixel dimensions of an image (raw Gemini render is single-frame). */
+function magickImageSize(magick: string, src: string): { W: number; H: number } | null {
+  const result = spawnSync(magick, [`${src}[0]`, '-format', '%w %h', 'info:'], { encoding: 'utf8' });
+  if (result.status !== 0) return null;
+  const m = (result.stdout || '').trim().match(/^(\d+)\s+(\d+)/);
+  if (!m) return null;
+  const W = Number(m[1]);
+  const H = Number(m[2]);
+  if (!Number.isFinite(W) || !Number.isFinite(H) || W <= 0 || H <= 0) return null;
+  return { W, H };
+}
+
+/**
+ * True when the raw Gemini emblem touches a frame edge — i.e. the winged plaque was
+ * clipped at generation time (no post-process can recover it; only a regen fixes it).
+ */
+function emblemRawLooksEdgeClipped(magick: string, rawPath: string): boolean {
+  const box = measureEmblemAlphaBox(magick, rawPath);
+  const size = magickImageSize(magick, rawPath);
+  if (!box || !size) return false; // can't measure → don't block generation
+  const marginX = Math.max(2, Math.round((size.W * EMBLEM_EDGE_MARGIN_PCT) / 100));
+  const marginY = Math.max(2, Math.round((size.H * EMBLEM_EDGE_MARGIN_PCT) / 100));
+  const left = box.x;
+  const top = box.y;
+  const right = size.W - (box.x + box.w);
+  const bottom = size.H - (box.y + box.h);
+  return left < marginX || right < marginX || top < marginY || bottom < marginY;
 }
 
 /** True when rembg isolated the center sculpture and dropped wing span or clipped the top. */
@@ -627,15 +660,40 @@ export async function generateAgentImage(input: GenerateImageInput): Promise<Gen
   const magick = findMagick();
 
   const { prompt, aspect } = buildAgentImagePrompt(input);
-  const { buf, error: geminiError } = await geminiGenerate(prompt, aspect);
 
-  if (!buf) {
-    notes.push(geminiError ? `${geminiError}; used placeholder.` : 'Used placeholder.');
+  // Emblems can be clipped at the source (wings touching the frame). Detect that on the
+  // raw render and regenerate automatically instead of relying on manual "regenerate" clicks.
+  const maxAttempts = input.kind === 'emblem' && magick ? EMBLEM_MAX_GEN_ATTEMPTS : 1;
+  let produced = false;
+  let decodedOk = true;
+  let lastError: string | undefined;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { buf, error: geminiError } = await geminiGenerate(prompt, aspect);
+    if (!buf) {
+      lastError = geminiError;
+      break;
+    }
+    produced = true;
+    decodedOk = ensurePngRaw(magick, buf, rawPath);
+
+    if (input.kind !== 'emblem' || !magick || !decodedOk) break;
+    if (!emblemRawLooksEdgeClipped(magick, rawPath)) break;
+
+    if (attempt < maxAttempts) {
+      notes.push(`emblem wings touched frame edge; regenerating (attempt ${attempt + 1}/${maxAttempts}).`);
+    } else {
+      notes.push(`emblem wings still near frame edge after ${maxAttempts} attempts; kept best render.`);
+    }
+  }
+
+  if (!produced) {
+    notes.push(lastError ? `${lastError}; used placeholder.` : 'Used placeholder.');
     drawPlaceholder(magick, input.kind, input.accent, input.subject, finalPath);
     return { webPath, generated: false, notes };
   }
 
-  if (!ensurePngRaw(magick, buf, rawPath)) {
+  if (!decodedOk) {
     notes.push('Could not decode Gemini bytes to PNG; transparency pipeline may fail.');
   }
 

@@ -8,6 +8,10 @@ import {
 import { listAppTypes, listCapacities } from '@/lib/catalogStore';
 import { isConsultInFlight, isPlanGenerationInFlight } from '@/lib/server/businessRunLock';
 import {
+  getBusinessForgeQueueProgress,
+  isBusinessForgeQueueActive,
+} from '@/lib/server/businessForgeQueue';
+import {
   businessPlanHasContent,
   businessPlanIsComplete,
 } from '@/lib/businessPlanSections';
@@ -40,6 +44,8 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     business,
     consultInFlight: isConsultInFlight(params.slug),
     planInFlight: isPlanGenerationInFlight(params.slug),
+    forgeQueueActive: isBusinessForgeQueueActive(params.slug),
+    forgeQueue: getBusinessForgeQueueProgress(params.slug),
     hasBusinessPlan: businessPlanHasContent(business.profile.businessPlan),
     planComplete: businessPlanIsComplete(business.profile.businessPlan),
     roles: listRoles(params.slug),
