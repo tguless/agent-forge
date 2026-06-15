@@ -67,8 +67,8 @@ export default function BusinessRosterPage() {
         {businesses?.map((b) => (
           <Link key={b.slug} href={`/business/${b.slug}`} style={{ textDecoration: 'none' }}>
             <HudBox variant="rect">
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'baseline' }}>
-                <div>
+              <div className="forge-roster-card">
+                <div className="forge-roster-card-main">
                   <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#dffaf0' }}>
                     {b.name}
                     {b.isPlaceholder && (
@@ -82,9 +82,8 @@ export default function BusinessRosterPage() {
                   </p>
                 </div>
                 <span
-                  className="forge-log-row"
+                  className="forge-log-row forge-roster-status"
                   data-type={b.status === 'error' ? 'error' : b.status === 'ready' ? 'done' : undefined}
-                  style={{ whiteSpace: 'nowrap', fontSize: '0.72rem' }}
                 >
                   {STATUS_LABEL[b.status] ?? b.status}
                 </span>

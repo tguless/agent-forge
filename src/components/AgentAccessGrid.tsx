@@ -56,22 +56,15 @@ export function AgentAccessGrid({ slug, compact = false }: { slug: string; compa
       {Array.from(byApp.values()).map((app) => (
         <div
           key={app.name}
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8,
-            alignItems: 'center',
-            padding: compact ? '6px 0 6px 4px' : '8px 0',
-            borderBottom: '1px solid rgba(120,200,170,0.12)',
-          }}
+          className={`forge-access-app-row${compact ? ' forge-access-app-row--compact' : ''}`}
         >
-          <span style={{ minWidth: 160, fontWeight: 600, color: '#dffaf0' }}>
+          <span className="forge-access-app-name">
             {app.name}
             <span className="forge-hint" style={{ marginLeft: 6, fontSize: '0.66rem' }}>
               {app.type} · {app.kind}
             </span>
           </span>
-          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span className="forge-access-caps">
             {app.caps.map((c) => (
               <span
                 key={c.id}

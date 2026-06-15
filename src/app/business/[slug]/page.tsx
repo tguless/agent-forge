@@ -365,8 +365,8 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         <div style={{ display: 'grid', gap: 10 }}>
           {roles.map((role) => (
             <div key={role.id} style={{ borderBottom: '1px solid rgba(120,200,170,0.12)', paddingBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
-                <div style={{ fontWeight: 600, color: '#dffaf0' }}>
+              <div className="forge-role-row">
+                <div className="forge-role-title">
                   {role.title}
                   <span className="forge-hint" style={{ marginLeft: 8, fontSize: '0.66rem' }}>
                     authority {role.authorityHint}
@@ -397,7 +397,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           <div style={{ display: 'grid', gap: 16 }}>
             {agents.map((a) => (
               <div key={a.slug}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'baseline' }}>
+                <div className="forge-agent-row">
                   <Link href={`/agent/${a.slug}`} style={{ fontWeight: 600, color: '#dffaf0', textDecoration: 'none' }}>
                     {a.title}
                   </Link>

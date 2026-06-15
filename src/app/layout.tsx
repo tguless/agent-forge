@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Chakra_Petch, Oxanium } from 'next/font/google';
 import '@/styles/globals.css';
 import '@/styles/operations-dashboard.css';
@@ -19,6 +19,11 @@ const chakraPetch = Chakra_Petch({
 });
 
 export const metadata: Metadata = rootMetadata;
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
