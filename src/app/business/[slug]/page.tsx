@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { HudBox } from '@/components/HudBox';
 import { BusinessPlanViewer } from '@/components/BusinessPlanViewer';
 import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
@@ -83,9 +84,11 @@ function CollapsibleSection({
 }
 
 export default function BlueprintPage({ params }: { params: { slug: string } }) {
+  const router = useRouter();
   const { slug } = params;
   const [detail, setDetail] = React.useState<Detail | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   const [forgeError, setForgeError] = React.useState<string | null>(null);
   const [planBusy, setPlanBusy] = React.useState(false);
   const [planError, setPlanError] = React.useState<string | null>(null);
@@ -188,6 +191,48 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
     }
   };
 
+  const handleDelete = async () => {
+    if (!detail) return;
+    const label = detail.business.name || slug;
+    if (
+      !window.confirm(
+        `Delete "${label}"?\n\nThis removes the blueprint, business plan, market assessment, forged agents, and generated images. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    const password = window.prompt('Deletion password (default: password):')?.trim();
+    if (password == null) return;
+    if (!password) {
+      window.alert('Deletion password is required.');
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/businesses/${encodeURIComponent(slug)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const json = (await res.json()) as { error?: string };
+      if (res.status === 403) {
+        window.alert('Incorrect deletion password.');
+        setDeleting(false);
+        return;
+      }
+      if (!res.ok) {
+        window.alert(json.error ?? 'Could not delete this business.');
+        setDeleting(false);
+        return;
+      }
+      router.push('/business');
+      router.refresh();
+    } catch {
+      window.alert('Could not delete this business. Try again.');
+      setDeleting(false);
+    }
+  };
+
   if (!detail) return <div className="ops-font-scope forge-empty">Loading blueprint…</div>;
 
   const { business, roles, appStack, agents, planInFlight, hasBusinessPlan, planComplete, hasMarketAssessment, marketComplete, forgeQueueActive, forgeQueue } = detail;
@@ -203,12 +248,25 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   return (
     <div className="ops-detail-page forge-blueprint-page">
       <div className="ops-detail-toolbar">
-        <Link href="/business" className="ops-detail-back">
-          ← All businesses
-        </Link>
-        <Link href="/business/new" className="forge-cta forge-cta--ghost" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
-          + New business
-        </Link>
+        <div className="ops-detail-toolbar-nav">
+          <Link href="/business" className="ops-detail-back">
+            ← All businesses
+          </Link>
+          <Link href="/business/new" className="forge-cta forge-cta--ghost" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
+            + New business
+          </Link>
+        </div>
+        {!detail.business.isPlaceholder ? (
+          <button
+            type="button"
+            className="ops-detail-delete"
+            onClick={() => void handleDelete()}
+            disabled={deleting}
+            aria-busy={deleting}
+          >
+            {deleting ? 'Deleting…' : 'Delete business'}
+          </button>
+        ) : null}
       </div>
 
       <div className="ops-detail-shell">

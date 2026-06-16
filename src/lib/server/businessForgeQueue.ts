@@ -75,6 +75,11 @@ export function isBusinessForgeQueueActive(businessSlug: string): boolean {
   return !!snap?.active;
 }
 
+/** Drop an in-memory forge queue (e.g. before deleting the business). */
+export function clearBusinessForgeQueue(businessSlug: string): void {
+  queueStore().delete(businessSlug);
+}
+
 /** Append items and start the processor if idle. Returns false if the same role is already queued. */
 export function enqueueBusinessForge(
   businessSlug: string,

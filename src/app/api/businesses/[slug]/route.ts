@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import {
+  deleteBusiness,
   getBusiness,
   listRoles,
   listBusinessApps,
   listAgentsByBusiness,
 } from '@/lib/businessStore';
+import { cancelRun } from '@/lib/agent/runRegistry';
 import { listAppTypes, listCapacities } from '@/lib/catalogStore';
-import { isConsultInFlight, isPlanGenerationInFlight } from '@/lib/server/businessRunLock';
+import { isConsultInFlight, isPlanGenerationInFlight, releaseBusinessRun } from '@/lib/server/businessRunLock';
 import {
+  clearBusinessForgeQueue,
   getBusinessForgeQueueProgress,
   isBusinessForgeQueueActive,
 } from '@/lib/server/businessForgeQueue';
@@ -59,4 +62,37 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     agents: listAgentsByBusiness(params.slug),
     capacities: listCapacities(),
   });
+}
+
+export async function DELETE(req: Request, { params }: { params: { slug: string } }) {
+  const business = getBusiness(params.slug);
+  if (!business) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+  let password = '';
+  try {
+    const body = (await req.json()) as { password?: string };
+    password = String(body.password ?? '').trim();
+  } catch {
+    password = (req.headers.get('x-forge-delete-password') ?? '').trim();
+  }
+  const expected = (process.env.FORGE_DELETE_PASSWORD || 'password').trim();
+  if (password !== expected) {
+    return NextResponse.json({ error: 'invalid password' }, { status: 403 });
+  }
+
+  cancelRun('business', params.slug);
+  cancelRun('business-plan', params.slug);
+  releaseBusinessRun(params.slug, 'consult');
+  releaseBusinessRun(params.slug, 'plan');
+  clearBusinessForgeQueue(params.slug);
+
+  try {
+    const ok = deleteBusiness(params.slug);
+    if (!ok) return NextResponse.json({ error: 'not found' }, { status: 404 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  return NextResponse.json({ ok: true, slug: params.slug });
 }

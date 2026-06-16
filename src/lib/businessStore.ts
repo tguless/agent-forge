@@ -2,9 +2,12 @@
  * Persistence for the business blueprint layer: businesses, suggested roles,
  * the selected app stack, agent↔business linking, and placeholder bootstrap.
  */
+import path from 'node:path';
+import fs from 'node:fs';
 import { getDb } from './db';
 import { uniqueSlug, slugify } from './slug';
 import { getApp } from './catalogStore';
+import { deleteAgent } from './agentStore';
 import type {
   Business,
   BusinessApp,
@@ -507,6 +510,41 @@ export function backfillOrphanAgents(toSlug: string): number {
     .prepare("UPDATE agents SET business_slug = ? WHERE business_slug IS NULL OR business_slug = ''")
     .run(toSlug);
   return info.changes;
+}
+
+function removeBusinessAssetFiles(slug: string): void {
+  const businessDir = path.join(process.cwd(), 'public', 'businesses', slug);
+  if (fs.existsSync(businessDir)) fs.rmSync(businessDir, { recursive: true, force: true });
+}
+
+/**
+ * Delete a business blueprint, its forged agents, timeline turns, and generated
+ * plaque assets. Returns false if missing; throws if the placeholder home business.
+ */
+export function deleteBusiness(slug: string): boolean {
+  const business = getBusiness(slug);
+  if (!business) return false;
+  if (business.isPlaceholder) {
+    throw new Error('The default placeholder business cannot be deleted.');
+  }
+
+  const db = getDb();
+  const agentRows = db
+    .prepare('SELECT slug FROM agents WHERE business_slug = ?')
+    .all(slug) as { slug: string }[];
+  for (const { slug: agentSlug } of agentRows) {
+    deleteAgent(agentSlug);
+  }
+
+  db.prepare(
+    `DELETE FROM agent_turns WHERE scope_slug = ? AND scope_type IN ('business', 'business-plan')`,
+  ).run(slug);
+
+  const result = db.prepare('DELETE FROM businesses WHERE slug = ?').run(slug);
+  if (result.changes === 0) return false;
+
+  removeBusinessAssetFiles(slug);
+  return true;
 }
 
 export const PLACEHOLDER_DESCRIPTION =
