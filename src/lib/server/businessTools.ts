@@ -12,10 +12,18 @@ import {
   setCompetitorLandscape,
   upsertCompetitor,
   setCompetitorSection,
+  patchMarketAssessment,
+  addMarketRisk,
+  setViabilityVerdict,
   getBusiness,
 } from '@/lib/businessStore';
 import { BUSINESS_PLAN_SECTIONS } from '@/lib/businessPlanSections';
 import { COMPETITOR_SECTION_KEYS } from '@/lib/competitorSections';
+import {
+  VIABILITY_VERDICT_KEYS,
+  CONFIDENCE_LEVELS,
+  RISK_SEVERITIES,
+} from '@/lib/marketAssessment';
 import { upsertApp, ensureCapacity, appTypeExists } from '@/lib/catalogStore';
 import { searchWeb, webSearchProvider } from './webSearch';
 import { generateBusinessPlaque } from './imagePipeline';
@@ -114,6 +122,118 @@ function createCompetitorTools(ctx: BusinessToolContext): ToolSet {
   };
 }
 
+/**
+ * Advisory market-analysis + viability-verdict tools. Uses the shared
+ * tavily_search for evidence. The verdict is ALWAYS informational: it lays out
+ * pros, cons, and risks so the operator can decide — it never decides for them.
+ */
+function createMarketAssessmentTools(ctx: BusinessToolContext): ToolSet {
+  return {
+    set_market_size: tool({
+      description:
+        'Estimate the market size for THIS business (Markdown). Give TAM, SAM, and SOM with concrete figures and show the math/assumptions. Cite source URLs from tavily_search. If data is thin, say so and give a defensible range rather than inventing precision.',
+      inputSchema: z.object({
+        content: z.string().describe('Markdown: TAM / SAM / SOM with figures, assumptions, and citations'),
+        sources: z.array(z.string()).optional().describe('Source URLs'),
+      }),
+      execute: async (input) => {
+        patchMarketAssessment(ctx.businessSlug, {
+          marketSize: input.content.trim(),
+          sources: input.sources,
+        });
+        return 'Market size saved.';
+      },
+    }),
+
+    set_demand_signals: tool({
+      description:
+        'Summarize real-world DEMAND evidence (Markdown): search/interest trends, hiring, funding flowing to the space, customer willingness to pay, complaints about incumbents. Distinguish strong signals from weak ones. Cite sources.',
+      inputSchema: z.object({
+        content: z.string().describe('Markdown: demand signals, graded strong vs weak, with citations'),
+        sources: z.array(z.string()).optional().describe('Source URLs'),
+      }),
+      execute: async (input) => {
+        patchMarketAssessment(ctx.businessSlug, {
+          demandSignals: input.content.trim(),
+          sources: input.sources,
+        });
+        return 'Demand signals saved.';
+      },
+    }),
+
+    set_market_timing: tool({
+      description:
+        'Assess TIMING / "why now" (Markdown): tailwinds, headwinds, regulatory or technology shifts, and whether the window is opening or closing. Cite sources.',
+      inputSchema: z.object({
+        content: z.string().describe('Markdown: timing, trends, tailwinds and headwinds, with citations'),
+        sources: z.array(z.string()).optional().describe('Source URLs'),
+      }),
+      execute: async (input) => {
+        patchMarketAssessment(ctx.businessSlug, {
+          timing: input.content.trim(),
+          sources: input.sources,
+        });
+        return 'Market timing saved.';
+      },
+    }),
+
+    add_market_risk: tool({
+      description:
+        'Record ONE concrete risk of pursuing this business, with a severity, optional likelihood, and a concrete mitigation or what to validate first. Call multiple times (aim for 3–6 distinct risks).',
+      inputSchema: z.object({
+        risk: z.string().describe('The risk, stated plainly'),
+        severity: z.enum(RISK_SEVERITIES as [string, ...string[]]),
+        likelihood: z.enum(RISK_SEVERITIES as [string, ...string[]]).optional(),
+        mitigation: z.string().optional().describe('Concrete mitigation or cheap way to de-risk'),
+      }),
+      execute: async (input) => {
+        addMarketRisk(ctx.businessSlug, {
+          risk: input.risk.trim(),
+          severity: input.severity as (typeof RISK_SEVERITIES)[number],
+          likelihood: input.likelihood as (typeof RISK_SEVERITIES)[number] | undefined,
+          mitigation: input.mitigation?.trim(),
+        });
+        return `Risk recorded (${input.severity}).`;
+      },
+    }),
+
+    set_viability_verdict: tool({
+      description:
+        'Record the ADVISORY go/no-go verdict. This is informational only — it must lay out pros and cons honestly and frame the decision as the operator\'s, never as a directive. Call once, after market size, demand, timing, and the risks are recorded.',
+      inputSchema: z.object({
+        verdict: z
+          .enum(VIABILITY_VERDICT_KEYS as [string, ...string[]])
+          .describe(
+            'pursue | pursue-conditional | mixed | high-risk | reconsider (most → least favorable)',
+          ),
+        confidence: z
+          .enum(CONFIDENCE_LEVELS as [string, ...string[]])
+          .optional()
+          .describe('How confident the assessment is given evidence quality'),
+        headline: z.string().describe('One-line honest read of the opportunity'),
+        pros: z.array(z.string()).describe('Reasons it could work (3+)'),
+        cons: z.array(z.string()).describe('Reasons it might not (3+)'),
+        recommendation: z
+          .string()
+          .describe(
+            'Markdown closing read. Be direct about whether the evidence leans for or against, but explicitly state the final call is the operator\'s — do not decide for them.',
+          ),
+      }),
+      execute: async (input) => {
+        setViabilityVerdict(ctx.businessSlug, {
+          verdict: input.verdict as (typeof VIABILITY_VERDICT_KEYS)[number],
+          confidence: input.confidence as (typeof CONFIDENCE_LEVELS)[number] | undefined,
+          headline: input.headline,
+          pros: input.pros,
+          cons: input.cons,
+          recommendation: input.recommendation,
+        });
+        return `Viability verdict saved: ${input.verdict}.`;
+      },
+    }),
+  };
+}
+
 function createPlanSectionTools(ctx: BusinessToolContext): ToolSet {
   const tools: ToolSet = {};
   for (const section of BUSINESS_PLAN_SECTIONS) {
@@ -169,6 +289,7 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
 
     ...createPlanSectionTools(ctx),
     ...createCompetitorTools(ctx),
+    ...createMarketAssessmentTools(ctx),
 
     recommend_app: tool({
       description:
@@ -297,6 +418,47 @@ export function createBusinessPlanTools(ctx: BusinessToolContext): ToolSet {
     finalize_plan: tool({
       description:
         'Call once all eight plan sections are saved and the competitor analysis (landscape + competitors) is recorded.',
+      inputSchema: z.object({}),
+      execute: async () => ({ completed: true }),
+    }),
+  };
+}
+
+/**
+ * Market-assessment-only tools for the on-demand viability run on an existing
+ * blueprint. Shares tavily_search for evidence-gathering.
+ */
+export function createMarketAssessmentRunTools(ctx: BusinessToolContext): ToolSet {
+  return {
+    tavily_search: tool({
+      description:
+        'Search the web (Tavily) for market evidence: market-size reports, demand/interest trends, funding, hiring, customer complaints. Call several times with focused queries before writing the assessment. Returns titles, URLs, and snippets — cite the URLs.',
+      inputSchema: z.object({
+        query: z.string().describe('Focused search query, e.g. "<market> market size 2026"'),
+        maxResults: z.number().int().min(1).max(10).optional(),
+      }),
+      execute: async (input) => {
+        try {
+          const results = await searchWeb(input.query, input.maxResults ?? 5);
+          return {
+            provider: webSearchProvider(),
+            query: input.query,
+            results: results.map((r) => ({ title: r.title, url: r.url, snippet: r.snippet })),
+          };
+        } catch (err) {
+          return {
+            provider: webSearchProvider(),
+            query: input.query,
+            error: err instanceof Error ? err.message : String(err),
+            results: [],
+          };
+        }
+      },
+    }),
+    ...createMarketAssessmentTools(ctx),
+    finalize_market_assessment: tool({
+      description:
+        'Call once the market size, demand signals, timing, risks, and the advisory viability verdict are all recorded.',
       inputSchema: z.object({}),
       execute: async () => ({ completed: true }),
     }),

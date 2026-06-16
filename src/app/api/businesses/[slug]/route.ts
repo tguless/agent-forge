@@ -15,6 +15,10 @@ import {
   businessPlanHasContent,
   businessPlanIsComplete,
 } from '@/lib/businessPlanSections';
+import {
+  marketAssessmentHasContent,
+  marketAssessmentIsComplete,
+} from '@/lib/marketAssessment';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,6 +52,8 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     forgeQueue: getBusinessForgeQueueProgress(params.slug),
     hasBusinessPlan: businessPlanHasContent(business.profile.businessPlan),
     planComplete: businessPlanIsComplete(business.profile.businessPlan),
+    hasMarketAssessment: marketAssessmentHasContent(business.profile.marketAssessment),
+    marketComplete: marketAssessmentIsComplete(business.profile.marketAssessment),
     roles: listRoles(params.slug),
     appStack,
     agents: listAgentsByBusiness(params.slug),

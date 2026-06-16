@@ -16,6 +16,10 @@ import type {
   BusinessSummary,
   CompetitorAnalysis,
   CompetitorSectionKey,
+  MarketAssessment,
+  MarketRisk,
+  ViabilityVerdict,
+  ConfidenceLevel,
 } from './businessTypes';
 import { normalizeBusinessPlan } from './businessPlanSections';
 
@@ -202,6 +206,56 @@ export function setCompetitorSection(
   });
   patchBusinessProfile(slug, { competitorAnalysis: { ...analysis, competitors } });
   return true;
+}
+
+// ── Market assessment (advisory viability verdict) ──────────────────────────
+
+function currentMarketAssessment(slug: string): MarketAssessment {
+  const business = getBusiness(slug);
+  return business?.profile.marketAssessment ?? {};
+}
+
+/** Merge a partial market assessment, de-duping any merged source URLs. */
+export function patchMarketAssessment(slug: string, patch: Partial<MarketAssessment>): void {
+  const current = currentMarketAssessment(slug);
+  const next: MarketAssessment = { ...current, ...patch };
+  if (patch.sources?.length) {
+    next.sources = Array.from(new Set([...(current.sources ?? []), ...patch.sources]));
+  }
+  patchBusinessProfile(slug, { marketAssessment: next });
+}
+
+/** Append one enumerated risk to the assessment. */
+export function addMarketRisk(slug: string, risk: MarketRisk): void {
+  const current = currentMarketAssessment(slug);
+  const risks = [...(current.risks ?? []), risk];
+  patchBusinessProfile(slug, { marketAssessment: { ...current, risks } });
+}
+
+/** Record the advisory verdict + pros/cons/recommendation in one call. */
+export function setViabilityVerdict(
+  slug: string,
+  input: {
+    verdict: ViabilityVerdict;
+    confidence?: ConfidenceLevel;
+    headline?: string;
+    pros?: string[];
+    cons?: string[];
+    recommendation?: string;
+  },
+): void {
+  const current = currentMarketAssessment(slug);
+  patchBusinessProfile(slug, {
+    marketAssessment: {
+      ...current,
+      verdict: input.verdict,
+      confidence: input.confidence ?? current.confidence,
+      headline: input.headline?.trim() || current.headline,
+      pros: input.pros?.length ? input.pros : current.pros,
+      cons: input.cons?.length ? input.cons : current.cons,
+      recommendation: input.recommendation?.trim() || current.recommendation,
+    },
+  });
 }
 
 // ── Roles ─────────────────────────────────────────────────────────────────────

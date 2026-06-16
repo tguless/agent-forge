@@ -48,6 +48,61 @@ export type CompetitorAnalysis = {
   competitors: Competitor[];
 };
 
+/**
+ * Advisory go/no-go verdict for the business idea. Ordered most → least
+ * favorable. This is ALWAYS informational — it surfaces pros, cons, and risks
+ * so the operator can decide; it never decides for them.
+ */
+export type ViabilityVerdict =
+  | 'pursue'
+  | 'pursue-conditional'
+  | 'mixed'
+  | 'high-risk'
+  | 'reconsider';
+
+export type ConfidenceLevel = 'low' | 'medium' | 'high';
+
+export type RiskSeverity = 'low' | 'medium' | 'high';
+
+export type MarketRisk = {
+  /** The risk, stated plainly. */
+  risk: string;
+  severity: RiskSeverity;
+  /** Likelihood it materializes, if known. */
+  likelihood?: RiskSeverity;
+  /** Concrete mitigation or what to validate first. */
+  mitigation?: string;
+};
+
+/**
+ * Qualitative "is this worth pursuing?" assessment: sized market, demand
+ * signals, timing, an explicit pros/cons/risks ledger, and an advisory verdict.
+ */
+export type MarketAssessment = {
+  /** Sized market (TAM / SAM / SOM) with sourced figures — Markdown. */
+  marketSize?: string;
+  /** Evidence of real demand: search trends, hiring, funding, willingness to pay — Markdown. */
+  demandSignals?: string;
+  /** Why now: tailwinds, headwinds, regulatory or technology shifts — Markdown. */
+  timing?: string;
+  /** Reasons it could work. */
+  pros?: string[];
+  /** Reasons it might not. */
+  cons?: string[];
+  /** Enumerated risks with severity + mitigation. */
+  risks?: MarketRisk[];
+  /** Advisory verdict (never binding). */
+  verdict?: ViabilityVerdict;
+  /** How confident the assessment is, given evidence quality. */
+  confidence?: ConfidenceLevel;
+  /** One-line headline read, e.g. "Real, growing market — but crowded and capital-intensive." */
+  headline?: string;
+  /** Honest closing read; explicitly frames the decision as the operator's. Markdown. */
+  recommendation?: string;
+  /** Source URLs gathered via web search. */
+  sources?: string[];
+};
+
 export type BusinessProfile = {
   industry?: string;
   businessModel?: string;
@@ -59,6 +114,8 @@ export type BusinessProfile = {
   businessPlan?: BusinessPlanSections;
   /** Tavily-researched competitor landscape. */
   competitorAnalysis?: CompetitorAnalysis;
+  /** Advisory market analysis + go/no-go viability verdict (Tavily-researched). */
+  marketAssessment?: MarketAssessment;
   /** Gemini business identity plaque (riveted mount) — `/businesses/<slug>/plaque.png`. */
   plaquePath?: string;
   /** LLM-authored center-icon subject for regenerate-plaque. */

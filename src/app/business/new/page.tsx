@@ -36,6 +36,12 @@ const SAMPLES: Sample[] = [
     description:
       "We run a YouTube video fact-checking service (debate.paperiq.ai). A user pastes a video link; we pull the transcript and an agentic, multi-turn AI — a ToolLoopAgent built on the Vercel AI SDK running OpenAI's gpt-5-mini — drives the whole verification rather than a hardcoded pipeline. The agent detects distinct factual claims and rhetorical techniques, and for each claim runs live web search (Tavily first, with Serper and DuckDuckGo fallbacks) to gather and read credible sources, with every reasoning step, tool call, and tool result streamed to the UI as a live turn timeline over SSE. The output is a structured report that rates each claim supported / disputed / unverifiable with citations, alongside a rhetoric analysis of the speaker's persuasion techniques. Audiences include journalists, educators, debate coaches, and curious viewers who want sourced fact-checks of long-form video. It is a Next.js app with a Postgres-backed turn/history store, deployed on our home server behind CloudFront.",
   },
+  {
+    label: 'Crank Automotive',
+    name: 'Crank Automotive Co.',
+    description:
+      'We are launching Crank Automotive Co. to reintroduce a new passenger vehicle that starts with a hand crank — no push-button ignition, no key fob, no always-on electronics. The flagship model, the Model C-1, targets nostalgia enthusiasts, mechanical purists, off-grid homesteaders, and collectors who want a modern chassis (disc brakes, seat belts, fuel injection for emissions compliance) paired with a deliberate, pre-digital starting ritual. Buyers configure trim and paint online; we assemble in small batches at a regional micro-factory and sell direct-to-consumer with a limited warranty. Revenue comes from vehicle sales ($42K–$58K ASP), optional hand-crank upgrade kits for classic restorations, and annual maintenance plans. We market through car shows, YouTube restoration channels, and enthusiast forums. Stack: Shopify Plus for configurators and deposits, a lightweight Next.js marketing site, NetSuite for order-to-build, and a React factory tablet app for work orders. We believe crank-start cars are an underserved counter-trend to EV ubiquity and “software-defined vehicle” complexity — a physical, tactile alternative for people who want to own a machine, not a computer on wheels.',
+  },
 ];
 
 export default function NewBusinessPage() {
@@ -90,8 +96,9 @@ export default function NewBusinessPage() {
       </div>
       <p className="forge-hint">
         Describe what the business does. The consultant profiles it, writes an elevator pitch and business plan,
-        researches the competitive landscape with live web search, recommends a SaaS + open-source stack
-        (you can override later), and proposes the agent roles to forge.
+        researches the competitive landscape with live web search, drafts an advisory market assessment (sized market,
+        demand, pros/cons, risks, and a go/no-go read — it informs you; it does not decide for you), recommends a
+        SaaS + open-source stack (you can override later), and proposes the agent roles to forge.
       </p>
 
       {!slug ? (

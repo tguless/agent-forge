@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { HudBox } from '@/components/HudBox';
 import { BusinessPlanViewer } from '@/components/BusinessPlanViewer';
 import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
+import { MarketAssessmentViewer } from '@/components/MarketAssessmentViewer';
 import { competitorAnalysisHasContent } from '@/lib/competitorSections';
+import { marketAssessmentHasContent } from '@/lib/marketAssessment';
 import { TurnTimeline, useBusinessPlanStream } from '@/components/TurnTimeline';
 import { ForgeQueueProgress, type ForgeQueueSnapshot } from '@/components/ForgeQueueProgress';
 import { ForgedAgentLicense } from '@/components/ForgedAgentLicense';
@@ -36,6 +38,8 @@ type Detail = {
   forgeQueue: ForgeQueueSnapshot | null;
   hasBusinessPlan: boolean;
   planComplete: boolean;
+  hasMarketAssessment: boolean;
+  marketComplete: boolean;
   roles: BusinessRole[];
   appStack: StackGroup[];
   agents: BusinessAgent[];
@@ -85,6 +89,10 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const [forgeError, setForgeError] = React.useState<string | null>(null);
   const [planBusy, setPlanBusy] = React.useState(false);
   const [planError, setPlanError] = React.useState<string | null>(null);
+  const [marketBusy, setMarketBusy] = React.useState(false);
+  const [marketError, setMarketError] = React.useState<string | null>(null);
+  // Which research run owns the shared (business-plan scope) live stream.
+  const [activeStream, setActiveStream] = React.useState<'plan' | 'market' | null>(null);
 
   const planStreamActive = detail?.planInFlight ?? false;
   const { turns: planTurns, done: planDone } = useBusinessPlanStream(slug, planStreamActive);
@@ -152,6 +160,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         setPlanError(json.error ?? `Server error ${res.status}`);
         return;
       }
+      setActiveStream('plan');
       await load();
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : 'Failed to start plan generation');
@@ -160,9 +169,32 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
     }
   };
 
+  const requestMarket = async () => {
+    setMarketBusy(true);
+    setMarketError(null);
+    try {
+      const res = await fetch(`/api/businesses/${slug}/market`, { method: 'POST' });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setMarketError(json.error ?? `Server error ${res.status}`);
+        return;
+      }
+      setActiveStream('market');
+      await load();
+    } catch (err) {
+      setMarketError(err instanceof Error ? err.message : 'Failed to start market assessment');
+    } finally {
+      setMarketBusy(false);
+    }
+  };
+
   if (!detail) return <div className="ops-font-scope forge-empty">Loading blueprint…</div>;
 
-  const { business, roles, appStack, agents, planInFlight, hasBusinessPlan, planComplete, forgeQueueActive, forgeQueue } = detail;
+  const { business, roles, appStack, agents, planInFlight, hasBusinessPlan, planComplete, hasMarketAssessment, marketComplete, forgeQueueActive, forgeQueue } = detail;
+  // The plan + market runs share the business-plan SSE scope; route the live
+  // timeline to whichever section started it.
+  const planStreamHere = planInFlight && activeStream !== 'market';
+  const marketStreamHere = planInFlight && activeStream === 'market';
   const suggestedRoles = roles.filter((r) => r.status === 'suggested');
   const forgeBusy = busy || forgeQueueActive;
 
@@ -278,7 +310,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           </p>
         )}
 
-        {planInFlight && (
+        {planStreamHere && (
           <>
             <div className="forge-status-line">
               <span className="forge-spinner" aria-hidden /> Drafting business plan sections…
@@ -303,6 +335,62 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
               Competitor analysis
             </h3>
             <CompetitorAnalysisViewer analysis={business.profile.competitorAnalysis} />
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Market assessment — advisory viability verdict */}
+      <CollapsibleSection
+        title="Market assessment"
+        defaultOpen={hasMarketAssessment || marketStreamHere}
+        actions={
+          !marketComplete && !marketStreamHere && !detail.consultInFlight && !planStreamHere ? (
+            <button
+              type="button"
+              className="forge-cta"
+              disabled={marketBusy || detail.consultInFlight || planInFlight}
+              onClick={() => void requestMarket()}
+              style={{ fontSize: '0.72rem', padding: '6px 12px' }}
+            >
+              {marketBusy
+                ? 'Starting…'
+                : hasMarketAssessment
+                  ? 'Complete market assessment'
+                  : 'Assess market & viability'}
+            </button>
+          ) : null
+        }
+      >
+        {!hasMarketAssessment && !marketStreamHere && (
+          <p className="forge-hint">
+            No market assessment yet. Run a candid viability read — sized market (TAM/SAM/SOM),
+            demand signals, timing, risks, and an advisory go/no-go verdict. It lays out the pros,
+            cons, and risks; the decision stays yours.
+          </p>
+        )}
+
+        {detail.consultInFlight && !marketStreamHere && !hasMarketAssessment && (
+          <p className="forge-hint">
+            Blueprint consult is running; the market assessment is part of it.
+          </p>
+        )}
+
+        {marketStreamHere && (
+          <>
+            <div className="forge-status-line">
+              <span className="forge-spinner" aria-hidden /> Researching the market & drafting the verdict…
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <TurnTimeline turns={planTurns} />
+            </div>
+          </>
+        )}
+
+        {marketError && <p className="forge-error" style={{ marginTop: 10 }}>{marketError}</p>}
+
+        {hasMarketAssessment && (
+          <div style={{ marginTop: marketStreamHere ? 14 : 0 }}>
+            <MarketAssessmentViewer assessment={business.profile.marketAssessment} />
           </div>
         )}
       </CollapsibleSection>

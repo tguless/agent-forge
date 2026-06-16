@@ -8,6 +8,8 @@ export type ForgePromptKey =
   | 'business.user_template'
   | 'business.plan.system'
   | 'business.plan.user_template'
+  | 'business.market.system'
+  | 'business.market.user_template'
   | 'skills.agent_architect'
   | 'skills.skill_file_author'
   | 'skills.visual_identity'
@@ -126,6 +128,31 @@ export const FORGE_PROMPT_DEFS: ForgePromptDef[] = [
     categoryLabel: CATEGORY_LABELS.business,
     description:
       'User turn for plan-only generation. Includes business description and any existing profile context.',
+    placeholders: [
+      '{{businessSlug}}',
+      '{{businessName}}',
+      '{{businessDescription}}',
+      '{{profileContext}}',
+    ],
+    format: 'markdown',
+  },
+  {
+    key: 'business.market.system',
+    label: 'Market assessment · system',
+    category: 'business',
+    categoryLabel: CATEGORY_LABELS.business,
+    description:
+      'System prompt for the on-demand market analysis + advisory viability verdict. Tavily research + market/demand/timing/risk/verdict tools.',
+    placeholders: [],
+    format: 'markdown',
+  },
+  {
+    key: 'business.market.user_template',
+    label: 'Market assessment · user template',
+    category: 'business',
+    categoryLabel: CATEGORY_LABELS.business,
+    description:
+      'User turn for the market assessment run. Includes business description and any existing profile/plan context.',
     placeholders: [
       '{{businessSlug}}',
       '{{businessName}}',

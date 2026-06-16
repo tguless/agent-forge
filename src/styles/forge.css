@@ -935,6 +935,205 @@
   word-break: break-all;
 }
 
+/* ── Market assessment — advisory viability verdict ─────────────────────── */
+.forge-market {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.forge-verdict {
+  border: 1px solid rgba(120, 200, 170, 0.28);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: rgba(20, 32, 28, 0.55);
+}
+
+.forge-verdict--green {
+  border-left-color: #34d399;
+  background: rgba(16, 48, 36, 0.4);
+}
+.forge-verdict--lime {
+  border-left-color: #a3e635;
+  background: rgba(28, 44, 18, 0.4);
+}
+.forge-verdict--amber {
+  border-left-color: #fbbf24;
+  background: rgba(46, 38, 12, 0.4);
+}
+.forge-verdict--orange {
+  border-left-color: #fb923c;
+  background: rgba(48, 30, 12, 0.4);
+}
+.forge-verdict--red {
+  border-left-color: #f87171;
+  background: rgba(48, 18, 18, 0.4);
+}
+
+.forge-verdict-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.forge-verdict-badge {
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #eafff4;
+}
+
+.forge-verdict--amber .forge-verdict-badge,
+.forge-verdict--orange .forge-verdict-badge,
+.forge-verdict--red .forge-verdict-badge {
+  color: #fff7ed;
+}
+
+.forge-verdict-confidence {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fd8c4;
+  border: 1px solid rgba(159, 216, 196, 0.4);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.forge-verdict-headline {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: #e7fff5;
+}
+
+.forge-verdict-disclaimer {
+  margin: 8px 0 0;
+  font-size: 0.68rem;
+  font-style: italic;
+  color: #8fb8aa;
+}
+
+.forge-market-section {
+  border-top: 1px solid rgba(120, 200, 170, 0.14);
+  padding-top: 12px;
+}
+
+.forge-market-subtitle {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7fe7ff;
+  margin: 0 0 6px;
+}
+
+.forge-market-recommendation {
+  background: rgba(18, 28, 26, 0.5);
+  border: 1px solid rgba(120, 200, 170, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.forge-proscons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  border-top: 1px solid rgba(120, 200, 170, 0.14);
+  padding-top: 12px;
+}
+
+.forge-proscons-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.forge-proscons-list li {
+  margin-bottom: 5px;
+}
+
+.forge-proscons-col--pro .forge-market-subtitle {
+  color: #6ee7a8;
+}
+.forge-proscons-col--con .forge-market-subtitle {
+  color: #fca5a5;
+}
+
+.forge-risk-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.forge-risk-item {
+  border: 1px solid rgba(120, 200, 170, 0.16);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(16, 24, 22, 0.4);
+}
+
+.forge-risk-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.forge-risk-text {
+  font-size: 0.84rem;
+  color: #e7fff5;
+}
+
+.forge-risk-sev {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 4px;
+  padding: 1px 7px;
+}
+
+.forge-risk-sev--high {
+  color: #fee2e2;
+  background: rgba(220, 38, 38, 0.4);
+  border: 1px solid rgba(248, 113, 113, 0.6);
+}
+.forge-risk-sev--medium {
+  color: #fef3c7;
+  background: rgba(180, 120, 20, 0.35);
+  border: 1px solid rgba(251, 191, 36, 0.55);
+}
+.forge-risk-sev--low {
+  color: #d1fae5;
+  background: rgba(16, 120, 80, 0.32);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+}
+
+.forge-risk-likelihood {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9fd8c4;
+}
+
+.forge-risk-mitigation {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: #b9d8cc;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .forge-proscons {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Business blueprint detail — sector plaque (top-right mount) ─────────── */
 .forge-blueprint-page .ops-detail-shell {
   max-width: 980px;
