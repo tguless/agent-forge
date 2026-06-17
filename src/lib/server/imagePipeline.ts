@@ -15,6 +15,7 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { geminiMaxRetries, isRetryableHttpError, retryWithFullJitter } from '@/lib/agent/retryPolicy';
 import { getPromptContent } from '@/lib/forgeConfigStore';
 import { applyPromptTemplate } from '@/lib/forgePrompts';
 
@@ -540,33 +541,52 @@ async function geminiGenerate(
     const imageConfig: Record<string, unknown> = { aspectRatio: aspect };
     if (MODEL.includes('gemini-3')) imageConfig.imageSize = IMAGE_SIZE;
 
-    const run = async (): Promise<{ buf: Buffer | null; error?: string }> => {
-      const response = await client.models.generateContent({
-        model: MODEL,
-        contents: prompt,
-        config: { imageConfig },
+    const attemptOnce = async (): Promise<{ buf: Buffer | null; error?: string }> => {
+      const run = async (): Promise<{ buf: Buffer | null; error?: string }> => {
+        const response = await client.models.generateContent({
+          model: MODEL,
+          contents: prompt,
+          config: { imageConfig },
+        });
+        const parts = response.candidates?.[0]?.content?.parts ?? [];
+        for (const part of parts) {
+          const data = (part as { inlineData?: { data?: string } }).inlineData?.data;
+          if (data) return { buf: Buffer.from(data, 'base64') };
+        }
+        return { buf: null, error: 'Gemini returned no image bytes' };
+      };
+
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<{ buf: null; error: string }>((resolve) => {
+        timer = setTimeout(
+          () =>
+            resolve({
+              buf: null,
+              error: `Gemini timed out after ${Math.round(GEMINI_TIMEOUT_MS / 1000)}s`,
+            }),
+          GEMINI_TIMEOUT_MS,
+        );
       });
-      const parts = response.candidates?.[0]?.content?.parts ?? [];
-      for (const part of parts) {
-        const data = (part as { inlineData?: { data?: string } }).inlineData?.data;
-        if (data) return { buf: Buffer.from(data, 'base64') };
+
+      try {
+        return await Promise.race([run(), timeout]);
+      } finally {
+        if (timer) clearTimeout(timer);
       }
-      return { buf: null, error: 'Gemini returned no image bytes' };
     };
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<{ buf: null; error: string }>((resolve) => {
-      timer = setTimeout(
-        () => resolve({ buf: null, error: `Gemini timed out after ${Math.round(GEMINI_TIMEOUT_MS / 1000)}s` }),
-        GEMINI_TIMEOUT_MS,
-      );
-    });
-
-    try {
-      return await Promise.race([run(), timeout]);
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
+    return await retryWithFullJitter(
+      async () => {
+        const result = await attemptOnce();
+        if (result.buf) return result;
+        const errMsg = result.error ?? 'Gemini returned no image bytes';
+        if (isRetryableHttpError(new Error(errMsg))) {
+          throw new Error(errMsg);
+        }
+        return result;
+      },
+      { maxRetries: geminiMaxRetries(), label: 'geminiGenerate' },
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[imagePipeline] Gemini error:', msg);

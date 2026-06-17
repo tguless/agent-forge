@@ -99,13 +99,15 @@ async function runBusinessConsult(slug: string): Promise<void> {
         'Business consultant online — profiling, drafting pitch, plan & competitor analysis, recommending a stack, and designing roles…',
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    for await (const _event of generator) {
-      /* persisted by runtime; SSE tails the table */
+    let runError: string | undefined;
+    for await (const event of generator) {
+      if (event.type === 'error') runError = event.message;
     }
 
     const ok = listRoles(slug).length > 0;
-    setBusinessStatus(slug, ok ? 'ready' : 'error', ok ? null : 'Consulting ended without any roles.');
+    const statusMessage =
+      runError && !ok ? runError : ok ? null : 'Consulting ended without any roles.';
+    setBusinessStatus(slug, ok ? 'ready' : 'error', statusMessage);
 
     const refreshed = getBusiness(slug);
     if (ok && refreshed && !refreshed.profile.plaquePath) {

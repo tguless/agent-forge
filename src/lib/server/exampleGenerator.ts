@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicClientMaxRetries } from '@/lib/agent/retryPolicy';
 import { getPromptContent } from '@/lib/forgeConfigStore';
 import { applyPromptTemplate } from '@/lib/forgePrompts';
 
@@ -60,7 +61,11 @@ export async function generateForgeExample(theme?: string): Promise<GeneratedFor
     throw new Error('ANTHROPIC_API_KEY is not set — add it to .env.local.');
   }
 
-  const client = new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
+  const client = new Anthropic({
+    apiKey,
+    timeout: 60_000,
+    maxRetries: anthropicClientMaxRetries(),
+  });
   const system = getPromptContent('forge.example.system');
   const user = applyPromptTemplate(getPromptContent('forge.example.user_template'), {
     themeInstruction: buildThemeInstruction(theme),

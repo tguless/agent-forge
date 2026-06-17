@@ -9,6 +9,7 @@
  */
 import { stepCountIs, ToolLoopAgent, type ToolSet } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
+import { anthropicSdkMaxRetries } from './retryPolicy';
 import { persistTurn } from './turns';
 import { unregisterRun } from './runRegistry';
 import type { TurnEvent, TurnScopeType } from './types';
@@ -53,6 +54,7 @@ function assertNotCancelled(signal?: AbortSignal): void {
 export async function* runToolLoop(opts: RunToolLoopOptions): AsyncGenerator<TurnEvent> {
   const { scopeType, scopeSlug, signal } = opts;
   const maxSteps = opts.maxSteps ?? DEFAULT_MAX_STEPS;
+  const maxRetries = anthropicSdkMaxRetries();
   let turnIndex = 0;
 
   const emit = (data: Parameters<typeof persistTurn>[3]) => {
@@ -63,7 +65,9 @@ export async function* runToolLoop(opts: RunToolLoopOptions): AsyncGenerator<Tur
   yield emit({
     role: 'SYSTEM',
     turnType: 'MESSAGE',
-    content: opts.startNote ?? `Agent run started (ToolLoopAgent · ${maxSteps} step budget).`,
+    content:
+      opts.startNote ??
+      `Agent run started (ToolLoopAgent · ${maxSteps} steps · ${maxRetries + 1} attempts per API call).`,
   });
 
   const model = anthropic(opts.model ?? process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-5');
@@ -74,6 +78,7 @@ export async function* runToolLoop(opts: RunToolLoopOptions): AsyncGenerator<Tur
     tools: opts.tools,
     stopWhen: stepCountIs(maxSteps),
     maxOutputTokens: opts.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+    maxRetries,
   });
 
   try {
