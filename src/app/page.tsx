@@ -63,30 +63,33 @@ export default function IndexPage() {
             </div>
           ) : (
             <div className="forge-roster-groups">
-              {groups.map((group) => (
-                <section key={group.businessSlug ?? '__unassigned__'} className="forge-roster-group">
-                  <header className="forge-roster-group-head">
-                    {group.businessSlug ? (
-                      <Link href={`/business/${group.businessSlug}`} className="forge-roster-group-title">
-                        {group.businessName}
-                      </Link>
-                    ) : (
-                      <span className="forge-roster-group-title">{group.businessName}</span>
-                    )}
-                    {group.isPlaceholder && (
-                      <span className="forge-roster-group-tag">default home</span>
-                    )}
-                    <span className="forge-roster-group-count">
-                      {group.agents.length} agent{group.agents.length === 1 ? '' : 's'}
-                    </span>
-                  </header>
-                  <div className="ops-agent-grid">
-                    {group.agents.map((agent) => (
-                      <AgentCommandCard key={agent.slug} agent={agent} />
-                    ))}
-                  </div>
-                </section>
-              ))}
+              {(() => {
+                let cardIdx = 0;
+                return groups.map((group) => (
+                  <section key={group.businessSlug ?? '__unassigned__'} className="forge-roster-group">
+                    <header className="forge-roster-group-head">
+                      {group.businessSlug ? (
+                        <Link href={`/business/${group.businessSlug}`} className="forge-roster-group-title">
+                          {group.businessName}
+                        </Link>
+                      ) : (
+                        <span className="forge-roster-group-title">{group.businessName}</span>
+                      )}
+                      {group.isPlaceholder && (
+                        <span className="forge-roster-group-tag">default home</span>
+                      )}
+                      <span className="forge-roster-group-count">
+                        {group.agents.length} agent{group.agents.length === 1 ? '' : 's'}
+                      </span>
+                    </header>
+                    <div className="ops-agent-grid">
+                      {group.agents.map((agent) => (
+                        <AgentCommandCard key={agent.slug} agent={agent} staggerIndex={cardIdx++} />
+                      ))}
+                    </div>
+                  </section>
+                ));
+              })()}
               <section className="forge-roster-group forge-roster-group--new">
                 <div className="ops-agent-grid">
                   <ForgeNewAgentCard />

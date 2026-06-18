@@ -10,8 +10,12 @@ const CLICK_SOUND_SELECTOR =
  * Global ARWES click bleep for buttons, CTAs, and interactive surfaces.
  */
 export function ForgeSoundProvider({ children }: { children: React.ReactNode }) {
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const onPointerDown = () => {
+      unlockForgeAudio();
+    };
+
+    const onTouchStart = () => {
       unlockForgeAudio();
     };
 
@@ -25,10 +29,12 @@ export function ForgeSoundProvider({ children }: { children: React.ReactNode }) 
     };
 
     document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('touchstart', onTouchStart, { capture: true, passive: true });
     document.addEventListener('keydown', onPointerDown, true);
     document.addEventListener('click', onClick, true);
     return () => {
       document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('touchstart', onTouchStart, true);
       document.removeEventListener('keydown', onPointerDown, true);
       document.removeEventListener('click', onClick, true);
     };

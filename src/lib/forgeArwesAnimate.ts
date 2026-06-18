@@ -103,7 +103,7 @@ type InPlaceSequence = InPlaceBase & {
 /** Release type readout before the outExpo easing tail — sound stops while glyphs still finish silently. */
 function readoutDoneLength(length: number): number {
   if (length <= 4) return length;
-  return Math.max(1, Math.ceil(length * 0.9));
+  return Math.max(1, Math.ceil(length * 0.98));
 }
 
 function wrapReadoutLifecycle(

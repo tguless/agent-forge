@@ -41,6 +41,8 @@ type ForgeArwesTextProps = {
   reserveLayout?: boolean;
   /** ARWES type readout while text fills in. */
   readoutSound?: boolean;
+  /** Delay before animation starts (seconds). Use for staggering card reveals. */
+  delay?: number;
 };
 
 const PHRASING_ONLY_HOSTS = new Set([
@@ -154,9 +156,11 @@ export function ForgeArwesText({
   playOnce = false,
   reserveLayout = true,
   readoutSound = true,
+  delay,
 }: ForgeArwesTextProps) {
   const contentRef = React.useRef<HTMLElement>(null);
   const animRef = React.useRef<Animation | null>(null);
+  const delayRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Per-instance play-once — resets when the component unmounts (e.g. leave and return to a page). */
   const playedIdRef = React.useRef<string | null>(null);
   const ContentTag = resolveContentTag(Tag, layout);
@@ -179,35 +183,52 @@ export function ForgeArwesText({
 
     animRef.current?.cancel();
 
-    const anim =
-      resolved.manager === 'decipher'
-        ? animateTextDecipherInPlace({
-            contentElement: content,
-            duration: resolved.duration,
-            easing: resolvedEasing,
-            readoutSound,
-          })
-        : animateTextSequenceInPlace({
-            contentElement: content,
-            duration: resolved.duration,
-            easing: resolvedEasing,
-            blink: resolved.blink,
-            readoutSound,
-          });
+    const run = () => {
+      const anim =
+        resolved.manager === 'decipher'
+          ? animateTextDecipherInPlace({
+              contentElement: content,
+              duration: resolved.duration,
+              easing: resolvedEasing,
+              readoutSound,
+            })
+          : animateTextSequenceInPlace({
+              contentElement: content,
+              duration: resolved.duration,
+              easing: resolvedEasing,
+              blink: resolved.blink,
+              readoutSound,
+            });
 
-    animRef.current = anim;
+      animRef.current = anim;
 
-    void anim.then(() => {
-      if (playOnce) {
-        playedIdRef.current = id;
-      }
-    });
+      void anim.then(() => {
+        if (playOnce) {
+          playedIdRef.current = id;
+        }
+      });
+    };
+
+    if (delay && delay > 0) {
+      content.style.visibility = 'hidden';
+      delayRef.current = setTimeout(() => {
+        content.style.visibility = '';
+        run();
+      }, delay * 1000);
+    } else {
+      run();
+    }
 
     return () => {
+      if (delayRef.current) {
+        clearTimeout(delayRef.current);
+        delayRef.current = null;
+        if (contentRef.current) contentRef.current.style.visibility = '';
+      }
       animRef.current?.cancel();
       animRef.current = null;
     };
-  }, [variant, manager, duration, blink, easing, layout, animateId, playOnce, reserveLayout, readoutSound]);
+  }, [variant, manager, duration, blink, easing, layout, animateId, playOnce, reserveLayout, readoutSound, delay]);
 
   const layoutClass = layout === 'block' ? 'forge-arwes-text--block' : 'forge-arwes-text--inline';
   const hostClassName = ['forge-arwes-text', layoutClass, className].filter(Boolean).join(' ');

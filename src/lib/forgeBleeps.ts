@@ -181,6 +181,22 @@ function hardStopTypeLoop(): void {
   typeLoopAudioFallback.currentTime = 0;
 }
 
+/** Synchronous play attempt — used only as HTML Audio fallback after Web Audio fails. */
+function startHtmlTypeLoopSync(): boolean {
+  const audio = ensureTypeLoopAudioFallback();
+  audio.volume = FORGE_BLEEPS.type.volume;
+  if (!audio.paused) return true;
+  try {
+    const result = audio.play();
+    if (result !== undefined) {
+      void result.catch(() => {});
+    }
+    return !audio.paused;
+  } catch {
+    return false;
+  }
+}
+
 async function startWebAudioTypeLoop(): Promise<boolean> {
   const engine = await loadTypeLoopEngine();
   if (!engine) return false;
@@ -188,6 +204,8 @@ async function startWebAudioTypeLoop(): Promise<boolean> {
   if (engine.ctx.state === 'suspended') {
     await engine.ctx.resume().catch(() => {});
   }
+
+  if (engine.ctx.state === 'suspended') return false;
 
   if (engine.source) return true;
 
@@ -197,22 +215,23 @@ async function startWebAudioTypeLoop(): Promise<boolean> {
   source.connect(engine.gain);
   source.start(0);
   engine.source = source;
+
+  if (typeLoopAudioFallback && !typeLoopAudioFallback.paused) {
+    typeLoopAudioFallback.pause();
+  }
+
   return true;
 }
 
 function startHtmlTypeLoopFallback(): void {
-  const audio = ensureTypeLoopAudioFallback();
-  audio.volume = FORGE_BLEEPS.type.volume;
-  if (!audio.paused) return;
-  void audio.play().catch(() => {
-    const sources = pickSources(FORGE_BLEEPS.type.sources);
-    if (sources.length < 2) return;
-    typeLoopAudioFallback = new Audio(sources[1].src);
-    typeLoopAudioFallback.loop = true;
-    typeLoopAudioFallback.preload = 'auto';
-    typeLoopAudioFallback.volume = FORGE_BLEEPS.type.volume;
-    void typeLoopAudioFallback.play().catch(() => {});
-  });
+  if (startHtmlTypeLoopSync()) return;
+  const sources = pickSources(FORGE_BLEEPS.type.sources);
+  if (sources.length < 2) return;
+  typeLoopAudioFallback = new Audio(sources[1].src);
+  typeLoopAudioFallback.loop = true;
+  typeLoopAudioFallback.preload = 'auto';
+  typeLoopAudioFallback.volume = FORGE_BLEEPS.type.volume;
+  void typeLoopAudioFallback.play().catch(() => {});
 }
 
 function startTypeLoopNow(): void {
@@ -221,12 +240,14 @@ function startTypeLoopNow(): void {
   if (isTypeLoopPlaying()) return;
 
   void startWebAudioTypeLoop().then((started) => {
-    if (activeTextAnims <= 0) {
-      if (started || isTypeLoopPlaying()) hardStopTypeLoop();
+    if (activeTextAnims > 0) {
+      if (!started && !isTypeLoopPlaying()) {
+        startHtmlTypeLoopFallback();
+      }
       return;
     }
-    if (!started) {
-      startHtmlTypeLoopFallback();
+    if (started) {
+      hardStopTypeLoop();
     }
   });
 }
@@ -236,23 +257,6 @@ export function unlockForgeAudio(): void {
   if (typeof window === 'undefined') return;
   audioUnlocked = true;
   void loadTypeLoopEngine();
-  if (activeTextAnims > 0) {
-    pulseForgeTypeReadout();
-  }
-}
-
-export function isForgeAudioUnlocked(): boolean {
-  return audioUnlocked;
-}
-
-/** @deprecated No-op — unlock is gesture-driven only. */
-export function restoreForgeAudioUnlock(): boolean {
-  return false;
-}
-
-/** @deprecated No-op — unlock is gesture-driven only. */
-export function subscribeForgeAudioUnlock(_listener: () => void): () => void {
-  return () => {};
 }
 
 export function playForgeClick(): void {
@@ -269,6 +273,7 @@ export function playForgeError(): void {
 export function enterForgeTextAnim(): void {
   cancelTypeLoopStopTimer();
   activeTextAnims += 1;
+  pulseForgeTypeReadout();
 }
 
 export function exitForgeTextAnim(): void {
@@ -280,6 +285,7 @@ export function exitForgeTextAnim(): void {
 
 export function pulseForgeTypeReadout(): void {
   if (activeTextAnims <= 0) return;
+  if (!audioUnlocked) return;
   if (performance.now() - lastInteractionMs < INTERACTION_TYPE_GAP_MS) return;
   startTypeLoopNow();
 }
