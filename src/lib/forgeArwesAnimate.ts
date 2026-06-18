@@ -1,5 +1,6 @@
 import { createAnimation, easeAmong, type Animation, type Easing } from '@arwes/animated';
 import { enterForgeTextAnim, exitForgeTextAnim, pulseForgeTypeReadout } from '@/lib/forgeBleeps';
+import { DEFAULT_FORGE_UI_SETTINGS, readoutDoneLength } from '@/lib/forgeUiSettings';
 
 const CIPHERED_CHARACTERS =
   '    ----____abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -60,6 +61,7 @@ type InPlaceBase = {
   duration: number;
   easing?: Easing;
   readoutSound?: boolean;
+  readoutStopRatio?: number;
 };
 
 /** Remember block height before in-place sequence clears text nodes (avoids card growth). */
@@ -100,12 +102,6 @@ type InPlaceSequence = InPlaceBase & {
   blinkDuration?: number;
 };
 
-/** Release type readout before the outExpo easing tail — sound stops while glyphs still finish silently. */
-function readoutDoneLength(length: number): number {
-  if (length <= 4) return length;
-  return Math.max(1, Math.ceil(length * 0.98));
-}
-
 function wrapReadoutLifecycle(
   finish: () => void,
   readoutSound: boolean,
@@ -137,6 +133,7 @@ export function animateTextSequenceInPlace({
   blink = true,
   blinkDuration = 0.1,
   readoutSound = true,
+  readoutStopRatio = DEFAULT_FORGE_UI_SETTINGS.typeReadoutStopRatio,
 }: InPlaceSequence): Animation {
   const textNodes: Node[] = [];
   const texts: string[] = [];
@@ -191,7 +188,7 @@ export function animateTextSequenceInPlace({
       if (readoutSound && newLength > 0) {
         pulseForgeTypeReadout();
       }
-      if (readoutSound && length > 0 && newLength >= readoutDoneLength(length)) {
+      if (readoutSound && length > 0 && newLength >= readoutDoneLength(length, readoutStopRatio)) {
         releaseReadout();
       }
       setTextNodesContent(textNodes, texts, newLength, (textNode) => {
@@ -216,6 +213,7 @@ export function animateTextDecipherInPlace({
   easing = 'linear',
   characters = CIPHERED_CHARACTERS,
   readoutSound = true,
+  readoutStopRatio = DEFAULT_FORGE_UI_SETTINGS.typeReadoutStopRatio,
 }: InPlaceDecipher): Animation {
   const textNodes: Node[] = [];
   const textsReal: string[] = [];
@@ -242,7 +240,7 @@ export function animateTextDecipherInPlace({
       if (readoutSound && revealed > 0) {
         pulseForgeTypeReadout();
       }
-      if (readoutSound && length > 0 && revealed >= readoutDoneLength(length)) {
+      if (readoutSound && length > 0 && revealed >= readoutDoneLength(length, readoutStopRatio)) {
         releaseReadout();
       }
       for (let index = 0; index < length; index++) {

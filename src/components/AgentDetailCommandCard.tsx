@@ -7,6 +7,7 @@ import type { AgentData } from '@/lib/types';
 import { AgentSkillsPanel, AgentSkillsPortraitTrigger } from '@/components/AgentSkillsOverlay';
 import { SegmentedProgress } from '@/components/SegmentedProgress';
 import { ForgeDecodeText, ForgeFlowText } from '@/components/ForgeArwesText';
+import { useTextFillDelay } from '@/hooks/useTextFillDelay';
 import { DETAIL_SECTION_ICONS, splitQuoteParagraphs } from '@/lib/detailIcons';
 
 function DetailPanel({
@@ -178,7 +179,12 @@ export function AgentDetailCommandCard({
   const emblemRequestGen = React.useRef(0);
   const showPortrait = !portraitFailed && !!agent.portraitPath;
   const outputs = (agent.outputs ?? agent.deliverables).filter(Boolean);
-  const sectionDelays = React.useMemo(() => buildSectionDelays(agent, outputs), [agent, outputs]);
+  const staggerDelays = React.useMemo(() => buildSectionDelays(agent, outputs), [agent, outputs]);
+  const fillDelay = useTextFillDelay();
+  const d = React.useCallback(
+    (key: string, staggerSeconds: number) => fillDelay(`${agent.slug}:${key}`, staggerSeconds),
+    [agent.slug, fillDelay],
+  );
   const skillsAgent = {
     slug: agent.slug,
     title: agent.title,
@@ -307,7 +313,7 @@ export function AgentDetailCommandCard({
                   layout="block"
                   animateId={flowId('title', agent.title)}
                   playOnce
-                  delay={sectionDelays.title}
+                  delay={d('title', staggerDelays.title)}
                   contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
                 >
                   {agent.title}
@@ -318,7 +324,7 @@ export function AgentDetailCommandCard({
                   layout="block"
                   animateId={flowId('subtitle', agent.subtitle)}
                   playOnce
-                  delay={sectionDelays.subtitle}
+                  delay={d('subtitle', staggerDelays.subtitle)}
                   contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
                 >
                   {agent.subtitle}
@@ -400,14 +406,14 @@ export function AgentDetailCommandCard({
                 <DetailPanel className="ops-detail-hero-meta">
                   {agent.callsign && (
                     <p>
-                      <ForgeFlowText layout="inline" animateId={flowId('callsign', agent.callsign)} playOnce delay={sectionDelays.heroMeta} contentStyle={{ color: 'inherit' }}>
+                      <ForgeFlowText layout="inline" animateId={flowId('callsign', agent.callsign)} playOnce delay={d('heroMeta', staggerDelays.heroMeta)} contentStyle={{ color: 'inherit' }}>
                         Callsign: {agent.callsign}
                       </ForgeFlowText>
                     </p>
                   )}
                   {agent.alignment && (
                     <p>
-                      <ForgeFlowText layout="inline" animateId={flowId('hero-alignment', agent.alignment)} playOnce delay={(sectionDelays.heroMeta ?? 0) + 0.08} contentStyle={{ color: 'inherit' }}>
+                      <ForgeFlowText layout="inline" animateId={flowId('hero-alignment', agent.alignment)} playOnce delay={d('hero-alignment-inline', staggerDelays.heroMeta + 0.08)} contentStyle={{ color: 'inherit' }}>
                         Alignment: {agent.alignment}
                       </ForgeFlowText>
                     </p>
@@ -431,7 +437,7 @@ export function AgentDetailCommandCard({
                     layout="block"
                     animateId={flowId('quote', agent.quote.slice(0, 48))}
                     playOnce
-                    delay={sectionDelays.quote}
+                    delay={d('quote', staggerDelays.quote)}
                     contentStyle={{ color: 'inherit', fontFamily: 'inherit', lineHeight: 'inherit' }}
                   >
                     {splitQuoteParagraphs(agent.quote).map((paragraph) => (
@@ -449,7 +455,7 @@ export function AgentDetailCommandCard({
                     <tr>
                       <th>Role</th>
                       <td>
-                        <DetailFlowInline animateId={flowId('role', agent.role)} delay={sectionDelays.roleTable}>{agent.role}</DetailFlowInline>
+                        <DetailFlowInline animateId={flowId('role', agent.role)} delay={d('role', staggerDelays.roleTable)}>{agent.role}</DetailFlowInline>
                       </td>
                     </tr>
                   )}
@@ -457,7 +463,7 @@ export function AgentDetailCommandCard({
                     <tr>
                       <th>Alignment</th>
                       <td>
-                        <DetailFlowInline animateId={flowId('table-alignment', agent.alignment)} delay={(sectionDelays.roleTable ?? 0) + 0.05}>
+                        <DetailFlowInline animateId={flowId('table-alignment', agent.alignment)} delay={d('table-alignment', staggerDelays.roleTable + 0.05)}>
                           {agent.alignment}
                         </DetailFlowInline>
                       </td>
@@ -475,7 +481,7 @@ export function AgentDetailCommandCard({
                     <tr>
                       <th>Scope</th>
                       <td>
-                        <DetailFlowInline animateId={flowId('scope', agent.scope)} delay={(sectionDelays.roleTable ?? 0) + 0.1}>{agent.scope}</DetailFlowInline>
+                        <DetailFlowInline animateId={flowId('scope', agent.scope)} delay={d('scope', staggerDelays.roleTable + 0.1)}>{agent.scope}</DetailFlowInline>
                       </td>
                     </tr>
                   )}
@@ -483,7 +489,7 @@ export function AgentDetailCommandCard({
                     <tr>
                       <th>{agent.focus ? 'Focus' : 'Escalation'}</th>
                       <td>
-                        <DetailFlowInline animateId={flowId('focus', agent.focus ?? agent.escalation ?? '')} delay={(sectionDelays.roleTable ?? 0) + 0.15}>
+                        <DetailFlowInline animateId={flowId('focus', agent.focus ?? agent.escalation ?? '')} delay={d('focus', staggerDelays.roleTable + 0.15)}>
                           {agent.focus ?? agent.escalation}
                         </DetailFlowInline>
                       </td>
@@ -509,7 +515,7 @@ export function AgentDetailCommandCard({
                         layout="block"
                         animateId={flowId('mission', agent.mission)}
                         playOnce
-                        delay={sectionDelays.mission}
+                        delay={d('mission', staggerDelays.mission)}
                       >
                         {agent.mission}
                       </ForgeFlowText>
@@ -521,14 +527,14 @@ export function AgentDetailCommandCard({
                       <DetailFlowList
                         items={agent.primaryObjectives}
                         animateId={flowId('primary-objectives', agent.primaryObjectives.join('\x1e'))}
-                        delay={sectionDelays.primaryObjectives}
+                        delay={d('primaryObjectives', staggerDelays.primaryObjectives)}
                       />
                     </DetailPanel>
                   )}
                   {agent.inputs && agent.inputs.length > 0 && outputs.length === 0 && (
                     <DetailPanel>
                       <SectionHead iconSrc={DETAIL_SECTION_ICONS.inputs} title="Inputs" />
-                      <DetailFlowList items={agent.inputs} animateId={flowId('inputs', agent.inputs.join('\x1e'))} delay={sectionDelays.inputs} />
+                      <DetailFlowList items={agent.inputs} animateId={flowId('inputs', agent.inputs.join('\x1e'))} delay={d('inputs', staggerDelays.inputs)} />
                     </DetailPanel>
                   )}
                 </div>
@@ -540,14 +546,14 @@ export function AgentDetailCommandCard({
                       <DetailFlowList
                         items={agent.responsibilities}
                         animateId={flowId('responsibilities', agent.responsibilities.join('\x1e'))}
-                        delay={sectionDelays.responsibilities}
+                        delay={d('responsibilities', staggerDelays.responsibilities)}
                       />
                     </DetailPanel>
                   )}
                   {outputs.length > 0 && !(agent.inputs && agent.inputs.length > 0) && (
                     <DetailPanel>
                       <SectionHead iconSrc={DETAIL_SECTION_ICONS.outputs} title="Outputs" />
-                      <DetailFlowList items={outputs} animateId={flowId('outputs', outputs.join('\x1e'))} delay={sectionDelays.outputs} />
+                      <DetailFlowList items={outputs} animateId={flowId('outputs', outputs.join('\x1e'))} delay={d('outputs', staggerDelays.outputs)} />
                     </DetailPanel>
                   )}
                 </div>
@@ -557,14 +563,14 @@ export function AgentDetailCommandCard({
                 <div className="ops-detail-io-bridge" aria-label="Inputs flow to outputs">
                   <DetailPanel className="ops-detail-io-panel">
                     <SectionHead iconSrc={DETAIL_SECTION_ICONS.inputs} title="Inputs" />
-                    <DetailFlowList items={agent.inputs} animateId={flowId('io-inputs', agent.inputs.join('\x1e'))} delay={sectionDelays.ioInputs} />
+                    <DetailFlowList items={agent.inputs} animateId={flowId('io-inputs', agent.inputs.join('\x1e'))} delay={d('ioInputs', staggerDelays.ioInputs)} />
                   </DetailPanel>
                   <div className="ops-detail-io-arrow" aria-hidden>
                     ≫
                   </div>
                   <DetailPanel className="ops-detail-io-panel">
                     <SectionHead iconSrc={DETAIL_SECTION_ICONS.outputs} title="Outputs" />
-                    <DetailFlowList items={outputs} animateId={flowId('io-outputs', outputs.join('\x1e'))} delay={sectionDelays.ioOutputs} />
+                    <DetailFlowList items={outputs} animateId={flowId('io-outputs', outputs.join('\x1e'))} delay={d('ioOutputs', staggerDelays.ioOutputs)} />
                   </DetailPanel>
                 </div>
               )}
@@ -577,7 +583,7 @@ export function AgentDetailCommandCard({
                       <DetailFlowList
                         items={agent.escalateWhen}
                         animateId={flowId('escalate', agent.escalateWhen.join('\x1e'))}
-                        delay={sectionDelays.escalateWhen}
+                        delay={d('escalateWhen', staggerDelays.escalateWhen)}
                       />
                     </DetailPanel>
                   )}
@@ -592,7 +598,7 @@ export function AgentDetailCommandCard({
                       layout="block"
                       animateId={flowId('q1-objective', agent.q1Objective)}
                       playOnce
-                      delay={sectionDelays.q1Objective}
+                      delay={d('q1Objective', staggerDelays.q1Objective)}
                     >
                       {agent.q1Objective}
                     </ForgeFlowText>
@@ -602,7 +608,7 @@ export function AgentDetailCommandCard({
                         <DetailFlowList
                           items={agent.successCriteria}
                           animateId={flowId('success-criteria', agent.successCriteria.join('\x1e'))}
-                          delay={sectionDelays.successCriteria}
+                          delay={d('successCriteria', staggerDelays.successCriteria)}
                         />
                       </>
                     )}
@@ -624,7 +630,7 @@ export function AgentDetailCommandCard({
                           layout="inline"
                           animateId={flowId('metric-label', m.label)}
                           playOnce
-                          delay={(sectionDelays.keyMetrics ?? 0) + metricIndex * 0.08}
+                          delay={d(`metric-label:${m.label}`, staggerDelays.keyMetrics + metricIndex * 0.08)}
                           contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
                         >
                           {m.label}
@@ -635,7 +641,7 @@ export function AgentDetailCommandCard({
                           layout="inline"
                           animateId={flowId('metric-value', `${m.label}:${m.value}`)}
                           playOnce
-                          delay={(sectionDelays.keyMetrics ?? 0) + metricIndex * 0.08 + 0.04}
+                          delay={d(`metric-value:${m.label}`, staggerDelays.keyMetrics + metricIndex * 0.08 + 0.04)}
                           contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
                         >
                           {m.value}
@@ -653,13 +659,13 @@ export function AgentDetailCommandCard({
                     items={agent.decisionFramework}
                     numbered
                     animateId={flowId('decision-framework', agent.decisionFramework.join('\x1e'))}
-                    delay={sectionDelays.decisionFramework}
+                    delay={d('decisionFramework', staggerDelays.decisionFramework)}
                   />
                 </DetailPanel>
               )}
               <DetailPanel>
                 <SectionHead iconSrc={DETAIL_SECTION_ICONS.deliverables} title="Deliverables" />
-                <ForgeFlowText as="div" layout="block" animateId={flowId('deliverables', agent.deliverables.join('\x1e'))} playOnce delay={sectionDelays.deliverables}>
+                <ForgeFlowText as="div" layout="block" animateId={flowId('deliverables', agent.deliverables.join('\x1e'))} playOnce delay={d('deliverables', staggerDelays.deliverables)}>
                   <div className="ops-detail-deliverables">
                     <button
                       type="button"
@@ -687,7 +693,7 @@ export function AgentDetailCommandCard({
                 layout="block"
                 animateId={flowId('motto', agent.motto)}
                 playOnce
-                delay={sectionDelays.motto}
+                delay={d('motto', staggerDelays.motto)}
                 contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
               >
                 * {agent.motto.toUpperCase()} *

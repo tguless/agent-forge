@@ -5,6 +5,14 @@ import {
   getPromptDef,
 } from '@/lib/forgePrompts';
 import { getDefaultPromptContent } from '@/lib/forgePromptDefaults';
+import {
+  clampReadoutStopRatio,
+  clampTextFillRandomMaxMs,
+  DEFAULT_FORGE_UI_SETTINGS,
+  FORGE_UI_SETTINGS_DB_KEY,
+  normalizeForgeUiSettings,
+  type ForgeUiSettings,
+} from '@/lib/forgeUiSettings';
 import { getDb } from '@/lib/db';
 
 export type ForgePromptRecord = {
@@ -121,4 +129,43 @@ export function getMetaSkillsBundle(): string {
   return parts
     .map(({ file, key }) => `\n\n===== ${file} =====\n${getPromptContent(key)}`)
     .join('');
+}
+
+export function getUiSettings(): ForgeUiSettings {
+  ensureConfigTable();
+  const row = getDb()
+    .prepare('SELECT content FROM forge_config WHERE key = ?')
+    .get(FORGE_UI_SETTINGS_DB_KEY) as { content: string } | undefined;
+  if (!row) return { ...DEFAULT_FORGE_UI_SETTINGS };
+  try {
+    const parsed = JSON.parse(row.content) as Partial<ForgeUiSettings> & { textStaggerEnabled?: boolean };
+    return normalizeForgeUiSettings(parsed);
+  } catch {
+    return { ...DEFAULT_FORGE_UI_SETTINGS };
+  }
+}
+
+export function setUiSettings(partial: Partial<ForgeUiSettings>): ForgeUiSettings {
+  const current = getUiSettings();
+  const next: ForgeUiSettings = {
+    ...current,
+    ...partial,
+    typeReadoutStopRatio:
+      partial.typeReadoutStopRatio != null
+        ? clampReadoutStopRatio(partial.typeReadoutStopRatio)
+        : current.typeReadoutStopRatio,
+    textFillRandomMaxMs:
+      partial.textFillRandomMaxMs != null
+        ? clampTextFillRandomMaxMs(partial.textFillRandomMaxMs)
+        : current.textFillRandomMaxMs,
+  };
+  ensureConfigTable();
+  const now = Date.now();
+  getDb()
+    .prepare(
+      `INSERT INTO forge_config (key, content, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at`,
+    )
+    .run(FORGE_UI_SETTINGS_DB_KEY, JSON.stringify(next), now);
+  return next;
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ForgeDecodeText, ForgeFlowText, ForgeHeaderText } from '@/components/ForgeArwesText';
 import { playForgeClick, unlockForgeAudio } from '@/lib/forgeBleeps';
 import { useForgeInteractive } from '@/hooks/useForgeInteractive';
+import { useTextFillDelay } from '@/hooks/useTextFillDelay';
 import type { AgentSummary } from '@/lib/types';
 
 function CardFlowList({ items, animateId, delay }: { items: string[]; animateId: string; delay?: number }) {
@@ -22,7 +23,9 @@ function CardFlowList({ items, animateId, delay }: { items: string[]; animateId:
 const CARD_STAGGER_S = 0.25;
 
 export function AgentCommandCard({ agent, staggerIndex = 0 }: { agent: AgentSummary; staggerIndex?: number }) {
-  const baseDelay = staggerIndex * CARD_STAGGER_S;
+  const fillDelay = useTextFillDelay();
+  const cardBase = staggerIndex * CARD_STAGGER_S;
+  const d = (key: string, offset: number) => fillDelay(`${agent.slug}:${key}`, cardBase + offset);
   const router = useRouter();
   const cardRef = React.useRef<HTMLDivElement>(null);
   const accent = agent.accent || '#38bdf8';
@@ -75,7 +78,7 @@ export function AgentCommandCard({ agent, staggerIndex = 0 }: { agent: AgentSumm
             as="p"
             className="ops-agent-name"
             duration={0.85}
-            delay={baseDelay}
+            delay={d('title', 0)}
             animateId={`${agent.slug}:title:${agent.title}`}
             playOnce
             contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
@@ -91,7 +94,7 @@ export function AgentCommandCard({ agent, staggerIndex = 0 }: { agent: AgentSumm
           <ForgeDecodeText
             animateId={`${agent.slug}:status:${agent.status}`}
             playOnce
-            delay={baseDelay}
+            delay={d('status', 0)}
             layout="inline"
             contentStyle={{ color: 'inherit' }}
           >
@@ -105,7 +108,7 @@ export function AgentCommandCard({ agent, staggerIndex = 0 }: { agent: AgentSumm
         as="p"
         className="ops-objective-text"
         layout="block"
-        delay={baseDelay + 0.1}
+        delay={d('objective', 0.1)}
         animateId={`${agent.slug}:objective:${agent.q1Objective}`}
         playOnce
       >
@@ -118,7 +121,7 @@ export function AgentCommandCard({ agent, staggerIndex = 0 }: { agent: AgentSumm
           <CardFlowList
             items={agent.successCriteria.slice(0, 4)}
             animateId={`${agent.slug}:success:${agent.successCriteria.join('\x1e')}`}
-            delay={baseDelay + 0.2}
+            delay={d('success', 0.2)}
           />
         </>
       )}
@@ -129,7 +132,7 @@ export function AgentCommandCard({ agent, staggerIndex = 0 }: { agent: AgentSumm
           <CardFlowList
             items={agent.deliverables.slice(0, 4)}
             animateId={`${agent.slug}:deliverables:${agent.deliverables.join('\x1e')}`}
-            delay={baseDelay + 0.3}
+            delay={d('deliverables', 0.3)}
           />
         </>
       )}

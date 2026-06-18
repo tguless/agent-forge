@@ -6,6 +6,7 @@ import {
   FORGE_DECODE_DURATION_OPTS,
   getForgeTextDuration,
 } from '@/lib/forgeArwesAnimate';
+import { useForgeUiSettings } from '@/components/ForgeUiSettingsProvider';
 
 type ForgeLogLineProps = {
   children: string;
@@ -22,6 +23,7 @@ export function ForgeLogLine({
   style,
 }: ForgeLogLineProps) {
   const ref = React.useRef<HTMLSpanElement>(null);
+  const { typeReadoutStopRatio } = useForgeUiSettings();
 
   React.useEffect(() => {
     if (!animate) return;
@@ -34,9 +36,10 @@ export function ForgeLogLine({
       duration,
       easing: 'linear',
       readoutSound: true,
+      readoutStopRatio: typeReadoutStopRatio,
     });
     return () => anim.cancel();
-  }, [children, animate]);
+  }, [children, animate, typeReadoutStopRatio]);
 
   return (
     <span ref={ref} className={className} style={style}>

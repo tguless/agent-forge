@@ -558,6 +558,166 @@
   border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 45%, transparent);
 }
 
+.forge-config-interface {
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 28%, transparent);
+  border-radius: 4px;
+  background: rgba(4, 12, 18, 0.45);
+}
+
+.forge-config-interface-title {
+  margin: 0 0 12px;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ops-cyan-bright, #7fe7ff);
+}
+
+.forge-config-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.forge-config-toggle-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.forge-config-toggle-label {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.86rem;
+  color: var(--ops-text, #d7e6dd);
+}
+
+.forge-config-toggle-hint {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.74rem;
+  color: var(--ops-muted, #8aa);
+  line-height: 1.5;
+  max-width: 52ch;
+}
+
+.forge-config-toggle-input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--ops-cyan, #38bdf8);
+  cursor: pointer;
+}
+
+.forge-config-toggle-input:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.forge-config-timing-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.forge-config-timing-fieldset > .forge-config-toggle-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.forge-config-timing-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.forge-config-timing-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.forge-config-timing-option input {
+  margin-top: 3px;
+  accent-color: var(--ops-cyan, #38bdf8);
+}
+
+.forge-config-timing-option-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.forge-config-timing-option-label {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.84rem;
+  color: var(--ops-text, #d7e6dd);
+}
+
+.forge-config-timing-option-hint {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.72rem;
+  color: var(--ops-muted, #8aa);
+  line-height: 1.45;
+}
+
+.forge-config-range-row--nested {
+  margin-top: 14px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.forge-config-number-input {
+  width: 96px;
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.82rem;
+  color: var(--ops-text, #d7e6dd);
+  background: rgba(4, 12, 14, 0.7);
+  border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 35%, transparent);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.forge-config-number-input:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.forge-config-range-row {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 18%, transparent);
+}
+
+.forge-config-range-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.forge-config-range-input {
+  flex: 1;
+  max-width: 320px;
+  accent-color: var(--ops-cyan, #38bdf8);
+  cursor: pointer;
+}
+
+.forge-config-range-input:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.forge-config-range-value {
+  min-width: 3.5ch;
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.82rem;
+  color: var(--ops-cyan-bright, #7fe7ff);
+}
+
 .forge-config-category-tabs {
   display: flex;
   flex-wrap: wrap;

@@ -5,6 +5,14 @@ import Link from 'next/link';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import { ForgeBackAgents } from '@/components/ForgeBackButton';
 import { FORGE_PROMPT_DEFS, USE_PROMPT_TABS, type ForgePromptCategory, type ForgePromptKey } from '@/lib/forgePrompts';
+import { useForgeUiSettings } from '@/components/ForgeUiSettingsProvider';
+import {
+  READOUT_STOP_RATIO_MAX,
+  READOUT_STOP_RATIO_MIN,
+  TEXT_FILL_RANDOM_MAX_MS_MAX,
+  TEXT_FILL_RANDOM_MAX_MS_MIN,
+  type TextFillTiming,
+} from '@/lib/forgeUiSettings';
 
 type PromptRecord = {
   key: ForgePromptKey;
@@ -28,6 +36,24 @@ const CATEGORY_LABELS: Record<ForgePromptCategory, string> = {
   image: 'Image prompts',
 };
 
+const TEXT_FILL_TIMING_OPTIONS: { value: TextFillTiming; label: string; hint: string }[] = [
+  {
+    value: 'none',
+    label: 'None',
+    hint: 'All box text fills start immediately.',
+  },
+  {
+    value: 'stagger',
+    label: 'Staggered',
+    hint: 'Cards and detail sections reveal in fixed sequence.',
+  },
+  {
+    value: 'random',
+    label: 'Random start',
+    hint: 'Each block picks a stable random delay within the window below.',
+  },
+];
+
 export default function ForgeConfigPage() {
   const [prompts, setPrompts] = React.useState<PromptRecord[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -39,6 +65,7 @@ export default function ForgeConfigPage() {
   const [saving, setSaving] = React.useState(false);
   const [savedFlash, setSavedFlash] = React.useState(false);
   const [dirty, setDirty] = React.useState(false);
+  const { ui, saving: uiSaving, setUiSettings } = useForgeUiSettings();
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -197,6 +224,87 @@ export default function ForgeConfigPage() {
             <p className="forge-error">{error}</p>
           ) : (
             <>
+              <section className="forge-config-interface" aria-labelledby="forge-config-interface-title">
+                <h2 id="forge-config-interface-title" className="forge-config-interface-title">
+                  Interface
+                </h2>
+                <fieldset className="forge-config-timing-fieldset">
+                  <legend className="forge-config-toggle-label">Box text fill timing</legend>
+                  <p className="forge-config-toggle-hint">
+                    Controls when agent card and detail panel text animations begin.
+                  </p>
+                  <div className="forge-config-timing-options">
+                    {TEXT_FILL_TIMING_OPTIONS.map((option) => (
+                      <label key={option.value} className="forge-config-timing-option">
+                        <input
+                          type="radio"
+                          name="textFillTiming"
+                          value={option.value}
+                          checked={ui.textFillTiming === option.value}
+                          disabled={uiSaving}
+                          onChange={() => void setUiSettings({ textFillTiming: option.value })}
+                        />
+                        <span className="forge-config-timing-option-copy">
+                          <span className="forge-config-timing-option-label">{option.label}</span>
+                          <span className="forge-config-timing-option-hint">{option.hint}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                {ui.textFillTiming === 'random' && (
+                  <label className="forge-config-range-row forge-config-range-row--nested">
+                    <span className="forge-config-toggle-copy">
+                      <span className="forge-config-toggle-label">Random start window</span>
+                      <span className="forge-config-toggle-hint">
+                        Each text block delays by a random amount from 0 up to this many milliseconds.
+                      </span>
+                    </span>
+                    <div className="forge-config-range-control">
+                      <input
+                        type="number"
+                        className="forge-config-number-input"
+                        min={TEXT_FILL_RANDOM_MAX_MS_MIN}
+                        max={TEXT_FILL_RANDOM_MAX_MS_MAX}
+                        step={50}
+                        value={ui.textFillRandomMaxMs}
+                        disabled={uiSaving}
+                        onChange={(e) =>
+                          void setUiSettings({ textFillRandomMaxMs: Number(e.target.value) })
+                        }
+                      />
+                      <span className="forge-config-range-value">ms</span>
+                    </div>
+                  </label>
+                )}
+                <label className="forge-config-range-row">
+                  <span className="forge-config-toggle-copy">
+                    <span className="forge-config-toggle-label">Type sound stop point</span>
+                    <span className="forge-config-toggle-hint">
+                      Stop the typing sound after this share of characters is revealed. Lower values
+                      cut the sound earlier; 100% keeps it through the full text fill.
+                    </span>
+                  </span>
+                  <div className="forge-config-range-control">
+                    <input
+                      type="range"
+                      className="forge-config-range-input"
+                      min={Math.round(READOUT_STOP_RATIO_MIN * 100)}
+                      max={Math.round(READOUT_STOP_RATIO_MAX * 100)}
+                      step={1}
+                      value={Math.round(ui.typeReadoutStopRatio * 100)}
+                      disabled={uiSaving}
+                      onChange={(e) =>
+                        void setUiSettings({ typeReadoutStopRatio: Number(e.target.value) / 100 })
+                      }
+                    />
+                    <span className="forge-config-range-value">
+                      {Math.round(ui.typeReadoutStopRatio * 100)}%
+                    </span>
+                  </div>
+                </label>
+              </section>
+
               <div className="forge-config-category-tabs" role="tablist" aria-label="Prompt category">
                 {CATEGORY_ORDER.map((cat) => (
                   <button

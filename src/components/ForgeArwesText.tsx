@@ -8,6 +8,7 @@ import {
   FORGE_DECODE_DURATION_OPTS,
   getForgeTextDuration,
 } from '@/lib/forgeArwesAnimate';
+import { useForgeUiSettings } from '@/components/ForgeUiSettingsProvider';
 
 /**
  * Forge text animation variants:
@@ -166,6 +167,7 @@ export function ForgeArwesText({
   const ContentTag = resolveContentTag(Tag, layout);
   const useStack = reserveLayout && resolvesToSequence(variant, manager);
   const StackTag = resolveStackTag(Tag);
+  const { typeReadoutStopRatio } = useForgeUiSettings();
 
   React.useLayoutEffect(() => {
     const content = contentRef.current;
@@ -191,6 +193,7 @@ export function ForgeArwesText({
               duration: resolved.duration,
               easing: resolvedEasing,
               readoutSound,
+              readoutStopRatio: typeReadoutStopRatio,
             })
           : animateTextSequenceInPlace({
               contentElement: content,
@@ -198,6 +201,7 @@ export function ForgeArwesText({
               easing: resolvedEasing,
               blink: resolved.blink,
               readoutSound,
+              readoutStopRatio: typeReadoutStopRatio,
             });
 
       animRef.current = anim;
@@ -228,7 +232,7 @@ export function ForgeArwesText({
       animRef.current?.cancel();
       animRef.current = null;
     };
-  }, [variant, manager, duration, blink, easing, layout, animateId, playOnce, reserveLayout, readoutSound, delay]);
+  }, [variant, manager, duration, blink, easing, layout, animateId, playOnce, reserveLayout, readoutSound, delay, typeReadoutStopRatio]);
 
   const layoutClass = layout === 'block' ? 'forge-arwes-text--block' : 'forge-arwes-text--inline';
   const hostClassName = ['forge-arwes-text', layoutClass, className].filter(Boolean).join(' ');
