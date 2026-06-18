@@ -100,10 +100,10 @@ type InPlaceSequence = InPlaceBase & {
   blinkDuration?: number;
 };
 
-/** Release type readout a hair before the final glyphs — trims tail without a visible gap. */
+/** Release type readout before the outExpo easing tail — sound stops while glyphs still finish silently. */
 function readoutDoneLength(length: number): number {
-  if (length <= 6) return length;
-  return Math.max(1, length - 2);
+  if (length <= 4) return length;
+  return Math.max(1, Math.ceil(length * 0.9));
 }
 
 function wrapReadoutLifecycle(
