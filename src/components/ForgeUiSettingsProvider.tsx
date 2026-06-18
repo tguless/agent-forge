@@ -2,12 +2,15 @@
 
 import React from 'react';
 import { DEFAULT_FORGE_UI_SETTINGS, type ForgeUiSettings } from '@/lib/forgeUiSettings';
+import { setForgeSoundGates } from '@/lib/forgeBleeps';
 
 type ForgeUiSettingsContextValue = {
   ui: ForgeUiSettings;
   loading: boolean;
   saving: boolean;
   setUiSettings: (partial: Partial<ForgeUiSettings>) => Promise<void>;
+  textFillSoundsEnabled: boolean;
+  buttonSoundsEnabled: boolean;
   textFillTiming: ForgeUiSettings['textFillTiming'];
   textFillRandomMaxMs: number;
   typeReadoutStopRatio: number;
@@ -41,6 +44,13 @@ export function ForgeUiSettingsProvider({ children }: { children: React.ReactNod
     };
   }, []);
 
+  React.useEffect(() => {
+    setForgeSoundGates({
+      textFillSoundsEnabled: ui.textFillSoundsEnabled,
+      buttonSoundsEnabled: ui.buttonSoundsEnabled,
+    });
+  }, [ui.textFillSoundsEnabled, ui.buttonSoundsEnabled]);
+
   const setUiSettings = React.useCallback(async (partial: Partial<ForgeUiSettings>) => {
     setSaving(true);
     try {
@@ -63,6 +73,8 @@ export function ForgeUiSettingsProvider({ children }: { children: React.ReactNod
       loading,
       saving,
       setUiSettings,
+      textFillSoundsEnabled: ui.textFillSoundsEnabled,
+      buttonSoundsEnabled: ui.buttonSoundsEnabled,
       textFillTiming: ui.textFillTiming,
       textFillRandomMaxMs: ui.textFillRandomMaxMs,
       typeReadoutStopRatio: ui.typeReadoutStopRatio,

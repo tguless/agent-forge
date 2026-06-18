@@ -23,7 +23,7 @@ export function ForgeLogLine({
   style,
 }: ForgeLogLineProps) {
   const ref = React.useRef<HTMLSpanElement>(null);
-  const { typeReadoutStopRatio } = useForgeUiSettings();
+  const { textFillSoundsEnabled, typeReadoutStopRatio } = useForgeUiSettings();
 
   React.useEffect(() => {
     if (!animate) return;
@@ -35,11 +35,11 @@ export function ForgeLogLine({
       contentElement: el,
       duration,
       easing: 'linear',
-      readoutSound: true,
+      readoutSound: textFillSoundsEnabled,
       readoutStopRatio: typeReadoutStopRatio,
     });
     return () => anim.cancel();
-  }, [children, animate, typeReadoutStopRatio]);
+  }, [children, animate, textFillSoundsEnabled, typeReadoutStopRatio]);
 
   return (
     <span ref={ref} className={className} style={style}>

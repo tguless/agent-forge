@@ -616,10 +616,15 @@
   opacity: 0.6;
 }
 
+.forge-config-toggle-row--spaced {
+  margin-top: 12px;
+}
+
 .forge-config-timing-fieldset {
   border: 0;
-  margin: 0;
-  padding: 0;
+  margin: 16px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 18%, transparent);
 }
 
 .forge-config-timing-fieldset > .forge-config-toggle-label {

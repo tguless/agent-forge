@@ -1,6 +1,10 @@
 export type TextFillTiming = 'none' | 'stagger' | 'random';
 
 export type ForgeUiSettings = {
+  /** Looping type readout while ARWES text fills in. */
+  textFillSoundsEnabled: boolean;
+  /** Click and error bleeps on buttons and CTAs. */
+  buttonSoundsEnabled: boolean;
   /** How box text fill delays are assigned across cards and detail sections. */
   textFillTiming: TextFillTiming;
   /** Upper bound (ms) for random start delays when textFillTiming is random. */
@@ -16,6 +20,8 @@ export const TEXT_FILL_RANDOM_MAX_MS_MIN = 0;
 export const TEXT_FILL_RANDOM_MAX_MS_MAX = 5000;
 
 export const DEFAULT_FORGE_UI_SETTINGS: ForgeUiSettings = {
+  textFillSoundsEnabled: true,
+  buttonSoundsEnabled: true,
   textFillTiming: 'none',
   textFillRandomMaxMs: 800,
   typeReadoutStopRatio: 0.97,
@@ -86,6 +92,7 @@ export function resolveTextFillDelay(
 
 type LegacyForgeUiSettings = Partial<ForgeUiSettings> & {
   textStaggerEnabled?: boolean;
+  soundsEnabled?: boolean;
 };
 
 export function normalizeForgeUiSettings(parsed: LegacyForgeUiSettings): ForgeUiSettings {
@@ -94,7 +101,22 @@ export function normalizeForgeUiSettings(parsed: LegacyForgeUiSettings): ForgeUi
     textFillTiming = parsed.textStaggerEnabled ? 'stagger' : 'none';
   }
 
+  let textFillSoundsEnabled = parsed.textFillSoundsEnabled;
+  let buttonSoundsEnabled = parsed.buttonSoundsEnabled;
+  if (parsed.soundsEnabled != null && textFillSoundsEnabled == null && buttonSoundsEnabled == null) {
+    textFillSoundsEnabled = parsed.soundsEnabled;
+    buttonSoundsEnabled = parsed.soundsEnabled;
+  }
+
   return {
+    textFillSoundsEnabled:
+      typeof textFillSoundsEnabled === 'boolean'
+        ? textFillSoundsEnabled
+        : DEFAULT_FORGE_UI_SETTINGS.textFillSoundsEnabled,
+    buttonSoundsEnabled:
+      typeof buttonSoundsEnabled === 'boolean'
+        ? buttonSoundsEnabled
+        : DEFAULT_FORGE_UI_SETTINGS.buttonSoundsEnabled,
     textFillTiming: isTextFillTiming(textFillTiming)
       ? textFillTiming
       : DEFAULT_FORGE_UI_SETTINGS.textFillTiming,

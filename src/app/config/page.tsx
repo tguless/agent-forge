@@ -228,6 +228,36 @@ export default function ForgeConfigPage() {
                 <h2 id="forge-config-interface-title" className="forge-config-interface-title">
                   Interface
                 </h2>
+                <label className="forge-config-toggle-row">
+                  <span className="forge-config-toggle-copy">
+                    <span className="forge-config-toggle-label">Text fill sounds</span>
+                    <span className="forge-config-toggle-hint">
+                      Looping typing readout while ARWES text fills in.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="forge-config-toggle-input"
+                    checked={ui.textFillSoundsEnabled}
+                    disabled={uiSaving}
+                    onChange={(e) => void setUiSettings({ textFillSoundsEnabled: e.target.checked })}
+                  />
+                </label>
+                <label className="forge-config-toggle-row forge-config-toggle-row--spaced">
+                  <span className="forge-config-toggle-copy">
+                    <span className="forge-config-toggle-label">Button sounds</span>
+                    <span className="forge-config-toggle-hint">
+                      Click and error bleeps on buttons, CTAs, and interactive surfaces.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="forge-config-toggle-input"
+                    checked={ui.buttonSoundsEnabled}
+                    disabled={uiSaving}
+                    onChange={(e) => void setUiSettings({ buttonSoundsEnabled: e.target.checked })}
+                  />
+                </label>
                 <fieldset className="forge-config-timing-fieldset">
                   <legend className="forge-config-toggle-label">Box text fill timing</legend>
                   <p className="forge-config-toggle-hint">

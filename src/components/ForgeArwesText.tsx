@@ -167,7 +167,8 @@ export function ForgeArwesText({
   const ContentTag = resolveContentTag(Tag, layout);
   const useStack = reserveLayout && resolvesToSequence(variant, manager);
   const StackTag = resolveStackTag(Tag);
-  const { typeReadoutStopRatio } = useForgeUiSettings();
+  const { textFillSoundsEnabled, typeReadoutStopRatio } = useForgeUiSettings();
+  const useReadoutSound = readoutSound && textFillSoundsEnabled;
 
   React.useLayoutEffect(() => {
     const content = contentRef.current;
@@ -192,7 +193,7 @@ export function ForgeArwesText({
               contentElement: content,
               duration: resolved.duration,
               easing: resolvedEasing,
-              readoutSound,
+              readoutSound: useReadoutSound,
               readoutStopRatio: typeReadoutStopRatio,
             })
           : animateTextSequenceInPlace({
@@ -200,7 +201,7 @@ export function ForgeArwesText({
               duration: resolved.duration,
               easing: resolvedEasing,
               blink: resolved.blink,
-              readoutSound,
+              readoutSound: useReadoutSound,
               readoutStopRatio: typeReadoutStopRatio,
             });
 
@@ -232,7 +233,7 @@ export function ForgeArwesText({
       animRef.current?.cancel();
       animRef.current = null;
     };
-  }, [variant, manager, duration, blink, easing, layout, animateId, playOnce, reserveLayout, readoutSound, delay, typeReadoutStopRatio]);
+  }, [variant, manager, duration, blink, easing, layout, animateId, playOnce, reserveLayout, readoutSound, delay, textFillSoundsEnabled, typeReadoutStopRatio, useReadoutSound]);
 
   const layoutClass = layout === 'block' ? 'forge-arwes-text--block' : 'forge-arwes-text--inline';
   const hostClassName = ['forge-arwes-text', layoutClass, className].filter(Boolean).join(' ');

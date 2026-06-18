@@ -75,7 +75,10 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const body = (await req.json()) as Partial<ForgeUiSettings> & { textStaggerEnabled?: unknown };
+    const body = (await req.json()) as Partial<ForgeUiSettings> & {
+      textStaggerEnabled?: unknown;
+      soundsEnabled?: unknown;
+    };
     const partial: Partial<ForgeUiSettings> = {};
 
     if (body.textStaggerEnabled !== undefined) {
@@ -104,6 +107,28 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: 'typeReadoutStopRatio must be a number.' }, { status: 400 });
       }
       partial.typeReadoutStopRatio = clampReadoutStopRatio(body.typeReadoutStopRatio);
+    }
+
+    if (body.textFillSoundsEnabled !== undefined) {
+      if (typeof body.textFillSoundsEnabled !== 'boolean') {
+        return NextResponse.json({ error: 'textFillSoundsEnabled must be a boolean.' }, { status: 400 });
+      }
+      partial.textFillSoundsEnabled = body.textFillSoundsEnabled;
+    }
+
+    if (body.buttonSoundsEnabled !== undefined) {
+      if (typeof body.buttonSoundsEnabled !== 'boolean') {
+        return NextResponse.json({ error: 'buttonSoundsEnabled must be a boolean.' }, { status: 400 });
+      }
+      partial.buttonSoundsEnabled = body.buttonSoundsEnabled;
+    }
+
+    if (body.soundsEnabled !== undefined) {
+      if (typeof body.soundsEnabled !== 'boolean') {
+        return NextResponse.json({ error: 'soundsEnabled must be a boolean.' }, { status: 400 });
+      }
+      partial.textFillSoundsEnabled = body.soundsEnabled;
+      partial.buttonSoundsEnabled = body.soundsEnabled;
     }
 
     if (Object.keys(partial).length === 0) {

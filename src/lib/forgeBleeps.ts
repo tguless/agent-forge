@@ -55,7 +55,13 @@ let typeLoopAudioFallback: HTMLAudioElement | null = null;
 let activeTextAnims = 0;
 let lastInteractionMs = 0;
 let audioUnlocked = false;
+let forgeTextFillSoundsEnabled = true;
+let forgeButtonSoundsEnabled = true;
 let typeLoopStopTimer: ReturnType<typeof setTimeout> | null = null;
+
+function anyForgeSoundsEnabled(): boolean {
+  return forgeTextFillSoundsEnabled || forgeButtonSoundsEnabled;
+}
 
 function pickSources(sources: BleepSource[]): BleepSource[] {
   if (typeof document === 'undefined') return sources;
@@ -181,6 +187,28 @@ function hardStopTypeLoop(): void {
   typeLoopAudioFallback.currentTime = 0;
 }
 
+/** Sync runtime bleep gates from Interface settings (client only). */
+export function setForgeSoundGates(gates: {
+  textFillSoundsEnabled?: boolean;
+  buttonSoundsEnabled?: boolean;
+}): void {
+  if (gates.textFillSoundsEnabled != null) {
+    const next = gates.textFillSoundsEnabled;
+    if (forgeTextFillSoundsEnabled !== next) {
+      forgeTextFillSoundsEnabled = next;
+      if (!next) {
+        cancelTypeLoopStopTimer();
+        activeTextAnims = 0;
+        hardStopTypeLoop();
+      }
+    }
+  }
+
+  if (gates.buttonSoundsEnabled != null) {
+    forgeButtonSoundsEnabled = gates.buttonSoundsEnabled;
+  }
+}
+
 /** Synchronous play attempt — used only as HTML Audio fallback after Web Audio fails. */
 function startHtmlTypeLoopSync(): boolean {
   const audio = ensureTypeLoopAudioFallback();
@@ -235,7 +263,7 @@ function startHtmlTypeLoopFallback(): void {
 }
 
 function startTypeLoopNow(): void {
-  if (!audioUnlocked) return;
+  if (!forgeTextFillSoundsEnabled || !audioUnlocked) return;
   cancelTypeLoopStopTimer();
   if (isTypeLoopPlaying()) return;
 
@@ -254,23 +282,28 @@ function startTypeLoopNow(): void {
 
 /** Mark audio allowed — call from a user gesture handler. */
 export function unlockForgeAudio(): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !anyForgeSoundsEnabled()) return;
   audioUnlocked = true;
-  void loadTypeLoopEngine();
+  if (forgeTextFillSoundsEnabled) {
+    void loadTypeLoopEngine();
+  }
 }
 
 export function playForgeClick(): void {
   lastInteractionMs = performance.now();
+  if (!forgeButtonSoundsEnabled) return;
   unlockForgeAudio();
   playFreshOneShot(FORGE_BLEEPS.click);
 }
 
 export function playForgeError(): void {
+  if (!forgeButtonSoundsEnabled) return;
   unlockForgeAudio();
   playFreshOneShot(FORGE_BLEEPS.error);
 }
 
 export function enterForgeTextAnim(): void {
+  if (!forgeTextFillSoundsEnabled) return;
   cancelTypeLoopStopTimer();
   activeTextAnims += 1;
   pulseForgeTypeReadout();
@@ -284,6 +317,7 @@ export function exitForgeTextAnim(): void {
 }
 
 export function pulseForgeTypeReadout(): void {
+  if (!forgeTextFillSoundsEnabled) return;
   if (activeTextAnims <= 0) return;
   if (!audioUnlocked) return;
   if (performance.now() - lastInteractionMs < INTERACTION_TYPE_GAP_MS) return;
