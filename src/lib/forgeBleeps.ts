@@ -39,8 +39,14 @@ export const FORGE_BLEEPS: Record<ForgeBleep, BleepDef> = {
 /** Brief gap after a click bleep before the type loop (ARWES interaction → transition). */
 const INTERACTION_TYPE_GAP_MS = 220;
 
-/** Brief tail after the last block finishes — avoids killing the loop on React remounts. */
+/** Final tail after the last block's readout ends (short — trims overrun). */
 const TYPE_LOOP_STOP_GRACE_MS = 50;
+
+/**
+ * Bridge while a delayed text block has not started yet (stagger / random fill timing).
+ * Not used during the outExpo easing tail — that is controlled by typeReadoutStopRatio.
+ */
+const TYPE_LOOP_BRIDGE_GRACE_MS = 500;
 
 type TypeLoopEngine = {
   ctx: AudioContext;
@@ -52,7 +58,12 @@ type TypeLoopEngine = {
 let typeLoopEngine: TypeLoopEngine | null = null;
 let typeLoopLoading: Promise<TypeLoopEngine | null> | null = null;
 let typeLoopAudioFallback: HTMLAudioElement | null = null;
+/** Animations still running (enter → onFinish). */
 let activeTextAnims = 0;
+/** Blocks still in the glyph-reveal phase (enter → readoutDoneLength). */
+let activeReadoutAnims = 0;
+/** Delayed ForgeArwesText blocks waiting to start (stagger / random timing). */
+let pendingDelayedReadouts = 0;
 let lastInteractionMs = 0;
 let audioUnlocked = false;
 let forgeTextFillSoundsEnabled = true;
@@ -158,14 +169,33 @@ function cancelTypeLoopStopTimer(): void {
   }
 }
 
-function scheduleTypeLoopStop(): void {
+function scheduleTypeLoopStop(graceMs: number): void {
   cancelTypeLoopStopTimer();
   typeLoopStopTimer = setTimeout(() => {
     typeLoopStopTimer = null;
-    if (activeTextAnims === 0) {
+    if (activeReadoutAnims === 0) {
       hardStopTypeLoop();
     }
-  }, TYPE_LOOP_STOP_GRACE_MS);
+  }, graceMs);
+}
+
+/** Stop the loop once readout ends; bridge only while a delayed block is still queued. */
+function tryScheduleTypeLoopStop(): void {
+  if (activeReadoutAnims > 0) return;
+  const graceMs =
+    pendingDelayedReadouts > 0 ? TYPE_LOOP_BRIDGE_GRACE_MS : TYPE_LOOP_STOP_GRACE_MS;
+  scheduleTypeLoopStop(graceMs);
+}
+
+/** Delayed text fill registered — keep loop alive until it starts or unregisters. */
+export function registerPendingForgeTextReadout(): void {
+  pendingDelayedReadouts += 1;
+  cancelTypeLoopStopTimer();
+}
+
+export function unregisterPendingForgeTextReadout(): void {
+  pendingDelayedReadouts = Math.max(0, pendingDelayedReadouts - 1);
+  tryScheduleTypeLoopStop();
 }
 
 function stopWebAudioTypeLoop(): void {
@@ -199,6 +229,8 @@ export function setForgeSoundGates(gates: {
       if (!next) {
         cancelTypeLoopStopTimer();
         activeTextAnims = 0;
+        activeReadoutAnims = 0;
+        pendingDelayedReadouts = 0;
         hardStopTypeLoop();
       }
     }
@@ -240,6 +272,9 @@ async function startWebAudioTypeLoop(): Promise<boolean> {
   const source = engine.ctx.createBufferSource();
   source.buffer = engine.buffer;
   source.loop = true;
+  // ARWES createBleepSource — explicit bounds for gapless buffer loops.
+  source.loopStart = 0;
+  source.loopEnd = engine.buffer.duration;
   source.connect(engine.gain);
   source.start(0);
   engine.source = source;
@@ -268,7 +303,7 @@ function startTypeLoopNow(): void {
   if (isTypeLoopPlaying()) return;
 
   void startWebAudioTypeLoop().then((started) => {
-    if (activeTextAnims > 0) {
+    if (activeReadoutAnims > 0 || pendingDelayedReadouts > 0) {
       if (!started && !isTypeLoopPlaying()) {
         startHtmlTypeLoopFallback();
       }
@@ -306,19 +341,25 @@ export function enterForgeTextAnim(): void {
   if (!forgeTextFillSoundsEnabled) return;
   cancelTypeLoopStopTimer();
   activeTextAnims += 1;
+  activeReadoutAnims += 1;
   pulseForgeTypeReadout();
 }
 
+/** Animation finished (including easing tail) — full lifecycle exit. */
 export function exitForgeTextAnim(): void {
   activeTextAnims = Math.max(0, activeTextAnims - 1);
-  if (activeTextAnims === 0) {
-    scheduleTypeLoopStop();
-  }
+  tryScheduleTypeLoopStop();
+}
+
+/** Glyphs done revealing — readout exit (may still be in easing tail or before staggered sibling). */
+export function releaseForgeTextReadout(): void {
+  activeReadoutAnims = Math.max(0, activeReadoutAnims - 1);
+  tryScheduleTypeLoopStop();
 }
 
 export function pulseForgeTypeReadout(): void {
   if (!forgeTextFillSoundsEnabled) return;
-  if (activeTextAnims <= 0) return;
+  if (activeReadoutAnims <= 0) return;
   if (!audioUnlocked) return;
   if (performance.now() - lastInteractionMs < INTERACTION_TYPE_GAP_MS) return;
   startTypeLoopNow();

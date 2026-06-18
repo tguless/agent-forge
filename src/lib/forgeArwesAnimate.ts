@@ -1,5 +1,5 @@
 import { createAnimation, easeAmong, type Animation, type Easing } from '@arwes/animated';
-import { enterForgeTextAnim, exitForgeTextAnim, pulseForgeTypeReadout } from '@/lib/forgeBleeps';
+import { enterForgeTextAnim, exitForgeTextAnim, pulseForgeTypeReadout, releaseForgeTextReadout } from '@/lib/forgeBleeps';
 import { DEFAULT_FORGE_UI_SETTINGS, readoutDoneLength } from '@/lib/forgeUiSettings';
 
 const CIPHERED_CHARACTERS =
@@ -113,13 +113,14 @@ function wrapReadoutLifecycle(
   const releaseReadout = () => {
     if (released) return;
     released = true;
-    exitForgeTextAnim();
+    releaseForgeTextReadout();
   };
   enterForgeTextAnim();
   return {
     finish: () => {
       finish();
       releaseReadout();
+      exitForgeTextAnim();
     },
     releaseReadout,
   };

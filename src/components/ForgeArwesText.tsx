@@ -9,6 +9,10 @@ import {
   getForgeTextDuration,
 } from '@/lib/forgeArwesAnimate';
 import { useForgeUiSettings } from '@/components/ForgeUiSettingsProvider';
+import {
+  registerPendingForgeTextReadout,
+  unregisterPendingForgeTextReadout,
+} from '@/lib/forgeBleeps';
 
 /**
  * Forge text animation variants:
@@ -216,7 +220,14 @@ export function ForgeArwesText({
 
     if (delay && delay > 0) {
       content.style.visibility = 'hidden';
+      if (useReadoutSound) {
+        registerPendingForgeTextReadout();
+      }
       delayRef.current = setTimeout(() => {
+        delayRef.current = null;
+        if (useReadoutSound) {
+          unregisterPendingForgeTextReadout();
+        }
         content.style.visibility = '';
         run();
       }, delay * 1000);
@@ -228,6 +239,9 @@ export function ForgeArwesText({
       if (delayRef.current) {
         clearTimeout(delayRef.current);
         delayRef.current = null;
+        if (useReadoutSound) {
+          unregisterPendingForgeTextReadout();
+        }
         if (contentRef.current) contentRef.current.style.visibility = '';
       }
       animRef.current?.cancel();
