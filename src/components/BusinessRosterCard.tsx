@@ -31,37 +31,33 @@ export function BusinessRosterCard({
 
   return (
     <Link href={`/business/${business.slug}`} style={{ textDecoration: 'none' }}>
-      <HudBox variant="rect">
+      <HudBox variant="rect" className="forge-roster-card-box">
         <div className="forge-roster-card">
           <div className="forge-roster-card-main">
             <ForgeHeaderText
-              as="div"
+              as="p"
+              className="forge-roster-card-name"
+              layout="block"
               duration={0.85}
               delay={d('name', 0)}
               animateId={`${business.slug}:name:${business.name}`}
               playOnce
-              contentStyle={{
-                color: '#dffaf0',
-                fontWeight: 700,
-                fontSize: '1.05rem',
-                fontFamily: 'inherit',
-              }}
+              reserveLayout
+              contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
             >
               {business.name}
               {business.isPlaceholder && (
-                <span className="forge-hint" style={{ marginLeft: 8, fontSize: '0.68rem', fontWeight: 400 }}>
-                  (default home)
-                </span>
+                <span className="forge-hint forge-roster-card-placeholder">(default home)</span>
               )}
             </ForgeHeaderText>
             <ForgeFlowText
               as="p"
-              className="forge-hint"
+              className="forge-hint forge-roster-card-desc"
               layout="block"
               delay={d('desc', 0.1)}
               animateId={`${business.slug}:desc:${snippet}`}
               playOnce
-              contentStyle={{ margin: '6px 0 0', maxWidth: 720 }}
+              reserveLayout
             >
               {snippet}
             </ForgeFlowText>
@@ -75,6 +71,7 @@ export function BusinessRosterCard({
               playOnce
               delay={d('status', 0.05)}
               layout="inline"
+              reserveLayout
               contentStyle={{ color: 'inherit' }}
             >
               {STATUS_LABEL[business.status] ?? business.status}
@@ -82,13 +79,13 @@ export function BusinessRosterCard({
           </span>
         </div>
         <ForgeFlowText
-          as="div"
-          className="forge-hint"
+          as="p"
+          className="forge-hint forge-roster-card-meta"
           layout="block"
           delay={d('meta', 0.18)}
           animateId={`${business.slug}:meta:${footer}`}
           playOnce
-          contentStyle={{ marginTop: 10, fontSize: '0.72rem' }}
+          reserveLayout
         >
           {footer}
         </ForgeFlowText>

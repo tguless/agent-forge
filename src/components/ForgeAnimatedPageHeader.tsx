@@ -38,6 +38,7 @@ export function ForgeAnimatedPageHeader({
         contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
         animateId={`${scope}:wordmark`}
         playOnce
+        reserveLayout
         delay={fillDelay(`${scope}:wordmark`, 0)}
         duration={getForgeTextDuration(wordmarkChars, FORGE_DECODE_HUD_OPTS)}
       >
@@ -79,6 +80,7 @@ export function ForgeAnimatedPageHeader({
         layout="block"
         animateId={`${scope}:lead`}
         playOnce
+        reserveLayout
         delay={fillDelay(`${scope}:lead`, title || subtitle ? 0.28 : 0.16)}
         duration={getForgeTextDuration(lead.length, FORGE_DECODE_HUD_OPTS)}
       >

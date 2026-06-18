@@ -582,6 +582,34 @@
   gap: 14px;
 }
 
+.forge-roster-card-box .forge-roster-card-name {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #dffaf0;
+}
+
+.forge-roster-card-placeholder {
+  margin-left: 8px;
+  font-size: 0.68rem;
+  font-weight: 400;
+}
+
+.forge-roster-card-desc {
+  margin: 6px 0 0;
+  max-width: 720px;
+}
+
+.forge-roster-card-meta {
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+}
+
+.forge-business-roster .forge-arwes-text--block,
+.forge-business-roster .forge-arwes-text--block .forge-arwes-text__stack {
+  width: 100%;
+}
+
 .forge-config-back {
   color: var(--ops-cyan-bright, #7fe7ff);
   text-decoration: none;

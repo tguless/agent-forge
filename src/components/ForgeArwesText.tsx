@@ -169,7 +169,7 @@ export function ForgeArwesText({
   /** Per-instance play-once — resets when the component unmounts (e.g. leave and return to a page). */
   const playedIdRef = React.useRef<string | null>(null);
   const ContentTag = resolveContentTag(Tag, layout);
-  const useStack = reserveLayout && resolvesToSequence(variant, manager);
+  const useStack = reserveLayout;
   const StackTag = resolveStackTag(Tag);
   const { textFillSoundsEnabled, typeReadoutStopRatio } = useForgeUiSettings();
   const useReadoutSound = readoutSound && textFillSoundsEnabled;
