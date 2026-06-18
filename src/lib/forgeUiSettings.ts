@@ -24,7 +24,7 @@ export const DEFAULT_FORGE_UI_SETTINGS: ForgeUiSettings = {
   buttonSoundsEnabled: true,
   textFillTiming: 'none',
   textFillRandomMaxMs: 800,
-  typeReadoutStopRatio: 0.97,
+  typeReadoutStopRatio: 0.88,
 };
 
 export const FORGE_UI_SETTINGS_DB_KEY = 'ui.settings';
