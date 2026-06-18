@@ -3,6 +3,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { HudBox } from '@/components/HudBox';
+import { ForgeCtaButton, ForgeCtaLink } from '@/components/ForgeCta';
+import { ForgeBackAgents } from '@/components/ForgeBackButton';
+import { ForgeDecodeText } from '@/components/ForgeArwesText';
+import { ForgeLogLine } from '@/components/ForgeLogLine';
 import type { AgentStatus, GenerationEvent } from '@/lib/types';
 
 type ForgeExample = {
@@ -193,12 +197,10 @@ export default function NewAgentPage() {
   return (
     <div className="ops-font-scope forge-page">
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 18 }}>
-        <Link href="/" className="ops-detail-back" style={{ position: 'static' }}>
-          ← All agents
-        </Link>
-        <Link href="/config" className="forge-cta forge-cta--ghost" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
+        <ForgeBackAgents style={{ position: 'static' }} />
+        <ForgeCtaLink href="/config" variant="ghost" size="sm" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
           Configuration
-        </Link>
+        </ForgeCtaLink>
       </div>
 
       <div className="forge-wordmark forge-wordmark--lg" style={{ marginBottom: 6 }}>
@@ -279,12 +281,13 @@ export default function NewAgentPage() {
           {error && <p className="forge-error">{error}</p>}
 
           <div className="forge-actions">
-            <button type="submit" className="forge-cta" disabled={submitting || generatingExample}>
+            <ForgeCtaButton type="submit" disabled={submitting || generatingExample}>
               {submitting ? 'Igniting forge…' : '⚡ Forge agent'}
-            </button>
-            <button
+            </ForgeCtaButton>
+            <ForgeCtaButton
               type="button"
-              className="forge-cta forge-cta--ghost forge-cta--generate"
+              variant="ghost"
+              generate
               disabled={submitting || generatingExample}
               onClick={() => void generateExample()}
             >
@@ -295,17 +298,17 @@ export default function NewAgentPage() {
               ) : (
                 '✦ Generate example'
               )}
-            </button>
+            </ForgeCtaButton>
             {FORGE_EXAMPLES.map((ex, i) => (
-              <button
+              <ForgeCtaButton
                 key={ex.titleHint}
                 type="button"
-                className="forge-cta forge-cta--ghost"
+                variant="ghost"
                 disabled={submitting || generatingExample}
                 onClick={() => useExample(i)}
               >
                 {ex.label}
-              </button>
+              </ForgeCtaButton>
             ))}
           </div>
         </form>
@@ -313,35 +316,40 @@ export default function NewAgentPage() {
         <div className="forge-progress">
           <div className="forge-status-line">
             {running && <span className="forge-spinner" aria-hidden />}
-            {status === 'complete'
-              ? '✓ Agent forged'
-              : status === 'error'
-                ? '⚠ Forge failed'
-                : 'Forging agent…'}
+            <ForgeDecodeText key={status} layout="inline" contentStyle={{ color: 'inherit' }}>
+              {status === 'complete'
+                ? '✓ Agent forged'
+                : status === 'error'
+                  ? '⚠ Forge failed'
+                  : 'Forging agent…'}
+            </ForgeDecodeText>
           </div>
 
           <div className="forge-log" ref={logRef}>
-            {events.length === 0 && <div className="forge-log-row">Connecting to forge…</div>}
+            {events.length === 0 && (
+              <div className="forge-log-row">
+                <span className="forge-log-tick">›</span>
+                <ForgeLogLine>Connecting to forge…</ForgeLogLine>
+              </div>
+            )}
             {events.map((ev) => (
               <div className="forge-log-row" data-type={ev.type} key={ev.id}>
                 <span className="forge-log-tick">›</span>
-                <span>{ev.message}</span>
+                <ForgeLogLine>{ev.message}</ForgeLogLine>
               </div>
             ))}
           </div>
 
           <div className="forge-actions">
             {status === 'complete' && (
-              <Link href={`/agent/${slug}`} className="forge-cta">
-                View command card →
-              </Link>
+              <ForgeCtaLink href={`/agent/${slug}`}>View command card →</ForgeCtaLink>
             )}
-            <Link href={`/agent/${slug}`} className="forge-cta forge-cta--ghost">
+            <ForgeCtaLink href={`/agent/${slug}`} variant="ghost">
               Open card (live)
-            </Link>
-            <Link href="/" className="forge-cta forge-cta--ghost">
+            </ForgeCtaLink>
+            <ForgeCtaLink href="/" variant="ghost">
               All agents
-            </Link>
+            </ForgeCtaLink>
           </div>
         </div>
       )}

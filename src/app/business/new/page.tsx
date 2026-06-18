@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { HudBox } from '@/components/HudBox';
+import { ForgeBackBusinesses } from '@/components/ForgeBackButton';
 import { TurnTimeline, useBusinessStream } from '@/components/TurnTimeline';
 
 const EXAMPLE =
@@ -86,9 +87,7 @@ export default function NewBusinessPage() {
   return (
     <div className="ops-font-scope forge-page">
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 18 }}>
-        <Link href="/business" className="ops-detail-back" style={{ position: 'static' }}>
-          ← All businesses
-        </Link>
+        <ForgeBackBusinesses style={{ position: 'static' }} />
       </div>
 
       <div className="forge-wordmark forge-wordmark--lg" style={{ marginBottom: 6 }}>

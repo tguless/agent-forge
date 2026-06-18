@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { AgentCommandCard } from '@/components/AgentCommandCard';
+import { ForgeCtaLink } from '@/components/ForgeCta';
 import { ForgeNewAgentCard } from '@/components/ForgeNewAgentCard';
 import { ForgeHudHeader } from '@/components/ForgeHudHeader';
 import type { AgentRosterGroup } from '@/lib/types';
@@ -38,15 +39,13 @@ export default function IndexPage() {
           business blueprint they serve.
         </p>
         <div className="forge-config-toolbar-actions">
-          <Link href="/config" className="forge-cta forge-cta--ghost">
+          <ForgeCtaLink href="/config" variant="ghost">
             Configuration
-          </Link>
-          <Link href="/business" className="forge-cta forge-cta--ghost">
+          </ForgeCtaLink>
+          <ForgeCtaLink href="/business" variant="ghost">
             Businesses
-          </Link>
-          <Link href="/new" className="forge-cta">
-            + Forge new agent
-          </Link>
+          </ForgeCtaLink>
+          <ForgeCtaLink href="/new">+ Forge new agent</ForgeCtaLink>
         </div>
       </div>
 

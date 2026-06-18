@@ -2,6 +2,7 @@
 
 .ops-font-scope {
   --ops-bg: #020617;
+  --forge-page-top-gap: clamp(18px, 2.5vw, 28px);
   --ops-panel: #060d18;
   --ops-cyan: #38bdf8;
   --ops-cyan-bright: #7dd3fc;
@@ -601,7 +602,8 @@
   min-height: 0;
   transition:
     border-color 0.12s ease,
-    box-shadow 0.12s ease;
+    box-shadow 0.12s ease,
+    transform 0.1s ease;
   cursor: pointer;
   overflow: hidden;
   isolation: isolate;

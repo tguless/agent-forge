@@ -14,6 +14,7 @@ import { ForgeQueueProgress, type ForgeQueueSnapshot } from '@/components/ForgeQ
 import { ForgedAgentLicense } from '@/components/ForgedAgentLicense';
 import type { BusinessAgentSummary } from '@/lib/businessStore';
 import { BusinessPlaque } from '@/components/BusinessPlaque';
+import { ForgeBackBusinesses } from '@/components/ForgeBackButton';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import type {
   Business,
@@ -247,28 +248,6 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
   return (
     <div className="ops-detail-page forge-blueprint-page">
-      <div className="ops-detail-toolbar">
-        <div className="ops-detail-toolbar-nav">
-          <Link href="/business" className="ops-detail-back">
-            ← All businesses
-          </Link>
-          <Link href="/business/new" className="forge-cta forge-cta--ghost" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
-            + New business
-          </Link>
-        </div>
-        {!detail.business.isPlaceholder ? (
-          <button
-            type="button"
-            className="ops-detail-delete"
-            onClick={() => void handleDelete()}
-            disabled={deleting}
-            aria-busy={deleting}
-          >
-            {deleting ? 'Deleting…' : 'Delete business'}
-          </button>
-        ) : null}
-      </div>
-
       <div className="ops-detail-shell">
         <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />
         <span className="ops-detail-corner ops-detail-corner-tr" aria-hidden />
@@ -276,6 +255,26 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         <span className="ops-detail-corner ops-detail-corner-br" aria-hidden />
 
         <div className="ops-detail-inner">
+          <div className="ops-detail-toolbar">
+            <div className="ops-detail-toolbar-nav">
+              <ForgeBackBusinesses />
+              <Link href="/business/new" className="forge-cta forge-cta--ghost" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
+                + New business
+              </Link>
+            </div>
+            {!detail.business.isPlaceholder ? (
+              <button
+                type="button"
+                className="ops-detail-delete"
+                onClick={() => void handleDelete()}
+                disabled={deleting}
+                aria-busy={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete business'}
+              </button>
+            ) : null}
+          </div>
+
           <header className="ops-detail-header forge-blueprint-header">
             <div className="ops-detail-brand">
               <div className="forge-wordmark">

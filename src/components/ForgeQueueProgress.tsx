@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { ForgeDecodeText } from '@/components/ForgeArwesText';
 
 export type ForgeQueueSnapshot = {
   active: boolean;
@@ -26,7 +27,9 @@ export function ForgeQueueProgress({ queue }: { queue: ForgeQueueSnapshot }) {
       <div className="forge-forge-queue-head">
         <span className="forge-status-line">
           {queue.active ? <span className="forge-spinner" aria-hidden /> : null}
-          {label}
+          <ForgeDecodeText key={label} layout="inline" contentStyle={{ color: 'inherit' }}>
+            {label}
+          </ForgeDecodeText>
         </span>
         <span className="forge-forge-queue-pct">{queue.percent}%</span>
       </div>
@@ -34,9 +37,9 @@ export function ForgeQueueProgress({ queue }: { queue: ForgeQueueSnapshot }) {
         <div className="forge-forge-queue-fill" style={{ width: `${queue.percent}%` }} />
       </div>
       {queue.failed > 0 && !queue.active ? (
-        <p className="forge-hint forge-forge-queue-note">
+        <ForgeDecodeText as="p" className="forge-hint forge-forge-queue-note" layout="block">
           {queue.failed} role(s) failed — open the agent card to retry.
-        </p>
+        </ForgeDecodeText>
       ) : null}
     </div>
   );

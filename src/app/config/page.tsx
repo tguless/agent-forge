@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
+import { ForgeBackAgents } from '@/components/ForgeBackButton';
 import { FORGE_PROMPT_DEFS, USE_PROMPT_TABS, type ForgePromptCategory, type ForgePromptKey } from '@/lib/forgePrompts';
 
 type PromptRecord = {
@@ -161,9 +162,7 @@ export default function ForgeConfigPage() {
     <div className="ops-dashboard forge-config-page">
       <div className="forge-toolbar">
         <p className="ops-pitch" style={{ margin: 0 }}>
-          <Link href="/" className="forge-config-back">
-            ← All agents
-          </Link>
+          <ForgeBackAgents />
         </p>
         <div className="forge-config-toolbar-actions">
           <Link href="/new" className="forge-cta forge-cta--ghost">

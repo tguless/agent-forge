@@ -2,10 +2,11 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { ForgeBackAgents, ForgeBackButton } from '@/components/ForgeBackButton';
 import type { AgentData } from '@/lib/types';
 import { AgentSkillsPanel, AgentSkillsPortraitTrigger } from '@/components/AgentSkillsOverlay';
 import { SegmentedProgress } from '@/components/SegmentedProgress';
+import { ForgeDecodeText, ForgeFlowText } from '@/components/ForgeArwesText';
 import { DETAIL_SECTION_ICONS, splitQuoteParagraphs } from '@/lib/detailIcons';
 
 function DetailPanel({
@@ -62,13 +63,42 @@ function SectionHead({
   );
 }
 
-function DetailList({ items, numbered = false }: { items: string[]; numbered?: boolean }) {
+function DetailFlowList({
+  items,
+  numbered = false,
+  animateId,
+}: {
+  items: string[];
+  numbered?: boolean;
+  animateId: string;
+}) {
   return (
-    <ul className={`ops-detail-list${numbered ? ' ops-detail-list--numbered' : ''}`}>
-      {items.map((item) => (
-        <li key={item}>{item}</li>
-      ))}
-    </ul>
+    <ForgeFlowText as="div" layout="block" animateId={animateId} playOnce>
+      <ul className={`ops-detail-list${numbered ? ' ops-detail-list--numbered' : ''}`}>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </ForgeFlowText>
+  );
+}
+
+function DetailFlowInline({
+  children,
+  animateId,
+}: {
+  children: React.ReactNode;
+  animateId: string;
+}) {
+  return (
+    <ForgeFlowText
+      layout="inline"
+      animateId={animateId}
+      playOnce
+      contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+    >
+      {children}
+    </ForgeFlowText>
   );
 }
 
@@ -112,6 +142,8 @@ export function AgentDetailCommandCard({
     skillsFile: agent.skillsFile,
     accent,
   };
+  const flowId = (key: string, fingerprint = '') =>
+    `${agent.slug}:${key}${fingerprint ? `:${fingerprint}` : ''}`;
 
   React.useEffect(() => {
     setEmblemCacheBust(0);
@@ -190,28 +222,6 @@ export function AgentDetailCommandCard({
 
   return (
     <div className="ops-detail-page" style={{ ['--card-accent' as string]: accent }}>
-      <div className="ops-detail-toolbar">
-        <div className="ops-detail-toolbar-nav">
-          {businessSlug ? (
-            <Link href={`/business/${businessSlug}`} className="ops-detail-back">
-              ← {businessName ?? 'Business blueprint'}
-            </Link>
-          ) : null}
-          <Link href="/" className="ops-detail-back">
-            ← All agents
-          </Link>
-        </div>
-        <button
-          type="button"
-          className="ops-detail-delete"
-          onClick={() => void handleDelete()}
-          disabled={deleting}
-          aria-busy={deleting}
-        >
-          {deleting ? 'Deleting…' : 'Delete profile'}
-        </button>
-      </div>
-
       <div className="ops-detail-shell">
         <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />
         <span className="ops-detail-corner ops-detail-corner-tr" aria-hidden />
@@ -219,6 +229,28 @@ export function AgentDetailCommandCard({
         <span className="ops-detail-corner ops-detail-corner-br" aria-hidden />
 
         <div className="ops-detail-inner">
+          <div className="ops-detail-toolbar">
+            <div className="ops-detail-toolbar-nav">
+              {businessSlug ? (
+                <ForgeBackButton
+                  href={`/business/${businessSlug}`}
+                  label={businessName ?? 'Business blueprint'}
+                  glyph="business"
+                />
+              ) : null}
+              <ForgeBackAgents />
+            </div>
+            <button
+              type="button"
+              className="ops-detail-delete"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+              aria-busy={deleting}
+            >
+              {deleting ? 'Deleting…' : 'Delete profile'}
+            </button>
+          </div>
+
           <header className="ops-detail-header">
             <div className="ops-detail-brand">
               <div className="forge-wordmark">
@@ -227,8 +259,26 @@ export function AgentDetailCommandCard({
               <div className="ops-detail-brand-tag">{agent.department || 'Command Profile'}</div>
             </div>
             <div className="ops-detail-title-block">
-              <h1 className="ops-detail-title">{agent.title}</h1>
-              <p className="ops-detail-subtitle">{agent.subtitle}</p>
+              <h1 className="ops-detail-title">
+                <ForgeDecodeText
+                  layout="block"
+                  animateId={flowId('title', agent.title)}
+                  playOnce
+                  contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
+                >
+                  {agent.title}
+                </ForgeDecodeText>
+              </h1>
+              <p className="ops-detail-subtitle">
+                <ForgeDecodeText
+                  layout="block"
+                  animateId={flowId('subtitle', agent.subtitle)}
+                  playOnce
+                  contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+                >
+                  {agent.subtitle}
+                </ForgeDecodeText>
+              </p>
             </div>
             <div className="ops-detail-emblem">
               {emblemSrc ? (
@@ -303,8 +353,20 @@ export function AgentDetailCommandCard({
               </AgentSkillsPortraitTrigger>
               {(agent.callsign || agent.alignment) && (
                 <DetailPanel className="ops-detail-hero-meta">
-                  {agent.callsign && <p>Callsign: {agent.callsign}</p>}
-                  {agent.alignment && <p>Alignment: {agent.alignment}</p>}
+                  {agent.callsign && (
+                    <p>
+                      <ForgeFlowText layout="inline" animateId={flowId('callsign', agent.callsign)} playOnce contentStyle={{ color: 'inherit' }}>
+                        Callsign: {agent.callsign}
+                      </ForgeFlowText>
+                    </p>
+                  )}
+                  {agent.alignment && (
+                    <p>
+                      <ForgeFlowText layout="inline" animateId={flowId('hero-alignment', agent.alignment)} playOnce contentStyle={{ color: 'inherit' }}>
+                        Alignment: {agent.alignment}
+                      </ForgeFlowText>
+                    </p>
+                  )}
                 </DetailPanel>
               )}
             </div>
@@ -318,11 +380,18 @@ export function AgentDetailCommandCard({
                   <span className="ops-detail-quote-mark ops-detail-quote-mark--close" aria-hidden>
                     &rdquo;
                   </span>
-                  <blockquote className="ops-detail-quote-text">
+                  <ForgeFlowText
+                    as="blockquote"
+                    className="ops-detail-quote-text"
+                    layout="block"
+                    animateId={flowId('quote', agent.quote.slice(0, 48))}
+                    playOnce
+                    contentStyle={{ color: 'inherit', fontFamily: 'inherit', lineHeight: 'inherit' }}
+                  >
                     {splitQuoteParagraphs(agent.quote).map((paragraph) => (
                       <p key={paragraph}>{paragraph}</p>
                     ))}
-                  </blockquote>
+                  </ForgeFlowText>
                 </DetailPanel>
               )}
             </div>
@@ -333,13 +402,19 @@ export function AgentDetailCommandCard({
                   {agent.role && (
                     <tr>
                       <th>Role</th>
-                      <td>{agent.role}</td>
+                      <td>
+                        <DetailFlowInline animateId={flowId('role', agent.role)}>{agent.role}</DetailFlowInline>
+                      </td>
                     </tr>
                   )}
                   {agent.alignment && (
                     <tr>
                       <th>Alignment</th>
-                      <td>{agent.alignment}</td>
+                      <td>
+                        <DetailFlowInline animateId={flowId('table-alignment', agent.alignment)}>
+                          {agent.alignment}
+                        </DetailFlowInline>
+                      </td>
                     </tr>
                   )}
                   {agent.authority != null && (
@@ -353,13 +428,19 @@ export function AgentDetailCommandCard({
                   {agent.scope && (
                     <tr>
                       <th>Scope</th>
-                      <td>{agent.scope}</td>
+                      <td>
+                        <DetailFlowInline animateId={flowId('scope', agent.scope)}>{agent.scope}</DetailFlowInline>
+                      </td>
                     </tr>
                   )}
                   {(agent.escalation || agent.focus) && (
                     <tr>
                       <th>{agent.focus ? 'Focus' : 'Escalation'}</th>
-                      <td>{agent.focus ?? agent.escalation}</td>
+                      <td>
+                        <DetailFlowInline animateId={flowId('focus', agent.focus ?? agent.escalation ?? '')}>
+                          {agent.focus ?? agent.escalation}
+                        </DetailFlowInline>
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -376,19 +457,30 @@ export function AgentDetailCommandCard({
                   {agent.mission && (
                     <DetailPanel>
                       <SectionHead iconSrc={DETAIL_SECTION_ICONS.mission} title="Mission" />
-                      <p className="ops-detail-body-text">{agent.mission}</p>
+                      <ForgeFlowText
+                        as="p"
+                        className="ops-detail-body-text"
+                        layout="block"
+                        animateId={flowId('mission', agent.mission)}
+                        playOnce
+                      >
+                        {agent.mission}
+                      </ForgeFlowText>
                     </DetailPanel>
                   )}
                   {agent.primaryObjectives && agent.primaryObjectives.length > 0 && (
                     <DetailPanel>
                       <SectionHead iconSrc={DETAIL_SECTION_ICONS.objectives} title="Primary objectives" />
-                      <DetailList items={agent.primaryObjectives} />
+                      <DetailFlowList
+                        items={agent.primaryObjectives}
+                        animateId={flowId('primary-objectives', agent.primaryObjectives.join('\x1e'))}
+                      />
                     </DetailPanel>
                   )}
                   {agent.inputs && agent.inputs.length > 0 && outputs.length === 0 && (
                     <DetailPanel>
                       <SectionHead iconSrc={DETAIL_SECTION_ICONS.inputs} title="Inputs" />
-                      <DetailList items={agent.inputs} />
+                      <DetailFlowList items={agent.inputs} animateId={flowId('inputs', agent.inputs.join('\x1e'))} />
                     </DetailPanel>
                   )}
                 </div>
@@ -397,13 +489,16 @@ export function AgentDetailCommandCard({
                   {agent.responsibilities && agent.responsibilities.length > 0 && (
                     <DetailPanel>
                       <SectionHead iconSrc={DETAIL_SECTION_ICONS.responsibilities} title="Responsibilities" />
-                      <DetailList items={agent.responsibilities} />
+                      <DetailFlowList
+                        items={agent.responsibilities}
+                        animateId={flowId('responsibilities', agent.responsibilities.join('\x1e'))}
+                      />
                     </DetailPanel>
                   )}
                   {outputs.length > 0 && !(agent.inputs && agent.inputs.length > 0) && (
                     <DetailPanel>
                       <SectionHead iconSrc={DETAIL_SECTION_ICONS.outputs} title="Outputs" />
-                      <DetailList items={outputs} />
+                      <DetailFlowList items={outputs} animateId={flowId('outputs', outputs.join('\x1e'))} />
                     </DetailPanel>
                   )}
                 </div>
@@ -413,14 +508,14 @@ export function AgentDetailCommandCard({
                 <div className="ops-detail-io-bridge" aria-label="Inputs flow to outputs">
                   <DetailPanel className="ops-detail-io-panel">
                     <SectionHead iconSrc={DETAIL_SECTION_ICONS.inputs} title="Inputs" />
-                    <DetailList items={agent.inputs} />
+                    <DetailFlowList items={agent.inputs} animateId={flowId('io-inputs', agent.inputs.join('\x1e'))} />
                   </DetailPanel>
                   <div className="ops-detail-io-arrow" aria-hidden>
                     ≫
                   </div>
                   <DetailPanel className="ops-detail-io-panel">
                     <SectionHead iconSrc={DETAIL_SECTION_ICONS.outputs} title="Outputs" />
-                    <DetailList items={outputs} />
+                    <DetailFlowList items={outputs} animateId={flowId('io-outputs', outputs.join('\x1e'))} />
                   </DetailPanel>
                 </div>
               )}
@@ -430,7 +525,10 @@ export function AgentDetailCommandCard({
                   {agent.escalateWhen && agent.escalateWhen.length > 0 && (
                     <DetailPanel danger>
                       <SectionHead iconSrc={DETAIL_SECTION_ICONS.escalate} title="Escalate when" danger />
-                      <DetailList items={agent.escalateWhen} />
+                      <DetailFlowList
+                        items={agent.escalateWhen}
+                        animateId={flowId('escalate', agent.escalateWhen.join('\x1e'))}
+                      />
                     </DetailPanel>
                   )}
                 </div>
@@ -438,11 +536,22 @@ export function AgentDetailCommandCard({
                 <div className="ops-detail-col ops-detail-col--center">
                   <DetailPanel>
                     <SectionHead iconSrc={DETAIL_SECTION_ICONS.q1Objective} title="Primary objective" />
-                    <p className="ops-detail-body-text">{agent.q1Objective}</p>
+                    <ForgeFlowText
+                      as="p"
+                      className="ops-detail-body-text"
+                      layout="block"
+                      animateId={flowId('q1-objective', agent.q1Objective)}
+                      playOnce
+                    >
+                      {agent.q1Objective}
+                    </ForgeFlowText>
                     {agent.successCriteria.length > 0 && (
                       <>
                         <SectionHead iconSrc={DETAIL_SECTION_ICONS.successCriteria} title="Success criteria" />
-                        <DetailList items={agent.successCriteria} />
+                        <DetailFlowList
+                          items={agent.successCriteria}
+                          animateId={flowId('success-criteria', agent.successCriteria.join('\x1e'))}
+                        />
                       </>
                     )}
                   </DetailPanel>
@@ -457,8 +566,26 @@ export function AgentDetailCommandCard({
                   {agent.keyMetrics.map((m) => (
                     <div className="ops-detail-metric" key={m.label}>
                       <div className="ops-detail-metric-head">
-                        <span className="ops-detail-metric-label">{m.label}</span>
-                        <span className="ops-detail-metric-value">{m.value}</span>
+                        <ForgeFlowText
+                          as="span"
+                          className="ops-detail-metric-label"
+                          layout="inline"
+                          animateId={flowId('metric-label', m.label)}
+                          playOnce
+                          contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+                        >
+                          {m.label}
+                        </ForgeFlowText>
+                        <ForgeFlowText
+                          as="span"
+                          className="ops-detail-metric-value"
+                          layout="inline"
+                          animateId={flowId('metric-value', `${m.label}:${m.value}`)}
+                          playOnce
+                          contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+                        >
+                          {m.value}
+                        </ForgeFlowText>
                       </div>
                       {m.progress != null && <SegmentedProgress progress={m.progress} />}
                     </div>
@@ -468,32 +595,47 @@ export function AgentDetailCommandCard({
               {agent.decisionFramework && agent.decisionFramework.length > 0 && (
                 <DetailPanel>
                   <SectionHead iconSrc={DETAIL_SECTION_ICONS.decisionFramework} title="Decision framework" />
-                  <DetailList items={agent.decisionFramework} numbered />
+                  <DetailFlowList
+                    items={agent.decisionFramework}
+                    numbered
+                    animateId={flowId('decision-framework', agent.decisionFramework.join('\x1e'))}
+                  />
                 </DetailPanel>
               )}
               <DetailPanel>
                 <SectionHead iconSrc={DETAIL_SECTION_ICONS.deliverables} title="Deliverables" />
-                <div className="ops-detail-deliverables">
-                  <button
-                    type="button"
-                    className="ops-detail-file ops-detail-file--skill"
-                    onClick={() => setSkillsOpen(true)}
-                  >
-                    {agent.skillsFile}
-                  </button>
-                  {agent.deliverables.map((d) => (
-                    <span className="ops-detail-file" key={d}>
-                      {d}
-                    </span>
-                  ))}
-                </div>
+                <ForgeFlowText as="div" layout="block" animateId={flowId('deliverables', agent.deliverables.join('\x1e'))} playOnce>
+                  <div className="ops-detail-deliverables">
+                    <button
+                      type="button"
+                      className="ops-detail-file ops-detail-file--skill"
+                      onClick={() => setSkillsOpen(true)}
+                    >
+                      {agent.skillsFile}
+                    </button>
+                    {agent.deliverables.map((d) => (
+                      <span className="ops-detail-file" key={d}>
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </ForgeFlowText>
               </DetailPanel>
             </div>
           </div>
 
           {agent.motto && (
             <footer className="ops-detail-footer">
-              <p className="ops-detail-motto">* {agent.motto.toUpperCase()} *</p>
+              <ForgeFlowText
+                as="p"
+                className="ops-detail-motto"
+                layout="block"
+                animateId={flowId('motto', agent.motto)}
+                playOnce
+                contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+              >
+                * {agent.motto.toUpperCase()} *
+              </ForgeFlowText>
             </footer>
           )}
         </div>

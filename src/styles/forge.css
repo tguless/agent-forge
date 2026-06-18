@@ -27,7 +27,7 @@
   justify-content: space-between;
   max-width: 1180px;
   margin: 0 auto 14px;
-  padding: 0 16px;
+  padding: var(--forge-page-top-gap, clamp(18px, 2.5vw, 28px)) 16px 0;
 }
 .forge-cta {
   display: inline-flex;
@@ -44,11 +44,22 @@
   border: none;
   border-radius: 3px;
   cursor: pointer;
-  transition: filter 0.15s ease, transform 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  transition:
+    filter 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
 }
 .forge-cta:hover {
   filter: brightness(1.12);
   transform: translateY(-1px);
+}
+.forge-cta.forge-interactive--pressed,
+.forge-cta:active {
+  filter: brightness(1.2);
+  transform: translateY(0) scale(0.98);
 }
 .forge-cta--ghost {
   color: var(--ops-cyan-bright, #7fe7ff);
@@ -162,6 +173,31 @@
 .forge-add-card:hover .forge-add-card-label,
 .forge-add-card:focus-visible .forge-add-card-label {
   color: var(--ops-cyan-bright, #7fe7ff);
+}
+
+/* ARWES Illuminator + click bleep on interactive surfaces */
+.forge-interactive {
+  position: relative;
+  overflow: hidden;
+}
+
+.ops-agent-card.forge-interactive--pressed {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--card-accent) 50%, transparent);
+  transform: scale(0.992);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.forge-add-card.forge-interactive--pressed .forge-add-card-plus {
+  transform: scale(1.02);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--ops-cyan, #38bdf8) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-interactive--pressed,
+  .ops-agent-card.forge-interactive--pressed,
+  .forge-cta.forge-interactive--pressed {
+    transform: none;
+  }
 }
 
 /* ── /new forge form ─────────────────────────────────────────────────────── */
@@ -279,6 +315,7 @@
   margin: 0;
   font-size: 0.72rem;
 }
+
 .forge-status-line {
   font-family: var(--ops-font-display, 'Oxanium', sans-serif);
   font-weight: 700;
@@ -289,6 +326,55 @@
   align-items: center;
   gap: 10px;
 }
+
+/* ARWES text — block layout; stack sizer holds card height during typewriter */
+.forge-arwes-text--block {
+  display: block;
+  width: 100%;
+}
+
+.forge-arwes-text--inline {
+  display: inline;
+}
+
+.forge-arwes-text__stack {
+  display: grid;
+  width: 100%;
+}
+
+.forge-arwes-text--inline .forge-arwes-text__stack {
+  display: inline-grid;
+  width: auto;
+}
+
+.forge-arwes-text__stack > .forge-arwes-text__sizer,
+.forge-arwes-text__stack > .forge-arwes-text__content {
+  grid-area: 1 / 1;
+}
+
+.forge-arwes-text__sizer {
+  visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+.forge-arwes-text--block .forge-arwes-text__stack > .forge-arwes-text__sizer,
+.forge-arwes-text--block .forge-arwes-text__stack > .forge-arwes-text__content,
+.forge-arwes-text--block > .forge-arwes-text__content {
+  display: block;
+  width: 100%;
+}
+
+.forge-arwes-text--block > .forge-arwes-text__content > p,
+.forge-arwes-text--block .forge-arwes-text__stack > .forge-arwes-text__content > p {
+  margin: 0 0 0.85em;
+}
+
+.forge-arwes-text--block > .forge-arwes-text__content > p:last-child,
+.forge-arwes-text--block .forge-arwes-text__stack > .forge-arwes-text__content > p:last-child {
+  margin-bottom: 0;
+}
+
 .forge-spinner {
   width: 14px;
   height: 14px;
@@ -337,6 +423,11 @@
   flex-shrink: 0;
 }
 
+.forge-log-body {
+  min-width: 0;
+  flex: 1;
+}
+
 /* ── Forge configuration (/config) ───────────────────────────────────────── */
 .forge-config-page .forge-config-shell {
   max-width: 1180px;
@@ -358,6 +449,88 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-items: center;
+}
+
+/* HUD back navigation — chevron + context sigil + label */
+.forge-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ops-cyan-bright, #7fe7ff);
+  background: rgba(4, 12, 18, 0.62);
+  border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 42%, transparent);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    border-color 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.1s ease;
+}
+
+.forge-back-btn:hover,
+.forge-back-btn:focus-visible {
+  color: var(--ops-text, #f8fafc);
+  border-color: var(--ops-cyan-bright, #7fe7ff);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ops-cyan, #38bdf8) 28%, transparent);
+}
+
+.forge-back-btn.forge-interactive--pressed {
+  transform: scale(0.98);
+}
+
+.forge-back-btn__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--ops-cyan-bright, #7fe7ff);
+  border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 38%, transparent);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.forge-back-btn__sigil {
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  line-height: 1;
+  color: var(--ops-cyan, #38bdf8);
+  opacity: 0.95;
+}
+
+.forge-back-btn__label {
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ops-detail-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.ops-detail-toolbar-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
 }
 

@@ -1,10 +1,20 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
+import { useForgeInteractive } from '@/hooks/useForgeInteractive';
 
 export function ForgeNewAgentCard() {
+  const ref = React.useRef<HTMLAnchorElement>(null);
+
+  useForgeInteractive(ref, {
+    color: 'color-mix(in srgb, var(--ops-cyan, #38bdf8) 28%, transparent)',
+    size: 300,
+  });
+
   return (
     <Link
+      ref={ref}
       href="/new"
       className="ops-agent-card forge-add-card"
       aria-label="Forge new agent"

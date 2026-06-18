@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { HudBox } from '@/components/HudBox';
+import { ForgeBackAgents } from '@/components/ForgeBackButton';
 import type { BusinessSummary } from '@/lib/businessTypes';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -39,9 +40,7 @@ export default function BusinessRosterPage() {
   return (
     <div className="ops-font-scope forge-page">
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 18 }}>
-        <Link href="/" className="ops-detail-back" style={{ position: 'static' }}>
-          ← All agents
-        </Link>
+        <ForgeBackAgents style={{ position: 'static' }} />
         <Link href="/business/new" className="forge-cta" style={{ padding: '6px 14px', fontSize: '0.72rem' }}>
           + New business
         </Link>

@@ -2,6 +2,14 @@
 
 import React from 'react';
 import { HudBox } from '@/components/HudBox';
+import { ForgeDecodeText, ForgeFlowText, ForgeHeaderText } from '@/components/ForgeArwesText';
+import { FORGE_DECODE_HUD_OPTS, getForgeTextDuration } from '@/lib/forgeArwesAnimate';
+
+const OUTCOME_LABEL = 'How it works';
+/** Plain-text length of the outcome blurb (for decode timing only). */
+const OUTCOME_BODY_CHARS =
+  'Describe your BUSINESS and a ROLE, and the Forge designs a full tactical command card — identity, metrics, a detailed skill file, and a generated emblem, portrait, and icon.'
+    .length;
 
 export function ForgeHudHeader() {
   return (
@@ -21,18 +29,49 @@ export function ForgeHudHeader() {
           </div>
 
           <h1 id="forge-main-title" className="ops-title">
-            Agent Command Foundry
-            <span className="ops-title-line2">Forge an agent from a job description</span>
+            <ForgeHeaderText
+              className="ops-title-arwes"
+              duration={1.2}
+              easing="outExpo"
+              animateId="hud:title"
+              playOnce
+            >
+              Agent Command Foundry
+            </ForgeHeaderText>
+            <span className="ops-title-line2">
+              <ForgeFlowText
+                contentStyle={{ color: 'var(--ops-cyan-bright)' }}
+                animateId="hud:subtitle"
+                playOnce
+              >
+                Forge an agent from a job description
+              </ForgeFlowText>
+            </span>
           </h1>
 
           <HudBox className="ops-outcome-box" variant="chamfer">
-            <p className="ops-outcome-label">How it works</p>
-            <p className="ops-outcome-text">
+            <ForgeDecodeText
+              as="p"
+              className="ops-outcome-label"
+              animateId="hud:outcome-label"
+              playOnce
+              duration={getForgeTextDuration(OUTCOME_LABEL.length, FORGE_DECODE_HUD_OPTS)}
+            >
+              {OUTCOME_LABEL}
+            </ForgeDecodeText>
+            <ForgeDecodeText
+              as="p"
+              className="ops-outcome-text"
+              layout="block"
+              animateId="hud:outcome"
+              playOnce
+              duration={getForgeTextDuration(OUTCOME_BODY_CHARS, FORGE_DECODE_HUD_OPTS)}
+            >
               Describe your <span className="ops-funnel-stage">BUSINESS</span> and a{' '}
               <span className="ops-funnel-stage">ROLE</span>, and the Forge designs a full tactical
               command card — identity, metrics, a detailed skill file, and a generated emblem,
               portrait, and icon.
-            </p>
+            </ForgeDecodeText>
           </HudBox>
         </div>
       </div>

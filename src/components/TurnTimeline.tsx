@@ -2,6 +2,7 @@
 
 import React from 'react';
 import type { AgentTurnPayload } from '@/lib/agent/types';
+import { ForgeLogLine } from '@/components/ForgeLogLine';
 
 const TYPE_TICK: Record<string, string> = {
   THINKING: '✻',
@@ -21,7 +22,12 @@ export function TurnTimeline({ turns }: { turns: AgentTurnPayload[] }) {
 
   return (
     <div className="forge-log" ref={ref}>
-      {turns.length === 0 && <div className="forge-log-row">Connecting to agent…</div>}
+      {turns.length === 0 && (
+        <div className="forge-log-row">
+          <span className="forge-log-tick">›</span>
+          <ForgeLogLine>Connecting to agent…</ForgeLogLine>
+        </div>
+      )}
       {turns.map((t) => {
         const label =
           t.turnType === 'TOOL_CALL' || t.turnType === 'TOOL_RESULT'
@@ -32,9 +38,11 @@ export function TurnTimeline({ turns }: { turns: AgentTurnPayload[] }) {
         return (
           <div className="forge-log-row" data-type={dataType} key={t.id}>
             <span className="forge-log-tick">{TYPE_TICK[t.turnType] ?? '›'}</span>
-            <span style={t.turnType === 'THINKING' ? { opacity: 0.7, fontStyle: 'italic' } : undefined}>
+            <ForgeLogLine
+              style={t.turnType === 'THINKING' ? { opacity: 0.7, fontStyle: 'italic' } : undefined}
+            >
               {label}
-            </span>
+            </ForgeLogLine>
           </div>
         );
       })}
