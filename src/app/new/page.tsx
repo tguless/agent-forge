@@ -4,7 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { HudBox } from '@/components/HudBox';
 import { ForgeCtaButton, ForgeCtaLink } from '@/components/ForgeCta';
-import { ForgeBackAgents } from '@/components/ForgeBackButton';
+import { ForgePageHeader, ForgePageShell } from '@/components/ForgePageShell';
+import { ForgeTopNav } from '@/components/ForgeTopNav';
 import { ForgeDecodeText } from '@/components/ForgeArwesText';
 import { ForgeLogLine } from '@/components/ForgeLogLine';
 import type { AgentStatus, GenerationEvent } from '@/lib/types';
@@ -195,21 +196,19 @@ export default function NewAgentPage() {
   const running = status === 'queued' || status === 'generating';
 
   return (
-    <div className="ops-font-scope forge-page">
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 18 }}>
-        <ForgeBackAgents style={{ position: 'static' }} />
-        <ForgeCtaLink href="/config" variant="ghost" size="sm" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
-          Configuration
-        </ForgeCtaLink>
-      </div>
-
-      <div className="forge-wordmark forge-wordmark--lg" style={{ marginBottom: 6 }}>
-        AGENT<span>FORGE</span>
-      </div>
-      <p className="forge-hint">
-        Give a minimal business description and a job description. The Forge designs a full tactical
-        command card, a detailed skill file, and visual identity.
-      </p>
+    <ForgePageShell
+      frame="hud"
+      nav={<ForgeTopNav variant="dashboard" />}
+    >
+      <ForgePageHeader>
+        <div className="forge-wordmark forge-wordmark--lg">
+          AGENT<span>FORGE</span>
+        </div>
+        <p className="forge-hint forge-page-lead">
+          Give a minimal business description and a job description. The Forge designs a full tactical
+          command card, a detailed skill file, and visual identity.
+        </p>
+      </ForgePageHeader>
 
       {!slug ? (
         <form className="forge-form" onSubmit={submit}>
@@ -353,6 +352,6 @@ export default function NewAgentPage() {
           </div>
         </div>
       )}
-    </div>
+    </ForgePageShell>
   );
 }

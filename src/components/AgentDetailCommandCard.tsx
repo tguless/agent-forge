@@ -2,13 +2,17 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ForgeBackAgents, ForgeBackButton } from '@/components/ForgeBackButton';
+import { ForgeBackAgents, ForgeBackTrail } from '@/components/ForgeBackButton';
+import { ForgeTopNav } from '@/components/ForgeTopNav';
 import type { AgentData } from '@/lib/types';
 import { AgentSkillsPanel, AgentSkillsPortraitTrigger } from '@/components/AgentSkillsOverlay';
 import { SegmentedProgress } from '@/components/SegmentedProgress';
 import { ForgeDecodeText, ForgeFlowText } from '@/components/ForgeArwesText';
 import { useTextFillDelay } from '@/hooks/useTextFillDelay';
 import { DETAIL_SECTION_ICONS, splitQuoteParagraphs } from '@/lib/detailIcons';
+import { FORGE_DECODE_HUD_OPTS, getForgeTextDuration } from '@/lib/forgeArwesAnimate';
+
+const DETAIL_WORDMARK_CHARS = 'AGENTFORGE'.length;
 
 function DetailPanel({
   children,
@@ -162,11 +166,14 @@ export function AgentDetailCommandCard({
   forging = false,
   businessSlug,
   businessName,
+  embedded = false,
 }: {
   agent: AgentData;
   forging?: boolean;
   businessSlug?: string | null;
   businessName?: string | null;
+  /** When true, render inner content only (parent supplies ForgePageShell). */
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const accent = agent.accent ?? '#8ee85a';
@@ -269,42 +276,53 @@ export function AgentDetailCommandCard({
     }
   }
 
-  return (
-    <div className="ops-detail-page" style={{ ['--card-accent' as string]: accent }}>
-      <div className="ops-detail-shell">
-        <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />
-        <span className="ops-detail-corner ops-detail-corner-tr" aria-hidden />
-        <span className="ops-detail-corner ops-detail-corner-bl" aria-hidden />
-        <span className="ops-detail-corner ops-detail-corner-br" aria-hidden />
-
-        <div className="ops-detail-inner">
-          <div className="ops-detail-toolbar">
-            <div className="ops-detail-toolbar-nav">
-              {businessSlug ? (
-                <ForgeBackButton
-                  href={`/business/${businessSlug}`}
-                  label={businessName ?? 'Business blueprint'}
-                  glyph="business"
-                />
-              ) : null}
-              <ForgeBackAgents />
-            </div>
-            <button
-              type="button"
-              className="ops-detail-delete"
-              onClick={() => void handleDelete()}
-              disabled={deleting}
-              aria-busy={deleting}
-            >
-              {deleting ? 'Deleting…' : 'Delete profile'}
-            </button>
-          </div>
+  const inner = (
+    <>
+          <ForgeTopNav
+            variant="detail"
+            back={
+              <ForgeBackTrail
+                items={[
+                  { href: '/', label: 'All agents', glyph: 'agents' },
+                  ...(businessSlug
+                    ? [
+                        {
+                          href: `/business/${businessSlug}`,
+                          label: businessName ?? 'Business blueprint',
+                          glyph: 'business' as const,
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            }
+            trailing={
+              <button
+                type="button"
+                className="ops-detail-delete"
+                onClick={() => void handleDelete()}
+                disabled={deleting}
+                aria-busy={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete profile'}
+              </button>
+            }
+          />
 
           <header className="ops-detail-header">
             <div className="ops-detail-brand">
-              <div className="forge-wordmark">
+              <ForgeDecodeText
+                as="div"
+                className="forge-wordmark"
+                layout="inline"
+                contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+                animateId={flowId('wordmark', 'agent-forge')}
+                playOnce
+                delay={d('wordmark', 0)}
+                duration={getForgeTextDuration(DETAIL_WORDMARK_CHARS, FORGE_DECODE_HUD_OPTS)}
+              >
                 AGENT<span>FORGE</span>
-              </div>
+              </ForgeDecodeText>
               <div className="ops-detail-brand-tag">{agent.department || 'Command Profile'}</div>
             </div>
             <div className="ops-detail-title-block">
@@ -700,7 +718,19 @@ export function AgentDetailCommandCard({
               </ForgeFlowText>
             </footer>
           )}
-        </div>
+    </>
+  );
+
+  return embedded ? (
+    inner
+  ) : (
+    <div className="ops-detail-page" style={{ ['--card-accent' as string]: accent }}>
+      <div className="ops-detail-shell">
+        <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />
+        <span className="ops-detail-corner ops-detail-corner-tr" aria-hidden />
+        <span className="ops-detail-corner ops-detail-corner-bl" aria-hidden />
+        <span className="ops-detail-corner ops-detail-corner-br" aria-hidden />
+        <div className="ops-detail-inner">{inner}</div>
       </div>
     </div>
   );

@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
-import { ForgeBackAgents } from '@/components/ForgeBackButton';
+import { ForgePageShell } from '@/components/ForgePageShell';
+import { ForgeTopNav } from '@/components/ForgeTopNav';
 import { FORGE_PROMPT_DEFS, USE_PROMPT_TABS, type ForgePromptCategory, type ForgePromptKey } from '@/lib/forgePrompts';
 import { useForgeUiSettings } from '@/components/ForgeUiSettingsProvider';
 import {
@@ -186,22 +186,19 @@ export default function ForgeConfigPage() {
   const customizedCount = prompts.filter((p) => p.isCustomized).length;
 
   return (
-    <div className="ops-dashboard forge-config-page">
-      <div className="forge-toolbar">
-        <p className="ops-pitch" style={{ margin: 0 }}>
-          <ForgeBackAgents />
-        </p>
-        <div className="forge-config-toolbar-actions">
-          <Link href="/new" className="forge-cta forge-cta--ghost">
-            Forge agent
-          </Link>
-        </div>
-      </div>
-
-      <div className="ops-hud-shell forge-config-shell">
-        <span className="ops-hf-corner ops-hf-corner-tl" aria-hidden />
-        <span className="ops-hf-corner ops-hf-corner-tr" aria-hidden />
-        <div className="ops-hud-inner">
+    <ForgePageShell
+      frame="hud"
+      pageClassName="forge-config-page"
+      shellClassName="forge-config-shell"
+      nav={<ForgeTopNav variant="dashboard" />}
+      footer={
+        <footer className="ops-hud-bottom-rail">
+          <span className="ops-bf-corner ops-bf-corner-bl" aria-hidden />
+          <span className="ops-bf-corner ops-bf-corner-br" aria-hidden />
+          <p className="ops-tagline">Anthropic system · meta skills · Gemini image prompts</p>
+        </footer>
+      }
+    >
           <header className="forge-config-header">
             <div className="forge-wordmark forge-wordmark--lg">
               AGENT<span>FORGE</span>
@@ -481,14 +478,6 @@ export default function ForgeConfigPage() {
               )}
             </>
           )}
-        </div>
-
-        <footer className="ops-hud-bottom-rail">
-          <span className="ops-bf-corner ops-bf-corner-bl" aria-hidden />
-          <span className="ops-bf-corner ops-bf-corner-br" aria-hidden />
-          <p className="ops-tagline">Anthropic system · meta skills · Gemini image prompts</p>
-        </footer>
-      </div>
-    </div>
+    </ForgePageShell>
   );
 }

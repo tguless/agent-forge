@@ -6,6 +6,7 @@ import { ForgeDecodeText, ForgeFlowText, ForgeHeaderText } from '@/components/Fo
 import { FORGE_DECODE_HUD_OPTS, getForgeTextDuration } from '@/lib/forgeArwesAnimate';
 
 const OUTCOME_LABEL = 'How it works';
+const WORDMARK_TEXT = 'AGENTFORGE';
 /** Plain-text length of the outcome blurb (for decode timing only). */
 const OUTCOME_BODY_CHARS =
   'Describe your BUSINESS and a ROLE, and the Forge designs a full tactical command card — identity, metrics, a detailed skill file, and a generated emblem, portrait, and icon.'
@@ -23,9 +24,17 @@ export function ForgeHudHeader() {
 
         <div className="ops-hud-header-inner">
           <div className="ops-hud-header-brand">
-            <div className="forge-wordmark forge-wordmark--lg">
+            <ForgeDecodeText
+              as="div"
+              className="forge-wordmark forge-wordmark--lg"
+              layout="inline"
+              contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+              animateId="hud:wordmark"
+              playOnce
+              duration={getForgeTextDuration(WORDMARK_TEXT.length, FORGE_DECODE_HUD_OPTS)}
+            >
               AGENT<span>FORGE</span>
-            </div>
+            </ForgeDecodeText>
           </div>
 
           <h1 id="forge-main-title" className="ops-title">

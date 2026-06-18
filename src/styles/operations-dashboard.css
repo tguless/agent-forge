@@ -2,6 +2,8 @@
 
 .ops-font-scope {
   --ops-bg: #020617;
+  --forge-content-max: 1180px;
+  --forge-page-gutter: 16px;
   --forge-page-top-gap: clamp(18px, 2.5vw, 28px);
   --ops-panel: #060d18;
   --ops-cyan: #38bdf8;
@@ -49,7 +51,7 @@
 /* ── Outer HUD shell (lifted border) ── */
 .ops-hud-shell {
   position: relative;
-  max-width: 1180px;
+  max-width: var(--forge-content-max);
   margin: 0 auto;
   padding: 10px 10px 0;
 }
@@ -396,8 +398,8 @@
 
 .ops-hud-header-brand {
   display: flex;
-  justify-content: flex-start;
-  margin-bottom: 4px;
+  justify-content: center;
+  margin-bottom: 8px;
 }
 
 .ops-hud-logo {
@@ -993,7 +995,7 @@
 }
 
 .ops-nav-bar {
-  max-width: 1180px;
+  max-width: var(--forge-content-max);
   margin: 0 auto;
   padding: 0.75rem 10px 0;
 }
@@ -1006,7 +1008,7 @@
 }
 
 .ops-pitch {
-  max-width: 1180px;
+  max-width: var(--forge-content-max);
   margin: 0 auto 8px;
   padding: 0 10px;
   font-size: 0.68rem;

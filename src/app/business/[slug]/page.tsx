@@ -14,8 +14,10 @@ import { ForgeQueueProgress, type ForgeQueueSnapshot } from '@/components/ForgeQ
 import { ForgedAgentLicense } from '@/components/ForgedAgentLicense';
 import type { BusinessAgentSummary } from '@/lib/businessStore';
 import { BusinessPlaque } from '@/components/BusinessPlaque';
-import { ForgeBackBusinesses } from '@/components/ForgeBackButton';
+import { ForgeTopNav } from '@/components/ForgeTopNav';
+import { ForgeDecodeText, ForgeFlowText } from '@/components/ForgeArwesText';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
+import { useTextFillDelay } from '@/hooks/useTextFillDelay';
 import type {
   Business,
   BusinessApp,
@@ -48,18 +50,24 @@ type Detail = {
   capacities: Capacity[];
 };
 
+const BLUEPRINT_SECTION_STAGGER_S = 0.18;
+
 function CollapsibleSection({
   title,
   count,
   defaultOpen = false,
   actions,
   children,
+  animateId,
+  delay = 0,
 }: {
   title: string;
   count?: number;
   defaultOpen?: boolean;
   actions?: React.ReactNode;
   children: React.ReactNode;
+  animateId?: string;
+  delay?: number;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
   return (
@@ -74,13 +82,48 @@ function CollapsibleSection({
           <span className="forge-collapse-chevron" aria-hidden>
             {open ? '▾' : '▸'}
           </span>
-          <span className="forge-collapse-title">{title}</span>
+          <span className="forge-collapse-title">
+            <ForgeDecodeText
+              animateId={animateId ?? `blueprint:section:${title}`}
+              playOnce
+              delay={delay}
+              layout="inline"
+              contentStyle={{ color: 'inherit' }}
+            >
+              {title}
+            </ForgeDecodeText>
+          </span>
           {typeof count === 'number' && <span className="forge-collapse-count">{count}</span>}
         </button>
         {actions && <div className="forge-collapse-actions">{actions}</div>}
       </div>
       {open && <div className="forge-collapse-body">{children}</div>}
     </HudBox>
+  );
+}
+
+function BlueprintFlowParagraph({
+  children,
+  animateId,
+  delay,
+  className = 'forge-hint',
+}: {
+  children: string;
+  animateId: string;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <ForgeFlowText
+      as="p"
+      className={className}
+      layout="block"
+      animateId={animateId}
+      playOnce
+      delay={delay}
+    >
+      {children}
+    </ForgeFlowText>
   );
 }
 
@@ -100,6 +143,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
   const planStreamActive = detail?.planInFlight ?? false;
   const { turns: planTurns, done: planDone } = useBusinessPlanStream(slug, planStreamActive);
+  const fillDelay = useTextFillDelay();
 
   const load = React.useCallback(async () => {
     const res = await fetch(`/api/businesses/${slug}`, { cache: 'no-store' });
@@ -245,6 +289,13 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const forgeBusy = busy || forgeQueueActive;
 
   const industryTag = business.profile.industry ?? 'Business blueprint';
+  const d = (key: string, offset: number) => fillDelay(`${slug}:${key}`, offset);
+  let sectionIdx = 0;
+  const nextSectionDelay = () => {
+    const delay = d(`section-${sectionIdx}`, 0.34 + sectionIdx * BLUEPRINT_SECTION_STAGGER_S);
+    sectionIdx += 1;
+    return delay;
+  };
 
   return (
     <div className="ops-detail-page forge-blueprint-page">
@@ -255,42 +306,85 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         <span className="ops-detail-corner ops-detail-corner-br" aria-hidden />
 
         <div className="ops-detail-inner">
-          <div className="ops-detail-toolbar">
-            <div className="ops-detail-toolbar-nav">
-              <ForgeBackBusinesses />
-              <Link href="/business/new" className="forge-cta forge-cta--ghost" style={{ padding: '6px 12px', fontSize: '0.72rem' }}>
-                + New business
-              </Link>
-            </div>
-            {!detail.business.isPlaceholder ? (
-              <button
-                type="button"
-                className="ops-detail-delete"
-                onClick={() => void handleDelete()}
-                disabled={deleting}
-                aria-busy={deleting}
-              >
-                {deleting ? 'Deleting…' : 'Delete business'}
-              </button>
-            ) : null}
-          </div>
+          <ForgeTopNav
+            variant="detail"
+            trailing={
+              !detail.business.isPlaceholder ? (
+                <button
+                  type="button"
+                  className="ops-detail-delete"
+                  onClick={() => void handleDelete()}
+                  disabled={deleting}
+                  aria-busy={deleting}
+                >
+                  {deleting ? 'Deleting…' : 'Delete business'}
+                </button>
+              ) : null
+            }
+          />
 
           <header className="ops-detail-header forge-blueprint-header">
             <div className="ops-detail-brand">
-              <div className="forge-wordmark">
+              <ForgeDecodeText
+                className="forge-wordmark"
+                layout="inline"
+                contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+                animateId={`${slug}:wordmark`}
+                playOnce
+                delay={d('wordmark', 0)}
+              >
                 AGENT<span>FORGE</span>
-              </div>
-              <div className="ops-detail-brand-tag">Business blueprint</div>
+              </ForgeDecodeText>
+              <ForgeDecodeText
+                as="div"
+                className="ops-detail-brand-tag"
+                layout="inline"
+                animateId={`${slug}:brand-tag`}
+                playOnce
+                delay={d('brand-tag', 0.08)}
+                contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+              >
+                Business blueprint
+              </ForgeDecodeText>
             </div>
             <div className="ops-detail-title-block">
-              <h1 className="ops-detail-title">{business.name}</h1>
-              <p className="ops-detail-subtitle">{industryTag}</p>
+              <h1 className="ops-detail-title">
+                <ForgeDecodeText
+                  layout="block"
+                  animateId={`${slug}:title:${business.name}`}
+                  playOnce
+                  delay={d('title', 0.12)}
+                  contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
+                >
+                  {business.name}
+                </ForgeDecodeText>
+              </h1>
+              <p className="ops-detail-subtitle">
+                <ForgeDecodeText
+                  layout="inline"
+                  animateId={`${slug}:subtitle:${industryTag}`}
+                  playOnce
+                  delay={d('subtitle', 0.18)}
+                  contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+                >
+                  {industryTag}
+                </ForgeDecodeText>
+              </p>
             </div>
             <BusinessPlaque business={business} disabled={detail.consultInFlight} />
           </header>
 
           <div className="forge-blueprint-body">
-            <p className="forge-hint forge-blueprint-lead">{business.description}</p>
+            <ForgeFlowText
+              as="p"
+              className="forge-hint forge-blueprint-lead"
+              layout="block"
+              animateId={`${slug}:lead:${business.description}`}
+              playOnce
+              delay={d('lead', 0.24)}
+            >
+              {business.description}
+            </ForgeFlowText>
 
       {detail.consultInFlight && (
         <div className="forge-status-line forge-blueprint-status">
@@ -303,25 +397,54 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
       <div className="forge-blueprint-sections">
       {business.profile.elevatorPitch && (
-        <CollapsibleSection title="Elevator pitch" defaultOpen>
-          <p className="forge-elevator-pitch">{business.profile.elevatorPitch}</p>
+        <CollapsibleSection title="Elevator pitch" defaultOpen delay={nextSectionDelay()}>
+          <ForgeFlowText
+            as="p"
+            className="forge-elevator-pitch"
+            layout="block"
+            animateId={`${slug}:elevator:${business.profile.elevatorPitch}`}
+            playOnce
+            delay={d('elevator-body', 0.42)}
+          >
+            {business.profile.elevatorPitch}
+          </ForgeFlowText>
         </CollapsibleSection>
       )}
 
       {/* Profile */}
       {(business.profile.industry || business.profile.summary) && (
-        <CollapsibleSection title="Profile" defaultOpen>
+        <CollapsibleSection title="Profile" defaultOpen delay={nextSectionDelay()}>
           {business.profile.industry && (
-            <p className="forge-hint"><strong>Industry:</strong> {business.profile.industry}</p>
+            <BlueprintFlowParagraph
+              animateId={`${slug}:profile-industry:${business.profile.industry}`}
+              delay={d('profile-industry', 0.46)}
+            >
+              {`Industry: ${business.profile.industry}`}
+            </BlueprintFlowParagraph>
           )}
           {business.profile.businessModel && (
-            <p className="forge-hint"><strong>Model:</strong> {business.profile.businessModel}</p>
+            <BlueprintFlowParagraph
+              animateId={`${slug}:profile-model:${business.profile.businessModel}`}
+              delay={d('profile-model', 0.5)}
+            >
+              {`Model: ${business.profile.businessModel}`}
+            </BlueprintFlowParagraph>
           )}
-          {business.profile.summary && <p className="forge-hint">{business.profile.summary}</p>}
+          {business.profile.summary && (
+            <BlueprintFlowParagraph
+              animateId={`${slug}:profile-summary:${business.profile.summary}`}
+              delay={d('profile-summary', 0.54)}
+            >
+              {business.profile.summary}
+            </BlueprintFlowParagraph>
+          )}
           {!!business.profile.valueChain?.length && (
-            <p className="forge-hint">
-              <strong>Value chain:</strong> {business.profile.valueChain.join(' → ')}
-            </p>
+            <BlueprintFlowParagraph
+              animateId={`${slug}:profile-chain:${business.profile.valueChain.join(' → ')}`}
+              delay={d('profile-chain', 0.58)}
+            >
+              {`Value chain: ${business.profile.valueChain.join(' → ')}`}
+            </BlueprintFlowParagraph>
           )}
         </CollapsibleSection>
       )}
@@ -329,6 +452,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
       <CollapsibleSection
         title="Business plan"
         defaultOpen={planInFlight || (hasBusinessPlan && !planComplete)}
+        delay={nextSectionDelay()}
         actions={
           !planComplete && !planInFlight && !detail.consultInFlight ? (
             <button
@@ -400,6 +524,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
       <CollapsibleSection
         title="Market assessment"
         defaultOpen={hasMarketAssessment || marketStreamHere}
+        delay={nextSectionDelay()}
         actions={
           !marketComplete && !marketStreamHere && !detail.consultInFlight && !planStreamHere ? (
             <button
@@ -453,7 +578,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
       </CollapsibleSection>
 
       {/* App stack override grid */}
-      <CollapsibleSection title="Software stack" count={appStack.length}>
+      <CollapsibleSection title="Software stack" count={appStack.length} delay={nextSectionDelay()}>
         <p className="forge-hint">
           One default per category (★). Click an alternative to override what agents get access to.
         </p>
@@ -500,6 +625,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         title="Agent roles"
         count={roles.length}
         defaultOpen={suggestedRoles.length > 0 || !!forgeQueue?.active}
+        delay={nextSectionDelay()}
         actions={
           suggestedRoles.length > 0 ? (
             <button
@@ -549,7 +675,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
       {/* Forged agents + access grids */}
       {agents.length > 0 && (
-        <CollapsibleSection title="Forged agents" count={agents.length}>
+        <CollapsibleSection title="Forged agents" count={agents.length} delay={nextSectionDelay()}>
           <div className="forge-agent-license-grid">
             {agents.map((a) => (
               <ForgedAgentLicense key={a.slug} agent={a} businessName={business.name} />

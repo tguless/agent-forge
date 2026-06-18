@@ -46,7 +46,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  max-width: 1200px;
+  max-width: var(--forge-content-max);
   width: 100%;
   margin: 0 auto;
   padding: 0;
@@ -111,7 +111,7 @@
 
 .ops-detail-shell {
   position: relative;
-  max-width: 1280px;
+  max-width: var(--forge-content-max);
   margin: 0 auto 24px;
   padding: 12px 14px 16px;
 }
@@ -160,6 +160,94 @@
   margin: 0 0 10px;
   padding: 6px 2px 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--ops-detail-green) 28%, transparent);
+}
+
+.ops-detail-toolbar .forge-top-nav__left {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.ops-detail-toolbar .forge-top-nav__actions {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Detail theme back rail — green HUD accents */
+.ops-detail-page .forge-back-trail__sep {
+  color: color-mix(in srgb, var(--ops-detail-green-bright, #8ee85a) 55%, transparent);
+}
+
+@media (max-width: 640px) {
+  .ops-detail-page .forge-back-trail {
+    background: rgba(4, 14, 8, 0.82);
+    border-color: color-mix(in srgb, var(--ops-detail-green, #4ade80) 38%, transparent);
+    box-shadow:
+      inset 0 0 0 1px rgba(74, 222, 128, 0.06),
+      0 0 18px rgba(74, 222, 128, 0.08);
+  }
+
+  .ops-detail-page .forge-back-trail::before,
+  .ops-detail-page .forge-back-trail::after {
+    border-color: var(--ops-detail-green-bright, #8ee85a);
+  }
+
+  .ops-detail-page .forge-back-btn--trail {
+    color: var(--ops-detail-green-bright, #8ee85a);
+  }
+
+  .ops-detail-page .forge-back-btn--trail + .forge-back-btn--trail {
+    border-left-color: color-mix(in srgb, var(--ops-detail-green, #4ade80) 28%, transparent);
+  }
+
+  .ops-detail-page .forge-back-btn--trail .forge-back-btn__chevron {
+    color: var(--ops-detail-green-bright, #8ee85a);
+    border-color: color-mix(in srgb, var(--ops-detail-green, #4ade80) 38%, transparent);
+    background: rgba(74, 222, 128, 0.1);
+  }
+
+  .ops-detail-page .forge-back-btn--trail .forge-back-btn__sigil {
+    color: var(--ops-detail-green, #4ade80);
+  }
+
+  .ops-detail-inner > .ops-detail-toolbar.forge-top-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .ops-detail-inner > .ops-detail-toolbar .forge-top-nav__left,
+  .ops-detail-inner > .ops-detail-toolbar .forge-top-nav__actions {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  .ops-detail-inner > .ops-detail-toolbar .forge-top-nav__actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 92%, transparent);
+  }
+
+  .ops-detail-inner > .ops-detail-toolbar .forge-top-nav__actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ops-detail-inner > .ops-detail-toolbar .forge-cta {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 0.62rem;
+    padding: 5px 10px;
+  }
+
+  .ops-detail-inner > .ops-detail-toolbar .ops-detail-delete {
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 0.6rem;
+  }
 }
 
 /* ── Header band ── */
