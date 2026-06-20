@@ -3,9 +3,9 @@
 import React from 'react';
 import { AgentDetailCommandCard } from '@/components/AgentDetailCommandCard';
 import { AgentAccessGrid } from '@/components/AgentAccessGrid';
+import { ForgeInteractiveHudBox } from '@/components/ForgeInteractiveHudBox';
 import { ForgePageShell } from '@/components/ForgePageShell';
 import { ForgeTopNav } from '@/components/ForgeTopNav';
-import { HudBox } from '@/components/HudBox';
 import type { AgentData, AgentStatus } from '@/lib/types';
 
 type DetailResponse = {
@@ -93,7 +93,7 @@ export default function AgentDetailPage({ params }: { params: { slug: string } }
         businessName={detail.businessName}
       />
       <div className="forge-detail-extra">
-        <HudBox variant="rect">
+        <ForgeInteractiveHudBox variant="rect" accent={accent}>
           <h2 className="forge-label">SaaS access grid</h2>
           <p className="forge-hint" style={{ marginTop: 0 }}>
             Which business apps this agent can touch, at what capacity (least privilege).
@@ -101,7 +101,7 @@ export default function AgentDetailPage({ params }: { params: { slug: string } }
           <div style={{ marginTop: 10 }}>
             <AgentAccessGrid slug={slug} />
           </div>
-        </HudBox>
+        </ForgeInteractiveHudBox>
       </div>
     </ForgePageShell>
   );

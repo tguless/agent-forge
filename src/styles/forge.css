@@ -315,6 +315,11 @@
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
+.ops-hud-box.forge-shimmer-card.forge-interactive--pressed,
+.ops-detail-panel.forge-shimmer-panel.forge-interactive--pressed {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--card-accent) 22%, transparent);
+}
+
 .forge-add-card.forge-interactive--pressed .forge-add-card-plus {
   transform: scale(1.02);
   box-shadow: 0 0 20px color-mix(in srgb, var(--ops-cyan, #38bdf8) 45%, transparent);
@@ -323,6 +328,8 @@
 @media (prefers-reduced-motion: reduce) {
   .forge-interactive--pressed,
   .ops-agent-card.forge-interactive--pressed,
+  .ops-hud-box.forge-shimmer-card.forge-interactive--pressed,
+  .ops-detail-panel.forge-shimmer-panel.forge-interactive--pressed,
   .forge-cta.forge-interactive--pressed {
     transform: none;
   }
@@ -1222,7 +1229,8 @@
   line-height: 1.6;
   color: #eafff4;
   font-style: italic;
-  max-width: 52rem;
+  width: 100%;
+  max-width: none;
 }
 
 /* Structured business plan: TOC + collapsible sections */
@@ -1731,11 +1739,45 @@
 /* ── Business blueprint detail — sector plaque (top-right mount) ─────────── */
 .forge-blueprint-body {
   margin: 0 auto;
+  width: 100%;
 }
 
 .forge-blueprint-lead {
-  max-width: 760px;
+  width: 100%;
+  max-width: none;
   margin: 0 0 12px;
+}
+
+/*
+ * Blueprint detail — full-width prose inside HUD boxes.
+ * ForgeMarkdown uses ops-skills-* (72ch/68ch reading columns from the agent
+ * skills overlay); override everywhere under .forge-blueprint-page.
+ */
+.forge-blueprint-page .forge-markdown,
+.forge-blueprint-page .forge-plan-section-body,
+.forge-blueprint-page .forge-competitor-body,
+.forge-blueprint-page .forge-market,
+.forge-blueprint-page .forge-competitors-landscape {
+  width: 100%;
+  min-width: 0;
+}
+
+.forge-blueprint-page .ops-skills-p,
+.forge-blueprint-page .ops-skills-li,
+.forge-blueprint-page .ops-skills-pre,
+.forge-blueprint-page .forge-blueprint-lead,
+.forge-blueprint-page .forge-elevator-pitch,
+.forge-blueprint-page .forge-collapse-body .forge-hint,
+.forge-blueprint-page .forge-collapse-body .forge-arwes-text--block,
+.forge-blueprint-page .forge-verdict-headline,
+.forge-blueprint-page .forge-verdict-disclaimer,
+.forge-blueprint-page .forge-risk-text,
+.forge-blueprint-page .forge-risk-mitigation,
+.forge-blueprint-page .forge-proscons-list li,
+.forge-blueprint-page .forge-competitor-oneliner,
+.forge-blueprint-page .forge-hint {
+  max-width: none;
+  width: 100%;
 }
 
 .forge-blueprint-status {

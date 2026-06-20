@@ -9,9 +9,12 @@ type HudBoxProps = React.HTMLAttributes<HTMLDivElement> & {
 };
 
 /** HUD panel with explicit L-bracket corners (avoids clip-path eating corners). */
-export function HudBox({ children, className = '', variant = 'rect', ...rest }: HudBoxProps) {
+export const HudBox = React.forwardRef<HTMLDivElement, HudBoxProps>(function HudBox(
+  { children, className = '', variant = 'rect', ...rest },
+  ref,
+) {
   return (
-    <div className={`ops-hud-box ops-hud-box--${variant} ${className}`.trim()} {...rest}>
+    <div ref={ref} className={`ops-hud-box ops-hud-box--${variant} ${className}`.trim()} {...rest}>
       <span className="ops-box-corner ops-box-corner-tl" aria-hidden />
       <span className="ops-box-corner ops-box-corner-tr" aria-hidden />
       <span className="ops-box-corner ops-box-corner-bl" aria-hidden />
@@ -19,6 +22,6 @@ export function HudBox({ children, className = '', variant = 'rect', ...rest }: 
       <div className="ops-hud-box-body">{children}</div>
     </div>
   );
-}
+});
 
 export default HudBox;

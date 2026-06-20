@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { HudBox } from '@/components/HudBox';
+import { ForgeInteractiveHudBox } from '@/components/ForgeInteractiveHudBox';
 import { BusinessPlanViewer } from '@/components/BusinessPlanViewer';
 import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
 import { MarketAssessmentViewer } from '@/components/MarketAssessmentViewer';
@@ -71,7 +71,11 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
   return (
-    <HudBox variant="rect" className="forge-blueprint-section">
+    <ForgeInteractiveHudBox
+      variant="rect"
+      className="forge-blueprint-section"
+      accent="var(--ops-detail-green-bright, #8ee85a)"
+    >
       <div className="forge-collapse-head">
         <button
           type="button"
@@ -98,7 +102,7 @@ function CollapsibleSection({
         {actions && <div className="forge-collapse-actions">{actions}</div>}
       </div>
       {open && <div className="forge-collapse-body">{children}</div>}
-    </HudBox>
+    </ForgeInteractiveHudBox>
   );
 }
 

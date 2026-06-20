@@ -617,7 +617,9 @@
 }
 
 /* Accent border shimmer — runs on hover/focus only */
-.ops-agent-card::before {
+.ops-agent-card::before,
+.ops-hud-box.forge-shimmer-card::before,
+.ops-detail-panel.forge-shimmer-panel::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -661,7 +663,9 @@
 
 /* Fallback sweep when @property is unavailable */
 @supports not (background: conic-gradient(red, blue)) {
-  .ops-agent-card::before {
+  .ops-agent-card::before,
+  .ops-hud-box.forge-shimmer-card::before,
+  .ops-detail-panel.forge-shimmer-panel::before {
     background: linear-gradient(
       110deg,
       transparent 0%,
@@ -735,6 +739,110 @@
     var(--frame-arm) 100%,
     0 var(--frame-arm),
     100% var(--frame-arm);
+}
+
+/* Interactive panels — softer shimmer than homepage agent cards */
+.ops-hud-box.forge-shimmer-card,
+.ops-detail-panel.forge-shimmer-panel {
+  --ops-edge-h-accent: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--card-accent) 10%, transparent) 22%,
+    color-mix(in srgb, var(--card-accent) 55%, transparent) 50%,
+    color-mix(in srgb, var(--card-accent) 10%, transparent) 78%,
+    transparent 100%
+  );
+  --ops-edge-v-accent: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--card-accent) 8%, transparent) 22%,
+    color-mix(in srgb, var(--card-accent) 50%, transparent) 50%,
+    color-mix(in srgb, var(--card-accent) 8%, transparent) 78%,
+    transparent 100%
+  );
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    box-shadow 0.12s ease,
+    transform 0.1s ease;
+}
+
+.ops-hud-box.forge-shimmer-card {
+  --card-accent: var(--ops-cyan, #38bdf8);
+  cursor: default;
+}
+
+.ops-detail-panel--danger.forge-shimmer-panel {
+  --card-accent: var(--ops-detail-danger, #f87171);
+}
+
+.ops-hud-box.forge-shimmer-card::before,
+.ops-detail-panel.forge-shimmer-panel::before {
+  background: conic-gradient(
+    from var(--ops-shimmer-angle),
+    transparent 0deg 58deg,
+    color-mix(in srgb, var(--card-accent) 12%, transparent) 70deg,
+    color-mix(in srgb, var(--card-accent) 38%, white) 88deg,
+    color-mix(in srgb, var(--card-accent) 12%, transparent) 106deg,
+    transparent 122deg 360deg
+  );
+}
+
+.ops-hud-box.forge-shimmer-card:hover,
+.ops-hud-box.forge-shimmer-card:focus-within,
+.ops-detail-panel.forge-shimmer-panel:hover,
+.ops-detail-panel.forge-shimmer-panel:focus-within {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--card-accent) 18%, transparent);
+}
+
+.ops-hud-box.forge-shimmer-card:hover::before,
+.ops-hud-box.forge-shimmer-card:focus-within::before,
+.ops-detail-panel.forge-shimmer-panel:hover::before,
+.ops-detail-panel.forge-shimmer-panel:focus-within::before {
+  opacity: 0.42;
+  animation: ops-agent-border-shimmer 2.4s linear infinite;
+}
+
+.ops-hud-box.forge-shimmer-card::after,
+.ops-detail-panel.forge-shimmer-panel::after {
+  background-image:
+    var(--ops-edge-h-accent),
+    var(--ops-edge-h-accent),
+    var(--ops-edge-v-accent),
+    var(--ops-edge-v-accent);
+}
+
+.ops-hud-box.forge-shimmer-card::after {
+  --frame-arm: var(--ops-box-arm);
+  background-size:
+    calc(100% - 2 * var(--frame-arm)) 2px,
+    calc(100% - 2 * var(--frame-arm)) 2px,
+    2px calc(100% - 2 * var(--frame-arm)),
+    2px calc(100% - 2 * var(--frame-arm));
+}
+
+.ops-detail-panel.forge-shimmer-panel::after {
+  --frame-arm: var(--ops-detail-arm);
+  background-size:
+    calc(100% - 2 * var(--frame-arm)) var(--ops-detail-stroke),
+    calc(100% - 2 * var(--frame-arm)) var(--ops-detail-stroke),
+    var(--ops-detail-stroke) calc(100% - 2 * var(--frame-arm)),
+    var(--ops-detail-stroke) calc(100% - 2 * var(--frame-arm));
+}
+
+.ops-hud-box.forge-shimmer-card .ops-box-corner,
+.ops-detail-panel.forge-shimmer-panel > .ops-detail-corner {
+  --corner-color: color-mix(in srgb, var(--card-accent) 58%, #0c141c);
+  z-index: 4;
+}
+
+.ops-hud-box.forge-shimmer-card .ops-hud-box-body {
+  position: relative;
+  z-index: 3;
+}
+
+.forge-roster-card-box {
+  cursor: pointer;
 }
 
 .ops-agent-card .ops-box-corner {

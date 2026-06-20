@@ -8,6 +8,7 @@ import type { AgentData } from '@/lib/types';
 import { AgentSkillsPanel, AgentSkillsPortraitTrigger } from '@/components/AgentSkillsOverlay';
 import { SegmentedProgress } from '@/components/SegmentedProgress';
 import { ForgeDecodeText, ForgeFlowText } from '@/components/ForgeArwesText';
+import { useForgeInteractive } from '@/hooks/useForgeInteractive';
 import { useTextFillDelay } from '@/hooks/useTextFillDelay';
 import { DETAIL_SECTION_ICONS, splitQuoteParagraphs } from '@/lib/detailIcons';
 import { FORGE_DECODE_HUD_OPTS, getForgeTextDuration } from '@/lib/forgeArwesAnimate';
@@ -23,8 +24,18 @@ function DetailPanel({
   className?: string;
   danger?: boolean;
 }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  useForgeInteractive(ref, {
+    color: 'color-mix(in srgb, var(--card-accent) 14%, transparent)',
+    size: 280,
+  });
+
   return (
-    <div className={`ops-detail-panel${danger ? ' ops-detail-panel--danger' : ''} ${className}`.trim()}>
+    <div
+      ref={ref}
+      className={`ops-detail-panel forge-shimmer-panel${danger ? ' ops-detail-panel--danger' : ''} ${className}`.trim()}
+    >
       <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />
       <span className="ops-detail-corner ops-detail-corner-tr" aria-hidden />
       <span className="ops-detail-corner ops-detail-corner-bl" aria-hidden />

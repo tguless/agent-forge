@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { HudBox } from '@/components/HudBox';
+import { ForgeInteractiveHudBox } from '@/components/ForgeInteractiveHudBox';
 import { ForgeDecodeText, ForgeFlowText, ForgeHeaderText } from '@/components/ForgeArwesText';
 import { useTextFillDelay } from '@/hooks/useTextFillDelay';
 import type { BusinessSummary } from '@/lib/businessTypes';
@@ -31,7 +31,7 @@ export function BusinessRosterCard({
 
   return (
     <Link href={`/business/${business.slug}`} style={{ textDecoration: 'none' }}>
-      <HudBox variant="rect" className="forge-roster-card-box">
+      <ForgeInteractiveHudBox variant="rect" className="forge-roster-card-box">
         <div className="forge-roster-card">
           <div className="forge-roster-card-main">
             <ForgeHeaderText
@@ -89,7 +89,7 @@ export function BusinessRosterCard({
         >
           {footer}
         </ForgeFlowText>
-      </HudBox>
+      </ForgeInteractiveHudBox>
     </Link>
   );
 }
