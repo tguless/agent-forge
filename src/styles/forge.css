@@ -604,7 +604,7 @@
 
 .forge-roster-card-desc {
   margin: 6px 0 0;
-  max-width: 720px;
+  max-width: none;
 }
 
 .forge-roster-card-meta {
@@ -615,6 +615,11 @@
 .forge-business-roster .forge-arwes-text--block,
 .forge-business-roster .forge-arwes-text--block .forge-arwes-text__stack {
   width: 100%;
+}
+
+.forge-business-roster .forge-roster-card-desc,
+.forge-business-roster .forge-roster-card-meta {
+  max-width: none;
 }
 
 .forge-config-back {
