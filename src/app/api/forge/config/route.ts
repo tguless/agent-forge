@@ -124,6 +124,13 @@ export async function PATCH(req: Request) {
       partial.buttonSoundsEnabled = body.buttonSoundsEnabled;
     }
 
+    if (body.ambientMusicEnabled !== undefined) {
+      if (typeof body.ambientMusicEnabled !== 'boolean') {
+        return NextResponse.json({ error: 'ambientMusicEnabled must be a boolean.' }, { status: 400 });
+      }
+      partial.ambientMusicEnabled = body.ambientMusicEnabled;
+    }
+
     if (body.gridMovingLinesIntervalSec !== undefined) {
       if (
         typeof body.gridMovingLinesIntervalSec !== 'number' ||

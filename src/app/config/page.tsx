@@ -6,6 +6,9 @@ import { ForgePageShell } from '@/components/ForgePageShell';
 import { ForgeTopNav } from '@/components/ForgeTopNav';
 import { FORGE_PROMPT_DEFS, USE_PROMPT_TABS, type ForgePromptCategory, type ForgePromptKey } from '@/lib/forgePrompts';
 import { useForgeUiSettings } from '@/components/ForgeUiSettingsProvider';
+import { FORGE_AMBIENT_TRACK } from '@/lib/forgeMusic';
+import { startForgeAmbientMusic, stopForgeAmbientMusic } from '@/lib/forgeAmbientMusic';
+import { unlockForgeAudio } from '@/lib/forgeBleeps';
 import {
   READOUT_STOP_RATIO_MAX,
   READOUT_STOP_RATIO_MIN,
@@ -256,6 +259,32 @@ export default function ForgeConfigPage() {
                     checked={ui.buttonSoundsEnabled}
                     disabled={uiSaving}
                     onChange={(e) => void setUiSettings({ buttonSoundsEnabled: e.target.checked })}
+                  />
+                </label>
+                <label className="forge-config-toggle-row forge-config-toggle-row--spaced">
+                  <span className="forge-config-toggle-copy">
+                    <span className="forge-config-toggle-label">Ambient music</span>
+                    <span className="forge-config-toggle-hint">
+                      Loop &ldquo;{FORGE_AMBIENT_TRACK.title}&rdquo; in the background after your next click.
+                      Off by default.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="forge-config-toggle-input"
+                    checked={ui.ambientMusicEnabled}
+                    disabled={uiSaving}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      void setUiSettings({ ambientMusicEnabled: enabled }).then(() => {
+                        if (enabled) {
+                          unlockForgeAudio();
+                          void startForgeAmbientMusic();
+                        } else {
+                          stopForgeAmbientMusic();
+                        }
+                      });
+                    }}
                   />
                 </label>
                 <fieldset className="forge-config-timing-fieldset">

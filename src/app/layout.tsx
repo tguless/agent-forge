@@ -7,6 +7,7 @@ import '@/styles/forge.css';
 import { rootMetadata } from '@/lib/metadata';
 import { ForgeSoundProvider } from '@/components/ForgeSoundProvider';
 import { ForgeUiSettingsProvider } from '@/components/ForgeUiSettingsProvider';
+import { ForgeAmbientMusicController } from '@/components/ForgeAmbientMusicController';
 
 const oxanium = Oxanium({
   subsets: ['latin'],
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${oxanium.variable} ${chakraPetch.variable} ops-font-scope`}>
         <ForgeUiSettingsProvider>
+          <ForgeAmbientMusicController />
           <ForgeSoundProvider>{children}</ForgeSoundProvider>
         </ForgeUiSettingsProvider>
       </body>
