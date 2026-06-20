@@ -5,6 +5,7 @@ import {
   listRoles,
   listBusinessApps,
   listAgentsByBusiness,
+  reconcileRoleForgeStatuses,
 } from '@/lib/businessStore';
 import { cancelRun } from '@/lib/agent/runRegistry';
 import { listAppTypes, listCapacities } from '@/lib/catalogStore';
@@ -29,6 +30,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(_req: Request, { params }: { params: { slug: string } }) {
   const business = getBusiness(params.slug);
   if (!business) return NextResponse.json({ error: 'not found' }, { status: 404 });
+
+  reconcileRoleForgeStatuses(params.slug);
 
   const businessApps = listBusinessApps(params.slug);
   const typeLabels = new Map(listAppTypes().map((t) => [t.key, t.label]));

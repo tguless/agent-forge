@@ -2,104 +2,161 @@
 
 import React from 'react';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
+import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
+import { competitorAnalysisHasContent } from '@/lib/competitorSections';
 import {
   BUSINESS_PLAN_SECTIONS,
+  PLAN_SUBTAB_SHORT_LABELS,
   businessPlanHasContent,
-  filledBusinessPlanSections,
+  defaultPlanSubTab,
+  planSubTabFromHash,
+  planSubTabHash,
+  type PlanSubTabId,
 } from '@/lib/businessPlanSections';
-import type { BusinessPlanSections } from '@/lib/businessTypes';
+import type { BusinessPlanSections, CompetitorAnalysis } from '@/lib/businessTypes';
 
 type BusinessPlanViewerProps = {
   plan: BusinessPlanSections | undefined;
+  competitorAnalysis?: CompetitorAnalysis;
+  planInFlight?: boolean;
 };
 
-/** TOC + collapsible sections for the structured business plan. */
-export function BusinessPlanViewer({ plan }: BusinessPlanViewerProps) {
-  const sections = React.useMemo(() => filledBusinessPlanSections(plan), [plan]);
-  const [openKeys, setOpenKeys] = React.useState<Set<string>>(() => new Set());
-  const defaultOpenAppliedRef = React.useRef(false);
-  const firstSectionKey = sections[0]?.key;
+function usePlanSubTab(plan: BusinessPlanSections | undefined, hasCompetitors: boolean) {
+  const fallback = React.useMemo(
+    () => defaultPlanSubTab(plan, hasCompetitors),
+    [plan, hasCompetitors],
+  );
+  const [subTab, setSubTabState] = React.useState<PlanSubTabId>(() => {
+    if (typeof window === 'undefined') return fallback;
+    return planSubTabFromHash(window.location.hash) ?? fallback;
+  });
 
-  // Open the first section once when content first appears — never re-apply after the
-  // user collapses sections (parent polling recreates `sections` every few seconds).
   React.useEffect(() => {
-    if (!firstSectionKey) {
-      defaultOpenAppliedRef.current = false;
-      return;
-    }
-    if (defaultOpenAppliedRef.current) return;
-    defaultOpenAppliedRef.current = true;
-    setOpenKeys(new Set([firstSectionKey]));
-  }, [firstSectionKey]);
+    const sync = () => {
+      const fromHash = planSubTabFromHash(window.location.hash);
+      if (fromHash) setSubTabState(fromHash);
+    };
+    sync();
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
 
-  if (!businessPlanHasContent(plan)) return null;
-
-  const toggle = (key: string) => {
-    setOpenKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
+  React.useEffect(() => {
+    const fromHash = typeof window !== 'undefined' ? planSubTabFromHash(window.location.hash) : null;
+    if (fromHash) return;
+    setSubTabState((current) => {
+      if (current === 'competitors' && hasCompetitors) return current;
+      if (current !== 'competitors') {
+        const content = plan?.[current]?.trim();
+        if (content) return current;
+      }
+      return fallback;
     });
-  };
+  }, [plan, hasCompetitors, fallback]);
 
-  const jumpTo = (anchor: string, key: string) => {
-    setOpenKeys((prev) => new Set(prev).add(key));
-    requestAnimationFrame(() => {
-      document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  };
+  const setSubTab = React.useCallback((next: PlanSubTabId) => {
+    setSubTabState(next);
+    if (typeof window === 'undefined') return;
+    const url = `${window.location.pathname}${window.location.search}#${planSubTabHash(next)}`;
+    window.history.replaceState(null, '', url);
+  }, []);
+
+  return [subTab, setSubTab] as const;
+}
+
+/** Section sub-tabs for the structured business plan (+ optional competitors). */
+export function BusinessPlanViewer({ plan, competitorAnalysis, planInFlight }: BusinessPlanViewerProps) {
+  const hasCompetitors = competitorAnalysisHasContent(competitorAnalysis);
+  const [subTab, setSubTab] = usePlanSubTab(plan, hasCompetitors);
+
+  if (!businessPlanHasContent(plan) && !hasCompetitors) return null;
+
+  const activeSection = BUSINESS_PLAN_SECTIONS.find((s) => s.key === subTab);
+  const activeContent = activeSection ? plan?.[activeSection.key]?.trim() : '';
+  const filledCount = BUSINESS_PLAN_SECTIONS.filter((s) => plan?.[s.key]?.trim()).length;
+  const pendingCount = BUSINESS_PLAN_SECTIONS.length - filledCount;
 
   return (
-    <div className="forge-plan">
-      <nav className="forge-plan-toc" aria-label="Business plan sections">
-        <p className="forge-plan-toc-label">Contents</p>
-        <ul className="forge-plan-toc-list">
-          {sections.map((s) => (
-            <li key={s.key}>
-              <button
-                type="button"
-                className="forge-plan-toc-link"
-                onClick={() => jumpTo(s.anchor, s.key)}
-              >
-                {s.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <div className="forge-plan-sections">
-        {sections.map((s) => {
-          const open = openKeys.has(s.key);
+    <div className="forge-plan forge-plan--tabbed">
+      <nav className="forge-plan-subtabs" aria-label="Business plan sections">
+        {BUSINESS_PLAN_SECTIONS.map((s) => {
+          const hasContent = !!plan?.[s.key]?.trim();
+          const isActive = subTab === s.key;
           return (
-            <section key={s.key} id={s.anchor} className="forge-plan-section">
-              <button
-                type="button"
-                className="forge-plan-section-toggle"
-                aria-expanded={open}
-                aria-controls={`${s.anchor}-body`}
-                onClick={() => toggle(s.key)}
-              >
-                <span className="forge-plan-section-chevron" aria-hidden>
-                  {open ? '▾' : '▸'}
-                </span>
-                <span className="forge-plan-section-title">{s.label}</span>
-              </button>
-              {open && (
-                <div id={`${s.anchor}-body`} className="forge-plan-section-body">
-                  <ForgeMarkdown>{s.content}</ForgeMarkdown>
-                </div>
-              )}
-            </section>
+            <button
+              key={s.key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`forge-plan-subpanel-${s.key}`}
+              id={`forge-plan-subtab-${s.key}`}
+              className={[
+                'forge-plan-subtab',
+                isActive ? 'forge-plan-subtab--active' : '',
+                !hasContent ? 'forge-plan-subtab--empty' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => setSubTab(s.key)}
+            >
+              <span className="forge-plan-subtab-short">{PLAN_SUBTAB_SHORT_LABELS[s.key]}</span>
+              <span className="forge-plan-subtab-full">{s.label}</span>
+            </button>
           );
         })}
-      </div>
+        {hasCompetitors && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === 'competitors'}
+            aria-controls="forge-plan-subpanel-competitors"
+            id="forge-plan-subtab-competitors"
+            className={[
+              'forge-plan-subtab',
+              subTab === 'competitors' ? 'forge-plan-subtab--active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            onClick={() => setSubTab('competitors')}
+          >
+            <span className="forge-plan-subtab-short">Compete</span>
+            <span className="forge-plan-subtab-full">Competitors</span>
+          </button>
+        )}
+      </nav>
 
-      {sections.length < BUSINESS_PLAN_SECTIONS.length && (
+      {subTab === 'competitors' ? (
+        <section
+          id="forge-plan-subpanel-competitors"
+          role="tabpanel"
+          aria-labelledby="forge-plan-subtab-competitors"
+          className="forge-plan-subpanel"
+        >
+          <CompetitorAnalysisViewer analysis={competitorAnalysis} />
+        </section>
+      ) : activeSection ? (
+        <section
+          id={`forge-plan-subpanel-${activeSection.key}`}
+          role="tabpanel"
+          aria-labelledby={`forge-plan-subtab-${activeSection.key}`}
+          className="forge-plan-subpanel"
+        >
+          <h3 className="forge-plan-subpanel-title">{activeSection.label}</h3>
+          {activeContent ? (
+            <ForgeMarkdown className="forge-plan-section-body">{activeContent}</ForgeMarkdown>
+          ) : (
+            <p className="forge-hint">
+              {planInFlight
+                ? 'This section is still being drafted…'
+                : 'This section has not been drafted yet. Generate or complete the business plan to fill it in.'}
+            </p>
+          )}
+        </section>
+      ) : null}
+
+      {pendingCount > 0 && planInFlight && subTab !== 'competitors' && (
         <p className="forge-hint forge-plan-pending">
-          {BUSINESS_PLAN_SECTIONS.length - sections.length} section
-          {BUSINESS_PLAN_SECTIONS.length - sections.length === 1 ? '' : 's'} still being drafted…
+          {pendingCount} section{pendingCount === 1 ? '' : 's'} still being drafted…
         </p>
       )}
     </div>

@@ -113,3 +113,45 @@ export function filledBusinessPlanSections(
     content: plan[s.key]!.trim(),
   }));
 }
+
+/** Compact labels for plan sub-tabs (main bar uses full section labels). */
+export const PLAN_SUBTAB_SHORT_LABELS: Record<BusinessPlanSectionKey, string> = {
+  executiveSummary: 'Summary',
+  problemAndSolution: 'Problem',
+  targetMarket: 'ICP',
+  revenueModel: 'Revenue',
+  goToMarket: 'GTM',
+  operations: 'Ops',
+  yearOneMilestones: 'Year 1',
+  risksAndMitigations: 'Risks',
+};
+
+export type PlanSubTabId = BusinessPlanSectionKey | 'competitors';
+
+export function planSubTabFromHash(hash: string): PlanSubTabId | null {
+  const id = hash.replace(/^#/, '');
+  if (id === 'plan-competitors') return 'competitors';
+  const byAnchor = BUSINESS_PLAN_SECTIONS.find((s) => s.anchor === id);
+  if (byAnchor) return byAnchor.key;
+  if (id.startsWith('plan-')) {
+    const suffix = id.slice('plan-'.length);
+    const byKey = BUSINESS_PLAN_SECTIONS.find((s) => s.key === suffix);
+    if (byKey) return byKey.key;
+  }
+  return null;
+}
+
+export function planSubTabHash(subTab: PlanSubTabId): string {
+  if (subTab === 'competitors') return 'plan-competitors';
+  const def = BUSINESS_PLAN_SECTIONS.find((s) => s.key === subTab);
+  return def?.anchor ?? 'plan-executive-summary';
+}
+
+export function defaultPlanSubTab(
+  plan: BusinessPlanSections | undefined,
+  includeCompetitors: boolean,
+): PlanSubTabId {
+  const filled = filledBusinessPlanSections(plan);
+  if (filled.length > 0) return filled[0].key;
+  return includeCompetitors ? 'competitors' : 'executiveSummary';
+}

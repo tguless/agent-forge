@@ -5,19 +5,23 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ForgeInteractiveHudBox } from '@/components/ForgeInteractiveHudBox';
 import { BusinessPlanViewer } from '@/components/BusinessPlanViewer';
-import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
 import { MarketAssessmentViewer } from '@/components/MarketAssessmentViewer';
 import { competitorAnalysisHasContent } from '@/lib/competitorSections';
-import { marketAssessmentHasContent } from '@/lib/marketAssessment';
 import { TurnTimeline, useBusinessPlanStream } from '@/components/TurnTimeline';
 import { ForgeQueueProgress, type ForgeQueueSnapshot } from '@/components/ForgeQueueProgress';
-import { ForgedAgentLicense } from '@/components/ForgedAgentLicense';
+import { ForgedAgentRolePair } from '@/components/ForgedAgentRolePair';
+import { BlueprintRoleItem } from '@/components/BlueprintRoleItem';
 import type { BusinessAgentSummary } from '@/lib/businessStore';
 import { BusinessPlaque } from '@/components/BusinessPlaque';
 import { ForgeTopNav } from '@/components/ForgeTopNav';
 import { ForgeDecodeText, ForgeFlowText } from '@/components/ForgeArwesText';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import { useTextFillDelay } from '@/hooks/useTextFillDelay';
+import {
+  ForgeBlueprintTabBar,
+  ForgeBlueprintTabPanel,
+  useBlueprintTab,
+} from '@/components/ForgeBlueprintTabs';
 import type {
   Business,
   BusinessApp,
@@ -50,59 +54,19 @@ type Detail = {
   capacities: Capacity[];
 };
 
-const BLUEPRINT_SECTION_STAGGER_S = 0.18;
-
-function CollapsibleSection({
+function TabPanelHead({
   title,
-  count,
-  defaultOpen = false,
   actions,
-  children,
-  animateId,
-  delay = 0,
 }: {
-  title: string;
-  count?: number;
-  defaultOpen?: boolean;
+  title?: string;
   actions?: React.ReactNode;
-  children: React.ReactNode;
-  animateId?: string;
-  delay?: number;
 }) {
-  const [open, setOpen] = React.useState(defaultOpen);
+  if (!title && !actions) return null;
   return (
-    <ForgeInteractiveHudBox
-      variant="rect"
-      className="forge-blueprint-section"
-      accent="var(--ops-detail-green-bright, #8ee85a)"
-    >
-      <div className="forge-collapse-head">
-        <button
-          type="button"
-          className="forge-collapse-toggle"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-        >
-          <span className="forge-collapse-chevron" aria-hidden>
-            {open ? '▾' : '▸'}
-          </span>
-          <span className="forge-collapse-title">
-            <ForgeDecodeText
-              animateId={animateId ?? `blueprint:section:${title}`}
-              playOnce
-              delay={delay}
-              layout="inline"
-              contentStyle={{ color: 'inherit' }}
-            >
-              {title}
-            </ForgeDecodeText>
-          </span>
-          {typeof count === 'number' && <span className="forge-collapse-count">{count}</span>}
-        </button>
-        {actions && <div className="forge-collapse-actions">{actions}</div>}
-      </div>
-      {open && <div className="forge-collapse-body">{children}</div>}
-    </ForgeInteractiveHudBox>
+    <div className="forge-blueprint-tab-head">
+      {title ? <h2 className="forge-blueprint-tab-title">{title}</h2> : null}
+      {actions ? <div className="forge-blueprint-tab-actions">{actions}</div> : null}
+    </div>
   );
 }
 
@@ -148,6 +112,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const planStreamActive = detail?.planInFlight ?? false;
   const { turns: planTurns, done: planDone } = useBusinessPlanStream(slug, planStreamActive);
   const fillDelay = useTextFillDelay();
+  const [tab, setTab] = useBlueprintTab('overview');
 
   const load = React.useCallback(async () => {
     const res = await fetch(`/api/businesses/${slug}`, { cache: 'no-store' });
@@ -196,6 +161,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         setForgeError(json.error ?? `Server error ${res.status}`);
         return;
       }
+      setTab('team');
       await load();
     } finally {
       setBusy(false);
@@ -213,6 +179,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         return;
       }
       setActiveStream('plan');
+      setTab('plan');
       await load();
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : 'Failed to start plan generation');
@@ -232,6 +199,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         return;
       }
       setActiveStream('market');
+      setTab('market');
       await load();
     } catch (err) {
       setMarketError(err instanceof Error ? err.message : 'Failed to start market assessment');
@@ -291,15 +259,30 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const marketStreamHere = planInFlight && activeStream === 'market';
   const suggestedRoles = roles.filter((r) => r.status === 'suggested');
   const forgeBusy = busy || forgeQueueActive;
+  const forgePhaseBySlug = new Map<string, 'running' | 'pending'>();
+  if (forgeQueue?.current?.agentSlug) {
+    forgePhaseBySlug.set(forgeQueue.current.agentSlug, 'running');
+  }
+  for (const item of forgeQueue?.items ?? []) {
+    if (item.status === 'pending' && !forgePhaseBySlug.has(item.agentSlug)) {
+      forgePhaseBySlug.set(item.agentSlug, 'pending');
+    }
+  }
+  const agentRank = (status: string) => {
+    if (status === 'generating' || status === 'queued') return 0;
+    if (status === 'complete') return 1;
+    return 2;
+  };
+  const sortedAgents = [...agents].sort((a, b) => {
+    const diff = agentRank(a.status) - agentRank(b.status);
+    return diff !== 0 ? diff : b.createdAt - a.createdAt;
+  });
+  const roleByAgentSlug = new Map(
+    roles.filter((r): r is BusinessRole & { agentSlug: string } => !!r.agentSlug).map((r) => [r.agentSlug, r]),
+  );
 
   const industryTag = business.profile.industry ?? 'Business blueprint';
   const d = (key: string, offset: number) => fillDelay(`${slug}:${key}`, offset);
-  let sectionIdx = 0;
-  const nextSectionDelay = () => {
-    const delay = d(`section-${sectionIdx}`, 0.34 + sectionIdx * BLUEPRINT_SECTION_STAGGER_S);
-    sectionIdx += 1;
-    return delay;
-  };
 
   return (
     <div className="ops-detail-page forge-blueprint-page">
@@ -399,294 +382,296 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         <p className="forge-error forge-blueprint-status">Consulting failed: {business.error}</p>
       )}
 
-      <div className="forge-blueprint-sections">
-      {business.profile.elevatorPitch && (
-        <CollapsibleSection title="Elevator pitch" defaultOpen delay={nextSectionDelay()}>
-          <ForgeFlowText
-            as="p"
-            className="forge-elevator-pitch"
-            layout="block"
-            animateId={`${slug}:elevator:${business.profile.elevatorPitch}`}
-            playOnce
-            delay={d('elevator-body', 0.42)}
-          >
-            {business.profile.elevatorPitch}
-          </ForgeFlowText>
-        </CollapsibleSection>
-      )}
+      <ForgeBlueprintTabBar
+        active={tab}
+        onSelect={setTab}
+        roleCount={roles.length}
+        agentCount={agents.length}
+        planActive={planStreamHere}
+        marketActive={marketStreamHere}
+        teamActive={forgeQueueActive}
+      />
 
-      {/* Profile */}
-      {(business.profile.industry || business.profile.summary) && (
-        <CollapsibleSection title="Profile" defaultOpen delay={nextSectionDelay()}>
-          {business.profile.industry && (
-            <BlueprintFlowParagraph
-              animateId={`${slug}:profile-industry:${business.profile.industry}`}
-              delay={d('profile-industry', 0.46)}
-            >
-              {`Industry: ${business.profile.industry}`}
-            </BlueprintFlowParagraph>
+      <div className="forge-blueprint-tab-panels">
+        <ForgeBlueprintTabPanel id="overview" active={tab}>
+          {business.profile.elevatorPitch && (
+            <ForgeInteractiveHudBox variant="rect" className="forge-blueprint-panel">
+              <h3 className="forge-blueprint-panel-label">Elevator pitch</h3>
+              <ForgeFlowText
+                as="p"
+                className="forge-elevator-pitch"
+                layout="block"
+                animateId={`${slug}:elevator:${business.profile.elevatorPitch}`}
+                playOnce
+                delay={d('elevator-body', 0.42)}
+              >
+                {business.profile.elevatorPitch}
+              </ForgeFlowText>
+            </ForgeInteractiveHudBox>
           )}
-          {business.profile.businessModel && (
-            <BlueprintFlowParagraph
-              animateId={`${slug}:profile-model:${business.profile.businessModel}`}
-              delay={d('profile-model', 0.5)}
-            >
-              {`Model: ${business.profile.businessModel}`}
-            </BlueprintFlowParagraph>
+
+          {(business.profile.industry || business.profile.summary) && (
+            <ForgeInteractiveHudBox variant="rect" className="forge-blueprint-panel">
+              <h3 className="forge-blueprint-panel-label">Profile</h3>
+              {business.profile.industry && (
+                <BlueprintFlowParagraph
+                  animateId={`${slug}:profile-industry:${business.profile.industry}`}
+                  delay={d('profile-industry', 0.46)}
+                >
+                  {`Industry: ${business.profile.industry}`}
+                </BlueprintFlowParagraph>
+              )}
+              {business.profile.businessModel && (
+                <BlueprintFlowParagraph
+                  animateId={`${slug}:profile-model:${business.profile.businessModel}`}
+                  delay={d('profile-model', 0.5)}
+                >
+                  {`Model: ${business.profile.businessModel}`}
+                </BlueprintFlowParagraph>
+              )}
+              {business.profile.summary && (
+                <BlueprintFlowParagraph
+                  animateId={`${slug}:profile-summary:${business.profile.summary}`}
+                  delay={d('profile-summary', 0.54)}
+                >
+                  {business.profile.summary}
+                </BlueprintFlowParagraph>
+              )}
+              {!!business.profile.valueChain?.length && (
+                <BlueprintFlowParagraph
+                  animateId={`${slug}:profile-chain:${business.profile.valueChain.join(' → ')}`}
+                  delay={d('profile-chain', 0.58)}
+                >
+                  {`Value chain: ${business.profile.valueChain.join(' → ')}`}
+                </BlueprintFlowParagraph>
+              )}
+            </ForgeInteractiveHudBox>
           )}
-          {business.profile.summary && (
-            <BlueprintFlowParagraph
-              animateId={`${slug}:profile-summary:${business.profile.summary}`}
-              delay={d('profile-summary', 0.54)}
-            >
-              {business.profile.summary}
-            </BlueprintFlowParagraph>
+
+          {!business.profile.elevatorPitch &&
+            !business.profile.industry &&
+            !business.profile.summary && (
+              <p className="forge-hint">Consultant is still filling in the overview.</p>
+            )}
+        </ForgeBlueprintTabPanel>
+
+        <ForgeBlueprintTabPanel id="plan" active={tab}>
+          <TabPanelHead
+            title="Business plan"
+            actions={
+              !planComplete && !planInFlight && !detail.consultInFlight ? (
+                <button
+                  type="button"
+                  className="forge-cta forge-cta--sm"
+                  disabled={planBusy || detail.consultInFlight || planInFlight}
+                  onClick={() => void requestPlan()}
+                >
+                  {planBusy ? 'Starting…' : hasBusinessPlan ? 'Complete business plan' : 'Generate business plan'}
+                </button>
+              ) : null
+            }
+          />
+
+          {planComplete && (
+            <p className="forge-hint">
+              Eight-section operator plan — switch sections with the tabs below.
+            </p>
           )}
-          {!!business.profile.valueChain?.length && (
-            <BlueprintFlowParagraph
-              animateId={`${slug}:profile-chain:${business.profile.valueChain.join(' → ')}`}
-              delay={d('profile-chain', 0.58)}
-            >
-              {`Value chain: ${business.profile.valueChain.join(' → ')}`}
-            </BlueprintFlowParagraph>
+
+          {!planComplete && !hasBusinessPlan && !planInFlight && (
+            <p className="forge-hint">
+              No business plan yet. Generate one from the business description and profile — eight section tabs plus competitors when available.
+            </p>
           )}
-        </CollapsibleSection>
-      )}
 
-      <CollapsibleSection
-        title="Business plan"
-        defaultOpen={planInFlight || (hasBusinessPlan && !planComplete)}
-        delay={nextSectionDelay()}
-        actions={
-          !planComplete && !planInFlight && !detail.consultInFlight ? (
-            <button
-              type="button"
-              className="forge-cta"
-              disabled={planBusy || detail.consultInFlight || planInFlight}
-              onClick={() => void requestPlan()}
-              style={{ fontSize: '0.72rem', padding: '6px 12px' }}
-            >
-              {planBusy ? 'Starting…' : hasBusinessPlan ? 'Complete business plan' : 'Generate business plan'}
-            </button>
-          ) : null
-        }
-      >
-        {planComplete && (
-          <p className="forge-hint">
-            Eight-section operator plan — expand any section from the table of contents.
-          </p>
-        )}
+          {!planComplete && hasBusinessPlan && !planInFlight && (
+            <p className="forge-hint">Plan is incomplete — generate the remaining sections.</p>
+          )}
 
-        {!planComplete && !hasBusinessPlan && !planInFlight && (
-          <p className="forge-hint">
-            No business plan yet. Generate one from the business description and profile — eight collapsible sections with a table of contents.
-          </p>
-        )}
+          {detail.consultInFlight && !planInFlight && !planComplete && (
+            <p className="forge-hint">
+              Blueprint consult is running; you can generate the plan once it finishes.
+            </p>
+          )}
 
-        {!planComplete && hasBusinessPlan && !planInFlight && (
-          <p className="forge-hint">
-            Plan is incomplete — generate the remaining sections.
-          </p>
-        )}
-
-        {detail.consultInFlight && !planInFlight && !planComplete && (
-          <p className="forge-hint">
-            Blueprint consult is running; you can generate the plan once it finishes.
-          </p>
-        )}
-
-        {planStreamHere && (
-          <>
-            <div className="forge-status-line">
-              <span className="forge-spinner" aria-hidden /> Drafting business plan sections…
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <TurnTimeline turns={planTurns} />
-            </div>
-          </>
-        )}
-
-        {planError && <p className="forge-error" style={{ marginTop: 10 }}>{planError}</p>}
-
-        {hasBusinessPlan && (
-          <div style={{ marginTop: planInFlight ? 14 : 0 }}>
-            <BusinessPlanViewer plan={business.profile.businessPlan} />
-          </div>
-        )}
-
-        {competitorAnalysisHasContent(business.profile.competitorAnalysis) && (
-          <div style={{ marginTop: 18 }}>
-            <h3 className="forge-label" style={{ marginBottom: 6 }}>
-              Competitor analysis
-            </h3>
-            <CompetitorAnalysisViewer analysis={business.profile.competitorAnalysis} />
-          </div>
-        )}
-      </CollapsibleSection>
-
-      {/* Market assessment — advisory viability verdict */}
-      <CollapsibleSection
-        title="Market assessment"
-        defaultOpen={hasMarketAssessment || marketStreamHere}
-        delay={nextSectionDelay()}
-        actions={
-          !marketComplete && !marketStreamHere && !detail.consultInFlight && !planStreamHere ? (
-            <button
-              type="button"
-              className="forge-cta"
-              disabled={marketBusy || detail.consultInFlight || planInFlight}
-              onClick={() => void requestMarket()}
-              style={{ fontSize: '0.72rem', padding: '6px 12px' }}
-            >
-              {marketBusy
-                ? 'Starting…'
-                : hasMarketAssessment
-                  ? 'Complete market assessment'
-                  : 'Assess market & viability'}
-            </button>
-          ) : null
-        }
-      >
-        {!hasMarketAssessment && !marketStreamHere && (
-          <p className="forge-hint">
-            No market assessment yet. Run a candid viability read — sized market (TAM/SAM/SOM),
-            demand signals, timing, risks, and an advisory go/no-go verdict. It lays out the pros,
-            cons, and risks; the decision stays yours.
-          </p>
-        )}
-
-        {detail.consultInFlight && !marketStreamHere && !hasMarketAssessment && (
-          <p className="forge-hint">
-            Blueprint consult is running; the market assessment is part of it.
-          </p>
-        )}
-
-        {marketStreamHere && (
-          <>
-            <div className="forge-status-line">
-              <span className="forge-spinner" aria-hidden /> Researching the market & drafting the verdict…
-            </div>
-            <div style={{ marginTop: 10 }}>
-              <TurnTimeline turns={planTurns} />
-            </div>
-          </>
-        )}
-
-        {marketError && <p className="forge-error" style={{ marginTop: 10 }}>{marketError}</p>}
-
-        {hasMarketAssessment && (
-          <div style={{ marginTop: marketStreamHere ? 14 : 0 }}>
-            <MarketAssessmentViewer assessment={business.profile.marketAssessment} />
-          </div>
-        )}
-      </CollapsibleSection>
-
-      {/* App stack override grid */}
-      <CollapsibleSection title="Software stack" count={appStack.length} delay={nextSectionDelay()}>
-        <p className="forge-hint">
-          One default per category (★). Click an alternative to override what agents get access to.
-        </p>
-        <div style={{ display: 'grid', gap: 12, marginTop: 10 }}>
-          {appStack.map((group) => (
-            <div key={group.appTypeKey}>
-              <div className="forge-hint" style={{ textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.66rem' }}>
-                {group.appTypeLabel}
+          {planStreamHere && (
+            <>
+              <div className="forge-status-line">
+                <span className="forge-spinner" aria-hidden /> Drafting business plan sections…
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                {group.options.map((opt) => {
-                  const selected = opt.appId === group.selectedAppId;
-                  return (
-                    <button
-                      key={opt.appId}
-                      type="button"
-                      onClick={() => !selected && void selectApp(opt.appId)}
-                      title={opt.rationale}
-                      style={{
-                        cursor: selected ? 'default' : 'pointer',
-                        fontSize: '0.74rem',
-                        padding: '5px 12px',
-                        borderRadius: 5,
-                        border: `1px solid ${selected ? 'rgba(120,220,180,0.8)' : 'rgba(120,200,170,0.3)'}`,
-                        background: selected ? 'rgba(120,220,180,0.16)' : 'transparent',
-                        color: selected ? '#eafff4' : '#9fd8c4',
-                      }}
-                    >
-                      {opt.isAgentDefault ? '★ ' : ''}
-                      {opt.app.name}
-                      <span style={{ opacity: 0.6, marginLeft: 5, fontSize: '0.64rem' }}>{opt.app.kind}</span>
-                    </button>
-                  );
-                })}
+              <div className="forge-blueprint-tab-block">
+                <TurnTimeline turns={planTurns} />
               </div>
-            </div>
-          ))}
-          {appStack.length === 0 && <p className="forge-hint">No apps recommended yet.</p>}
-        </div>
-      </CollapsibleSection>
+            </>
+          )}
 
-      {/* Roles */}
-      <CollapsibleSection
-        title="Agent roles"
-        count={roles.length}
-        defaultOpen={suggestedRoles.length > 0 || !!forgeQueue?.active}
-        delay={nextSectionDelay()}
-        actions={
-          suggestedRoles.length > 0 ? (
-            <button
-              type="button"
-              className="forge-cta"
-              disabled={forgeBusy}
-              onClick={() => void forge()}
-              style={{ fontSize: '0.72rem', padding: '6px 12px' }}
-            >
-              {forgeQueueActive ? 'Forging…' : busy ? 'Starting…' : `⚡ Forge all (${suggestedRoles.length})`}
-            </button>
-          ) : null
-        }
-      >
-        {forgeQueue?.active ? <ForgeQueueProgress queue={forgeQueue} /> : null}
-        {forgeError ? <p className="forge-error" style={{ marginTop: 10 }}>{forgeError}</p> : null}
-        <div className="forge-role-list">
-          {roles.map((role) => (
-            <div key={role.id} className="forge-role-item">
-              <div className="forge-role-row">
-                <div className="forge-role-title">
-                  {role.title}
-                  <span className="forge-hint forge-role-meta">
-                    authority {role.authorityHint}
-                  </span>
-                </div>
-                <div className="forge-role-action">
-                {role.status === 'suggested' ? (
-                  <button type="button" className="forge-cta forge-cta--ghost forge-cta--sm" disabled={forgeBusy} onClick={() => void forge(role.id)}>
-                    Forge
-                  </button>
-                ) : role.agentSlug ? (
-                  <Link href={`/agent/${role.agentSlug}`} className="forge-hint forge-role-status">
-                    {role.status} →
-                  </Link>
-                ) : (
-                  <span className="forge-hint forge-role-status">{role.status}</span>
-                )}
+          {planError && <p className="forge-error forge-blueprint-tab-error">{planError}</p>}
+
+          {(hasBusinessPlan || competitorAnalysisHasContent(business.profile.competitorAnalysis)) && (
+            <div className={planInFlight ? 'forge-blueprint-tab-block' : undefined}>
+              <BusinessPlanViewer
+                plan={business.profile.businessPlan}
+                competitorAnalysis={business.profile.competitorAnalysis}
+                planInFlight={planInFlight}
+              />
+            </div>
+          )}
+        </ForgeBlueprintTabPanel>
+
+        <ForgeBlueprintTabPanel id="market" active={tab}>
+          <TabPanelHead
+            title="Market assessment"
+            actions={
+              !marketComplete && !marketStreamHere && !detail.consultInFlight && !planStreamHere ? (
+                <button
+                  type="button"
+                  className="forge-cta forge-cta--sm"
+                  disabled={marketBusy || detail.consultInFlight || planInFlight}
+                  onClick={() => void requestMarket()}
+                >
+                  {marketBusy
+                    ? 'Starting…'
+                    : hasMarketAssessment
+                      ? 'Complete market assessment'
+                      : 'Assess market & viability'}
+                </button>
+              ) : null
+            }
+          />
+
+          {!hasMarketAssessment && !marketStreamHere && (
+            <p className="forge-hint">
+              No market assessment yet. Run a candid viability read — sized market (TAM/SAM/SOM),
+              demand signals, timing, risks, and an advisory go/no-go verdict. It lays out the pros,
+              cons, and risks; the decision stays yours.
+            </p>
+          )}
+
+          {detail.consultInFlight && !marketStreamHere && !hasMarketAssessment && (
+            <p className="forge-hint">
+              Blueprint consult is running; the market assessment is part of it.
+            </p>
+          )}
+
+          {marketStreamHere && (
+            <>
+              <div className="forge-status-line">
+                <span className="forge-spinner" aria-hidden /> Researching the market & drafting the verdict…
+              </div>
+              <div className="forge-blueprint-tab-block">
+                <TurnTimeline turns={planTurns} />
+              </div>
+            </>
+          )}
+
+          {marketError && <p className="forge-error forge-blueprint-tab-error">{marketError}</p>}
+
+          {hasMarketAssessment && (
+            <div className={marketStreamHere ? 'forge-blueprint-tab-block' : undefined}>
+              <MarketAssessmentViewer assessment={business.profile.marketAssessment} />
+            </div>
+          )}
+        </ForgeBlueprintTabPanel>
+
+        <ForgeBlueprintTabPanel id="stack" active={tab}>
+          <TabPanelHead title="Software stack" />
+          <p className="forge-hint">
+            One default per category (★). Click an alternative to override what agents get access to.
+          </p>
+          <div className="forge-stack-grid">
+            {appStack.map((group) => (
+              <div key={group.appTypeKey}>
+                <div className="forge-stack-type">{group.appTypeLabel}</div>
+                <div className="forge-stack-options">
+                  {group.options.map((opt) => {
+                    const selected = opt.appId === group.selectedAppId;
+                    return (
+                      <button
+                        key={opt.appId}
+                        type="button"
+                        className={`forge-stack-option${selected ? ' forge-stack-option--selected' : ''}`}
+                        onClick={() => !selected && void selectApp(opt.appId)}
+                        title={opt.rationale}
+                      >
+                        {opt.isAgentDefault ? '★ ' : ''}
+                        {opt.app.name}
+                        <span className="forge-stack-kind">{opt.app.kind}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              <ForgeMarkdown className="forge-markdown--role">{role.jobDescription}</ForgeMarkdown>
-            </div>
-          ))}
-          {roles.length === 0 && <p className="forge-hint">No roles suggested yet.</p>}
-        </div>
-      </CollapsibleSection>
-
-      {/* Forged agents + access grids */}
-      {agents.length > 0 && (
-        <CollapsibleSection title="Forged agents" count={agents.length} delay={nextSectionDelay()}>
-          <div className="forge-agent-license-grid">
-            {agents.map((a) => (
-              <ForgedAgentLicense key={a.slug} agent={a} businessName={business.name} />
             ))}
+            {appStack.length === 0 && <p className="forge-hint">No apps recommended yet.</p>}
           </div>
-        </CollapsibleSection>
-      )}
+        </ForgeBlueprintTabPanel>
+
+        <ForgeBlueprintTabPanel id="team" active={tab}>
+          <TabPanelHead
+            title="Team"
+            actions={
+              suggestedRoles.length > 0 ? (
+                <button
+                  type="button"
+                  className="forge-cta forge-cta--sm"
+                  disabled={forgeBusy}
+                  onClick={() => void forge()}
+                >
+                  {forgeQueueActive ? 'Forging…' : busy ? 'Starting…' : `⚡ Forge all (${suggestedRoles.length})`}
+                </button>
+              ) : null
+            }
+          />
+
+          {forgeQueue?.active ? <ForgeQueueProgress queue={forgeQueue} /> : null}
+          {forgeError ? <p className="forge-error forge-blueprint-tab-error">{forgeError}</p> : null}
+
+          {sortedAgents.length > 0 && (
+            <>
+              <h3 className="forge-blueprint-panel-label">
+                Forged agents
+                <span className="forge-collapse-count">{sortedAgents.length}</span>
+              </h3>
+              <div className="forge-forged-agent-rows">
+                {sortedAgents.map((a) => (
+                  <ForgedAgentRolePair
+                    key={a.slug}
+                    agent={a}
+                    role={roleByAgentSlug.get(a.slug)}
+                    businessName={business.name}
+                    forgePhase={forgePhaseBySlug.get(a.slug)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {suggestedRoles.length > 0 && (
+            <>
+              <h3 className="forge-blueprint-panel-label forge-blueprint-panel-label--spaced">
+                Suggested roles
+                <span className="forge-collapse-count">{suggestedRoles.length}</span>
+              </h3>
+              <div className="forge-role-list">
+                {suggestedRoles.map((role) => (
+                  <BlueprintRoleItem
+                    key={role.id}
+                    role={role}
+                    forgeBusy={forgeBusy}
+                    onForge={(roleId) => void forge(roleId)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {suggestedRoles.length === 0 && sortedAgents.length === 0 && (
+            <p className="forge-hint">No roles suggested yet.</p>
+          )}
+          {suggestedRoles.length === 0 && sortedAgents.length > 0 && (
+            <p className="forge-hint forge-blueprint-team-note">All suggested roles have been forged.</p>
+          )}
+        </ForgeBlueprintTabPanel>
       </div>
           </div>
         </div>

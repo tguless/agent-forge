@@ -1270,18 +1270,85 @@
   max-width: none;
 }
 
-/* Structured business plan: TOC + collapsible sections */
+/* Structured business plan: section sub-tabs */
 .forge-plan {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   margin-top: 8px;
 }
 
-@media (min-width: 760px) {
-  .forge-plan {
-    grid-template-columns: minmax(160px, 220px) 1fr;
-    align-items: start;
-    gap: 24px;
+.forge-plan--tabbed {
+  grid-template-columns: 1fr;
+}
+
+.forge-plan-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.forge-plan-subtab {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  color: rgba(223, 250, 240, 0.68);
+  background: rgba(6, 14, 10, 0.72);
+  border: 1px solid color-mix(in srgb, var(--ops-cyan, #38bdf8) 18%, transparent);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.forge-plan-subtab:hover {
+  color: #eafff4;
+  border-color: color-mix(in srgb, var(--ops-cyan, #38bdf8) 38%, transparent);
+}
+
+.forge-plan-subtab--active {
+  color: #eafff4;
+  border-color: color-mix(in srgb, var(--ops-cyan-bright, #7fe7ff) 52%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--ops-cyan, #38bdf8) 14%, transparent);
+}
+
+.forge-plan-subtab--empty:not(.forge-plan-subtab--active) {
+  opacity: 0.55;
+}
+
+.forge-plan-subtab-full {
+  display: none;
+}
+
+.forge-plan-subpanel {
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.forge-plan-subpanel-title {
+  margin: 0 0 12px;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(234, 255, 244, 0.92);
+}
+
+@media (min-width: 900px) {
+  .forge-plan-subtab {
+    font-size: 0.68rem;
+    padding: 7px 12px;
+  }
+
+  .forge-plan-subtab-short {
+    display: none;
+  }
+
+  .forge-plan-subtab-full {
+    display: inline;
   }
 }
 
@@ -1828,6 +1895,187 @@
   margin-top: 10px;
 }
 
+/* ── Blueprint detail tabs ───────────────────────────────────────────────── */
+.forge-blueprint-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  margin-bottom: 4px;
+}
+
+.forge-blueprint-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: rgba(223, 250, 240, 0.72);
+  background: rgba(8, 18, 10, 0.65);
+  border: 1px solid color-mix(in srgb, var(--ops-detail-green-bright, #8ee85a) 22%, transparent);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.forge-blueprint-tab--active {
+  color: #eafff4;
+  border-color: color-mix(in srgb, var(--ops-detail-green-bright, #8ee85a) 55%, transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--ops-detail-green-bright, #8ee85a) 16%, transparent);
+}
+
+.forge-blueprint-tab--pulse {
+  animation: forge-blueprint-tab-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes forge-blueprint-tab-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--ops-detail-green-bright, #8ee85a) 12%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 16px color-mix(in srgb, var(--ops-detail-green-bright, #8ee85a) 28%, transparent);
+  }
+}
+
+.forge-blueprint-tab-badge {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.66rem;
+  color: rgba(223, 250, 240, 0.85);
+  background: rgba(120, 200, 170, 0.14);
+  border: 1px solid rgba(120, 200, 170, 0.28);
+  border-radius: 999px;
+  min-width: 1.35rem;
+  padding: 1px 6px;
+  text-align: center;
+}
+
+.forge-blueprint-tab-meta {
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: rgba(159, 216, 196, 0.82);
+}
+
+.forge-blueprint-tab-panels {
+  margin-top: 8px;
+}
+
+.forge-blueprint-tab-panel {
+  padding-top: 6px;
+}
+
+.forge-blueprint-tab-panel[hidden] {
+  display: none !important;
+}
+
+.forge-blueprint-tab-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.forge-blueprint-tab-title {
+  margin: 0;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7fe7ff;
+}
+
+.forge-blueprint-tab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.forge-blueprint-tab-block {
+  margin-top: 14px;
+}
+
+.forge-blueprint-tab-error {
+  margin-top: 10px;
+}
+
+.forge-blueprint-panel {
+  margin-bottom: 10px;
+}
+
+.forge-blueprint-panel:last-child {
+  margin-bottom: 0;
+}
+
+.forge-blueprint-panel-label {
+  margin: 0 0 8px;
+  font-family: var(--ops-font-display, 'Oxanium', sans-serif);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7fe7ff;
+}
+
+.forge-blueprint-panel-label--spaced {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forge-stack-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.forge-stack-type {
+  font-family: var(--ops-font-ui, monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.66rem;
+  color: rgba(159, 216, 196, 0.88);
+}
+
+.forge-stack-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.forge-stack-option {
+  cursor: pointer;
+  font-family: var(--ops-font-ui, monospace);
+  font-size: 0.74rem;
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: 1px solid rgba(120, 200, 170, 0.3);
+  background: transparent;
+  color: #9fd8c4;
+}
+
+.forge-stack-option--selected {
+  cursor: default;
+  border-color: rgba(120, 220, 180, 0.8);
+  background: rgba(120, 220, 180, 0.16);
+  color: #eafff4;
+}
+
+.forge-stack-kind {
+  opacity: 0.6;
+  margin-left: 5px;
+  font-size: 0.64rem;
+}
+
 .forge-blueprint-section {
   margin-top: 0;
 }
@@ -1835,6 +2083,40 @@
 .forge-role-list {
   display: grid;
   gap: 12px;
+}
+
+/* Forged agent row — license card left, that agent's role brief right */
+.forge-forged-agent-rows {
+  display: grid;
+  gap: 28px;
+}
+
+.forge-agent-role-split {
+  display: grid;
+  grid-template-columns: minmax(260px, 420px) minmax(0, 1fr);
+  gap: 24px 36px;
+  align-items: start;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(120, 200, 170, 0.12);
+}
+
+.forge-agent-role-split:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.forge-agent-role-split__card,
+.forge-agent-role-split__brief {
+  min-width: 0;
+}
+
+.forge-agent-role-split__card .forge-agent-license {
+  max-width: none;
+  width: 100%;
+}
+
+.forge-blueprint-team-note {
+  margin-top: 16px;
 }
 
 .forge-role-item {
@@ -1847,14 +2129,47 @@
   padding-bottom: 0;
 }
 
-.forge-role-meta {
-  margin-left: 8px;
-  font-size: 0.75rem;
+.forge-role-item--compact {
+  padding-bottom: 6px;
+}
+
+.forge-role-item--compact .forge-markdown--role {
+  display: none;
+}
+
+.forge-role-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.forge-role-expand:hover {
+  color: var(--ops-cyan-bright, #7fe7ff);
 }
 
 .forge-role-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.8125rem;
   white-space: nowrap;
+}
+
+.forge-spinner--inline {
+  flex-shrink: 0;
+}
+
+.forge-role-meta {
+  margin-left: 8px;
+  font-size: 0.75rem;
 }
 
 .forge-role-action {
@@ -2000,6 +2315,34 @@
     margin: 0;
   }
 
+  .forge-blueprint-tabs {
+    gap: 4px;
+  }
+
+  .forge-blueprint-tab {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 0.68rem;
+  }
+
+  .forge-plan-subtabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .forge-plan-subtab {
+    justify-content: center;
+    width: 100%;
+    padding: 8px 6px;
+    font-size: 0.58rem;
+  }
+
+  .forge-blueprint-tab-meta {
+    display: none;
+  }
+
   .forge-blueprint-page .ops-hud-box-body {
     padding: 10px 8px;
   }
@@ -2039,6 +2382,12 @@
   .forge-blueprint-page .forge-role-meta,
   .forge-blueprint-page .forge-role-status {
     font-size: 0.8125rem;
+  }
+
+  .forge-agent-role-split {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding-bottom: 20px;
   }
 
   .forge-blueprint-page .forge-collapse-title {
@@ -2306,6 +2655,9 @@
 }
 
 .forge-agent-license__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--ops-font-ui, monospace);
   font-size: 0.78rem;
   line-height: 1.25;

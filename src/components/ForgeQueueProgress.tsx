@@ -11,6 +11,7 @@ export type ForgeQueueSnapshot = {
   pending: number;
   percent: number;
   current: { roleId: number; agentSlug: string; roleTitle: string } | null;
+  items?: Array<{ agentSlug: string; status: string; roleTitle: string }>;
 };
 
 /** Batch forge progress — one agent generation at a time. */

@@ -18,7 +18,10 @@ function operatorId(slug: string): string {
   return `AF-${core}`;
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string, forgePhase?: 'running' | 'pending'): string {
+  if (forgePhase === 'running' || (forgePhase === 'pending' && status !== 'complete' && status !== 'error')) {
+    return 'Forging';
+  }
   switch (status) {
     case 'complete':
       return 'Active';
@@ -36,16 +39,18 @@ function statusLabel(status: string): string {
 type ForgedAgentLicenseProps = {
   agent: BusinessAgentSummary;
   businessName: string;
+  forgePhase?: 'running' | 'pending';
 };
 
 /** Driver's-license-style operator card for forged agents on business blueprints. */
-export function ForgedAgentLicense({ agent, businessName }: ForgedAgentLicenseProps) {
+export function ForgedAgentLicense({ agent, businessName, forgePhase }: ForgedAgentLicenseProps) {
   const [photoFailed, setPhotoFailed] = React.useState(false);
   const [emblemFailed, setEmblemFailed] = React.useState(false);
   const accent = agent.accent ?? '#7fe7ff';
   const photoSrc = !photoFailed && agent.portraitPath ? agent.portraitPath : agent.iconPath;
   const emblemSrc = !emblemFailed && agent.emblemPath ? `${agent.emblemPath}?v=${agent.updatedAt}` : undefined;
-  const pending = agent.status !== 'complete';
+  const pending = agent.status !== 'complete' && agent.status !== 'error';
+  const displayStatus = statusLabel(agent.status, forgePhase);
 
   return (
     <Link
@@ -109,7 +114,10 @@ export function ForgedAgentLicense({ agent, businessName }: ForgedAgentLicensePr
             <div className="forge-agent-license__field">
               <span className="forge-agent-license__label">Status</span>
               <span className="forge-agent-license__value" data-status={agent.status}>
-                {statusLabel(agent.status)}
+                {displayStatus}
+                {forgePhase === 'running' && agent.status !== 'complete' ? (
+                  <span className="forge-spinner forge-spinner--inline" aria-hidden />
+                ) : null}
               </span>
             </div>
             {agent.callsign ? (

@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { getDb } from './db';
 import { uniqueSlug, slugify } from './slug';
 import { getApp } from './catalogStore';
-import { deleteAgent } from './agentStore';
+import { deleteAgent, getAgent } from './agentStore';
 import type {
   Business,
   BusinessApp,
@@ -334,6 +334,17 @@ export function setRoleStatus(id: number, status: BusinessRoleStatus, agentSlug?
     getDb().prepare('UPDATE business_roles SET status = ?, agent_slug = ? WHERE id = ?').run(status, agentSlug, id);
   } else {
     getDb().prepare('UPDATE business_roles SET status = ? WHERE id = ?').run(status, id);
+  }
+}
+
+/** Promote roles stuck on `forging` when their agent already finished. */
+export function reconcileRoleForgeStatuses(businessSlug: string): void {
+  for (const role of listRoles(businessSlug)) {
+    if (role.status !== 'forging' || !role.agentSlug) continue;
+    const agent = getAgent(role.agentSlug);
+    if (agent?.status === 'complete') {
+      setRoleStatus(role.id, 'forged', role.agentSlug);
+    }
   }
 }
 
