@@ -27,6 +27,7 @@ export function readBlueprintTabFromHash(): BlueprintTabId {
   const hash = hashWithoutPrefix();
   if (isBlueprintTab(hash)) return hash;
   if (hash === 'plan-competitors' || hash.startsWith('plan-')) return 'plan';
+  if (hash.startsWith('market-')) return 'market';
   return 'overview';
 }
 

@@ -629,6 +629,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
               <MarketAssessmentViewer
                 assessment={business.profile.marketAssessment}
                 animatePrefix={`${slug}:market`}
+                marketInFlight={marketStreamHere}
               />
             </div>
           )}

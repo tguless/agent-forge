@@ -80,6 +80,107 @@ export const MARKET_SECTIONS: MarketSectionDef[] = [
   { key: 'timing', label: 'Timing & trends', anchor: 'market-timing' },
 ];
 
+export type MarketSubTabId =
+  | 'verdict'
+  | MarketSectionKey
+  | 'proscons'
+  | 'risks'
+  | 'recommendation'
+  | 'sources';
+
+export type MarketSubTabDef = {
+  id: MarketSubTabId;
+  label: string;
+  anchor: string;
+};
+
+/** Core market sub-tabs (sources tab added in UI when URLs exist). */
+export const MARKET_CORE_SUB_TABS: MarketSubTabDef[] = [
+  { id: 'verdict', label: 'Verdict', anchor: 'market-verdict' },
+  ...MARKET_SECTIONS.map((s) => ({ id: s.key, label: s.label, anchor: s.anchor })),
+  { id: 'proscons', label: 'Pros & cons', anchor: 'market-proscons' },
+  { id: 'risks', label: 'Risks', anchor: 'market-risks' },
+  { id: 'recommendation', label: 'Recommendation', anchor: 'market-recommendation' },
+];
+
+export const MARKET_SOURCES_SUB_TAB: MarketSubTabDef = {
+  id: 'sources',
+  label: 'Sources',
+  anchor: 'market-sources',
+};
+
+/** Compact labels for market sub-tabs (main bar uses full section labels). */
+export const MARKET_SUBTAB_SHORT_LABELS: Record<MarketSubTabId, string> = {
+  verdict: 'Verdict',
+  marketSize: 'TAM/SAM',
+  demandSignals: 'Demand',
+  timing: 'Timing',
+  proscons: '±',
+  risks: 'Risks',
+  recommendation: 'Rec',
+  sources: 'Src',
+};
+
+export function marketSubTabHasContent(
+  assessment: MarketAssessment | undefined,
+  id: MarketSubTabId,
+): boolean {
+  if (!assessment) return false;
+  switch (id) {
+    case 'verdict':
+      return Boolean(assessment.verdict || assessment.headline?.trim());
+    case 'marketSize':
+    case 'demandSignals':
+    case 'timing':
+      return Boolean(assessment[id]?.trim());
+    case 'proscons':
+      return (assessment.pros?.length ?? 0) > 0 || (assessment.cons?.length ?? 0) > 0;
+    case 'risks':
+      return (assessment.risks?.length ?? 0) > 0;
+    case 'recommendation':
+      return Boolean(assessment.recommendation?.trim());
+    case 'sources':
+      return (assessment.sources?.length ?? 0) > 0;
+    default:
+      return false;
+  }
+}
+
+export function marketSubTabFromHash(hash: string): MarketSubTabId | null {
+  const id = hash.replace(/^#/, '');
+  if (id === 'market-verdict') return 'verdict';
+  if (id === 'market-proscons') return 'proscons';
+  if (id === 'market-risks') return 'risks';
+  if (id === 'market-recommendation') return 'recommendation';
+  if (id === 'market-sources') return 'sources';
+  const byAnchor = MARKET_SECTIONS.find((s) => s.anchor === id);
+  if (byAnchor) return byAnchor.key;
+  if (id.startsWith('market-')) {
+    const suffix = id.slice('market-'.length);
+    const byKey = MARKET_SECTIONS.find((s) => s.key === suffix);
+    if (byKey) return byKey.key;
+  }
+  return null;
+}
+
+export function marketSubTabHash(subTab: MarketSubTabId): string {
+  if (subTab === 'verdict') return 'market-verdict';
+  if (subTab === 'proscons') return 'market-proscons';
+  if (subTab === 'risks') return 'market-risks';
+  if (subTab === 'recommendation') return 'market-recommendation';
+  if (subTab === 'sources') return MARKET_SOURCES_SUB_TAB.anchor;
+  const def = MARKET_SECTIONS.find((s) => s.key === subTab);
+  return def?.anchor ?? 'market-verdict';
+}
+
+export function defaultMarketSubTab(assessment: MarketAssessment | undefined): MarketSubTabId {
+  for (const tab of MARKET_CORE_SUB_TABS) {
+    if (marketSubTabHasContent(assessment, tab.id)) return tab.id;
+  }
+  if (marketSubTabHasContent(assessment, 'sources')) return 'sources';
+  return 'verdict';
+}
+
 const SEVERITY_RANK: Record<RiskSeverity, number> = { high: 0, medium: 1, low: 2 };
 
 /** Sort risks by descending severity for display. */
