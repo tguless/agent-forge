@@ -14,6 +14,7 @@ type ForgeUiSettingsContextValue = {
   textFillTiming: ForgeUiSettings['textFillTiming'];
   textFillRandomMaxMs: number;
   typeReadoutStopRatio: number;
+  gridMovingLinesIntervalSec: number;
 };
 
 const ForgeUiSettingsContext = React.createContext<ForgeUiSettingsContextValue | null>(null);
@@ -78,6 +79,7 @@ export function ForgeUiSettingsProvider({ children }: { children: React.ReactNod
       textFillTiming: ui.textFillTiming,
       textFillRandomMaxMs: ui.textFillRandomMaxMs,
       typeReadoutStopRatio: ui.typeReadoutStopRatio,
+      gridMovingLinesIntervalSec: ui.gridMovingLinesIntervalSec,
     }),
     [ui, loading, saving, setUiSettings],
   );

@@ -14,6 +14,7 @@
     "@ai-sdk/anthropic": "^3.0.84",
     "@anthropic-ai/sdk": "^0.32.1",
     "@arwes/animated": "^1.0.0-next.25020502",
+    "@arwes/react-bgs": "^1.0.0-next.25020502",
     "@google/genai": "^1.40.0",
     "ai": "^6.0.205",
     "better-sqlite3": "^11.8.1",

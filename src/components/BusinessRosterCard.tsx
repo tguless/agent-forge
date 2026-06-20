@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ForgeInteractiveHudBox } from '@/components/ForgeInteractiveHudBox';
 import { ForgeDecodeText, ForgeFlowText, ForgeHeaderText } from '@/components/ForgeArwesText';
+import { useForgeCardLayoutLock } from '@/hooks/useForgeCardLayoutLock';
 import { useTextFillDelay } from '@/hooks/useTextFillDelay';
 import type { BusinessSummary } from '@/lib/businessTypes';
 
@@ -26,12 +27,21 @@ export function BusinessRosterCard({
   const fillDelay = useTextFillDelay();
   const cardBase = staggerIndex * CARD_STAGGER_S;
   const d = (key: string, offset: number) => fillDelay(`${business.slug}:${key}`, cardBase + offset);
-  const snippet = business.description.slice(0, 200);
+  const description = business.description;
   const footer = `${business.roleCount} role(s) · ${business.appCount} app(s) selected · ${business.agentCount} agent(s) forged`;
+  const layoutRef = useForgeCardLayoutLock([
+    business.slug,
+    business.name,
+    business.isPlaceholder,
+    description,
+    footer,
+    business.status,
+  ]);
 
   return (
     <Link href={`/business/${business.slug}`} style={{ textDecoration: 'none' }}>
       <ForgeInteractiveHudBox variant="rect" className="forge-roster-card-box">
+        <div ref={layoutRef} className="forge-roster-card-layout">
         <div className="forge-roster-card">
           <div className="forge-roster-card-main">
             <ForgeHeaderText
@@ -40,7 +50,7 @@ export function BusinessRosterCard({
               layout="block"
               duration={0.85}
               delay={d('name', 0)}
-              animateId={`${business.slug}:name:${business.name}`}
+              animateId={`${business.slug}:name`}
               playOnce
               reserveLayout
               contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
@@ -55,11 +65,11 @@ export function BusinessRosterCard({
               className="forge-hint forge-roster-card-desc"
               layout="block"
               delay={d('desc', 0.1)}
-              animateId={`${business.slug}:desc:${snippet}`}
+              animateId={`${business.slug}:desc`}
               playOnce
               reserveLayout
             >
-              {snippet}
+              {description}
             </ForgeFlowText>
           </div>
           <span
@@ -83,12 +93,13 @@ export function BusinessRosterCard({
           className="forge-hint forge-roster-card-meta"
           layout="block"
           delay={d('meta', 0.18)}
-          animateId={`${business.slug}:meta:${footer}`}
+          animateId={`${business.slug}:meta`}
           playOnce
           reserveLayout
         >
           {footer}
         </ForgeFlowText>
+        </div>
       </ForgeInteractiveHudBox>
     </Link>
   );

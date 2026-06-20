@@ -11,6 +11,8 @@ export type ForgeUiSettings = {
   textFillRandomMaxMs: number;
   /** Fraction of glyphs revealed before the type readout stops (0.5–1). */
   typeReadoutStopRatio: number;
+  /** Full ARWES grid scan-line sweep cycle in seconds (all pages with grid backdrop). */
+  gridMovingLinesIntervalSec: number;
 };
 
 export const READOUT_STOP_RATIO_MIN = 0.5;
@@ -19,12 +21,18 @@ export const READOUT_STOP_RATIO_MAX = 1;
 export const TEXT_FILL_RANDOM_MAX_MS_MIN = 0;
 export const TEXT_FILL_RANDOM_MAX_MS_MAX = 5000;
 
+export const GRID_MOVING_LINES_INTERVAL_SEC_MIN = 15;
+export const GRID_MOVING_LINES_INTERVAL_SEC_MAX = 120;
+export const GRID_MOVING_LINES_INTERVAL_SEC_DEFAULT = 25;
+export const GRID_MOVING_LINES_INTERVAL_SEC_STEP = 5;
+
 export const DEFAULT_FORGE_UI_SETTINGS: ForgeUiSettings = {
   textFillSoundsEnabled: true,
   buttonSoundsEnabled: true,
   textFillTiming: 'none',
   textFillRandomMaxMs: 800,
   typeReadoutStopRatio: 0.88,
+  gridMovingLinesIntervalSec: GRID_MOVING_LINES_INTERVAL_SEC_DEFAULT,
 };
 
 export const FORGE_UI_SETTINGS_DB_KEY = 'ui.settings';
@@ -46,6 +54,20 @@ export function clampTextFillRandomMaxMs(value: number): number {
     TEXT_FILL_RANDOM_MAX_MS_MAX,
     Math.max(TEXT_FILL_RANDOM_MAX_MS_MIN, Math.round(value)),
   );
+}
+
+export function clampGridMovingLinesIntervalSec(value: number): number {
+  if (!Number.isFinite(value)) return GRID_MOVING_LINES_INTERVAL_SEC_DEFAULT;
+  const stepped =
+    Math.round(value / GRID_MOVING_LINES_INTERVAL_SEC_STEP) * GRID_MOVING_LINES_INTERVAL_SEC_STEP;
+  return Math.min(
+    GRID_MOVING_LINES_INTERVAL_SEC_MAX,
+    Math.max(GRID_MOVING_LINES_INTERVAL_SEC_MIN, stepped),
+  );
+}
+
+export function gridMovingLinesIntervalMs(sec = GRID_MOVING_LINES_INTERVAL_SEC_DEFAULT): number {
+  return clampGridMovingLinesIntervalSec(sec) * 1000;
 }
 
 /** Stable 0..1 from a string — random delays stay fixed for a given seed. */
@@ -125,6 +147,9 @@ export function normalizeForgeUiSettings(parsed: LegacyForgeUiSettings): ForgeUi
     ),
     typeReadoutStopRatio: clampReadoutStopRatio(
       parsed.typeReadoutStopRatio ?? DEFAULT_FORGE_UI_SETTINGS.typeReadoutStopRatio,
+    ),
+    gridMovingLinesIntervalSec: clampGridMovingLinesIntervalSec(
+      parsed.gridMovingLinesIntervalSec ?? DEFAULT_FORGE_UI_SETTINGS.gridMovingLinesIntervalSec,
     ),
   };
 }

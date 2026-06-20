@@ -116,6 +116,10 @@
 }
 
 @media (max-width: 640px) {
+  .forge-wordmark--lg {
+    font-size: clamp(1rem, 5.5vw, 2rem);
+  }
+
   .forge-toolbar.forge-top-nav {
     flex-direction: column;
     align-items: stretch;
@@ -476,6 +480,8 @@
 .forge-arwes-text__stack {
   display: grid;
   width: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
 .forge-arwes-text--inline .forge-arwes-text__stack {
@@ -492,6 +498,19 @@
   visibility: hidden;
   pointer-events: none;
   user-select: none;
+}
+
+/*
+ * During decode/decipher animation, scrambled characters can be wider than
+ * originals, causing temporary extra line breaks. By absolutely positioning the
+ * live content, only the sizer (which holds the real text) sizes the grid row.
+ * overflow:hidden on the stack clips any transient overflow.
+ */
+.forge-arwes-text__stack > .forge-arwes-text__content:not(.forge-arwes-text__sizer) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
 }
 
 .forge-arwes-text--block .forge-arwes-text__stack > .forge-arwes-text__sizer,
@@ -587,6 +606,13 @@
 .forge-business-roster {
   display: grid;
   gap: 14px;
+  align-items: start;
+}
+
+.forge-roster-card-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .forge-roster-card-box .forge-roster-card-name {
@@ -605,6 +631,12 @@
 .forge-roster-card-desc {
   margin: 6px 0 0;
   max-width: none;
+  overflow-wrap: anywhere;
+}
+
+.forge-roster-card-desc .forge-arwes-text__sizer,
+.forge-roster-card-desc .forge-arwes-text__content {
+  overflow-wrap: anywhere;
 }
 
 .forge-roster-card-meta {
@@ -1891,7 +1923,7 @@
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  align-items: baseline;
+  align-items: flex-start;
 }
 
 .forge-roster-card-main {
@@ -2062,6 +2094,11 @@
   .forge-roster-card {
     flex-direction: column;
     align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  .forge-roster-card-main {
+    flex: 0 0 auto;
   }
 
   .forge-roster-status {

@@ -40,6 +40,15 @@
   font-family: var(--ops-font-ui);
 }
 
+.ops-detail-page.forge-arwes-grid-page {
+  background-image: none;
+  background-color: transparent;
+}
+
+.ops-detail-shell > .forge-glass-surface--detail {
+  margin: 0;
+}
+
 .ops-detail-toolbar {
   display: flex;
   align-items: center;
@@ -736,6 +745,29 @@
 .ops-detail-panel-body {
   position: relative;
   z-index: 3;
+}
+
+/* Glass shell — agent detail (must follow opaque panel defaults above) */
+.forge-arwes-grid-page.ops-detail-page .forge-glass-surface .ops-detail-panel.forge-shimmer-panel,
+.forge-arwes-grid-page.ops-detail-page .forge-glass-surface .ops-hud-box.forge-shimmer-card {
+  background: rgba(8, 22, 14, 0.64);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-arwes-grid-page.ops-detail-page .forge-glass-surface .ops-detail-portrait-wrap {
+  background: rgba(8, 14, 10, 0.88);
+}
+
+.forge-arwes-grid-page.ops-detail-page .forge-glass-surface .ops-detail-role-table {
+  background: rgba(12, 24, 8, 0.56);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .forge-arwes-grid-page.ops-detail-page .forge-glass-surface .ops-detail-panel.forge-shimmer-panel,
+  .forge-arwes-grid-page.ops-detail-page .forge-glass-surface .ops-hud-box.forge-shimmer-card {
+    background: rgba(10, 18, 6, 0.88);
+  }
 }
 
 .ops-detail-panel--danger {

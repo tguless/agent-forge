@@ -9,6 +9,9 @@ import { useForgeUiSettings } from '@/components/ForgeUiSettingsProvider';
 import {
   READOUT_STOP_RATIO_MAX,
   READOUT_STOP_RATIO_MIN,
+  GRID_MOVING_LINES_INTERVAL_SEC_MAX,
+  GRID_MOVING_LINES_INTERVAL_SEC_MIN,
+  GRID_MOVING_LINES_INTERVAL_SEC_STEP,
   TEXT_FILL_RANDOM_MAX_MS_MAX,
   TEXT_FILL_RANDOM_MAX_MS_MIN,
   type TextFillTiming,
@@ -327,6 +330,34 @@ export default function ForgeConfigPage() {
                     />
                     <span className="forge-config-range-value">
                       {Math.round(ui.typeReadoutStopRatio * 100)}%
+                    </span>
+                  </div>
+                </label>
+                <label className="forge-config-range-row">
+                  <span className="forge-config-toggle-copy">
+                    <span className="forge-config-toggle-label">Grid scan line cycle</span>
+                    <span className="forge-config-toggle-hint">
+                      Seconds for one full vertical sweep on the ARWES background. Higher is
+                      slower. Applies to every page with the animated grid.
+                    </span>
+                  </span>
+                  <div className="forge-config-range-control">
+                    <input
+                      type="range"
+                      className="forge-config-range-input"
+                      min={GRID_MOVING_LINES_INTERVAL_SEC_MIN}
+                      max={GRID_MOVING_LINES_INTERVAL_SEC_MAX}
+                      step={GRID_MOVING_LINES_INTERVAL_SEC_STEP}
+                      value={ui.gridMovingLinesIntervalSec}
+                      disabled={uiSaving}
+                      onChange={(e) =>
+                        void setUiSettings({
+                          gridMovingLinesIntervalSec: Number(e.target.value),
+                        })
+                      }
+                    />
+                    <span className="forge-config-range-value">
+                      {ui.gridMovingLinesIntervalSec}s
                     </span>
                   </div>
                 </label>

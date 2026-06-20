@@ -34,6 +34,127 @@
     color-mix(in srgb, var(--ops-cyan) 22%, transparent) 80%,
     transparent 100%
   );
+  /* Clear glass — tinted panels over grid (sharp, not frosted); opacity via tokens below */
+  --forge-glass-blur: 0;
+  --forge-glass-saturate: 1;
+  --forge-glass-bg: rgba(4, 16, 28, 0.64);
+  --forge-glass-bg-elevated: rgba(6, 20, 32, 0.8);
+  --forge-glass-bg-subtle: rgba(2, 10, 20, 0.48);
+  --forge-glass-scrim: rgba(6, 20, 32, 0.56);
+  --forge-glass-scrim-detail: rgba(8, 22, 12, 0.56);
+}
+
+.forge-arwes-grid-page .ops-hud-inner {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-glass-surface {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.forge-glass-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: var(--forge-glass-scrim);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-glass-content {
+  position: relative;
+  z-index: 2;
+}
+
+.forge-arwes-grid-page.ops-detail-page .forge-glass-scrim {
+  background: var(--forge-glass-scrim-detail);
+}
+
+.forge-arwes-grid-page .ops-hud-header-frame {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--forge-glass-bg-elevated) 88%, rgba(56, 189, 248, 0.1)) 0%,
+    var(--forge-glass-bg) 100%
+  );
+}
+
+.forge-arwes-grid-page .ops-agent-card,
+.forge-arwes-grid-page .ops-hud-box.forge-shimmer-card,
+.forge-arwes-grid-page .ops-footer-panel.ops-hud-box {
+  background: var(--forge-glass-bg);
+}
+
+.forge-arwes-grid-page .ops-hud-inner .ops-agent-card,
+.forge-arwes-grid-page .ops-hud-inner .ops-hud-box.forge-shimmer-card,
+.forge-arwes-grid-page .ops-hud-inner .forge-add-card {
+  background: var(--forge-glass-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-arwes-grid-page .ops-hud-inner .ops-hud-header-frame {
+  background: var(--forge-glass-bg-elevated);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-arwes-grid-page .ops-hud-inner .ops-outcome-box {
+  background: var(--forge-glass-bg-subtle);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-arwes-grid-page .ops-outcome-box {
+  background: var(--forge-glass-bg-subtle);
+}
+
+.forge-arwes-grid-page .forge-add-card {
+  background: color-mix(in srgb, var(--forge-glass-bg) 85%, transparent);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-arwes-grid-page .ops-agent-card,
+.forge-arwes-grid-page .ops-outcome-box,
+.forge-arwes-grid-page .ops-hud-box.forge-shimmer-card,
+.forge-arwes-grid-page .ops-footer-panel.ops-hud-box {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .forge-glass-scrim {
+    background: rgba(4, 10, 20, 0.82);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .forge-arwes-grid-page.ops-detail-page .forge-glass-scrim {
+    background: rgba(10, 18, 6, 0.82);
+  }
+
+  .forge-arwes-grid-page .ops-hud-inner {
+    background: transparent;
+  }
+
+  .forge-arwes-grid-page .ops-hud-header-frame {
+    background: linear-gradient(180deg, rgba(8, 16, 32, 0.92) 0%, rgba(4, 10, 20, 0.92) 100%);
+  }
+
+  .forge-arwes-grid-page .ops-agent-card,
+  .forge-arwes-grid-page .ops-hud-box.forge-shimmer-card,
+  .forge-arwes-grid-page .ops-footer-panel.ops-hud-box,
+  .forge-arwes-grid-page .ops-outcome-box,
+  .forge-arwes-grid-page .forge-add-card {
+    background: rgba(5, 10, 20, 0.9);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 .ops-dashboard {
@@ -46,6 +167,61 @@
   color: var(--ops-text);
   min-height: 100vh;
   padding-bottom: 2rem;
+}
+
+/* ARWES canvas grid — replaces static CSS grid when ForgePageShell mounts ForgeArwesGridBackground */
+.ops-dashboard.forge-arwes-grid-page,
+.ops-detail-page.forge-arwes-grid-page {
+  background-image: none;
+}
+
+.ops-dashboard.forge-arwes-grid-page {
+  background-color: transparent;
+}
+
+.forge-arwes-grid-bg--viewport {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.forge-arwes-grid-bg--local {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.forge-arwes-grid-bg {
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.forge-arwes-grid-bg__surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.forge-arwes-grid-bg__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.forge-page-foreground {
+  position: relative;
+  z-index: 1;
+  background: transparent;
 }
 
 /* ── Outer HUD shell (lifted border) ── */
@@ -609,6 +785,27 @@
   cursor: pointer;
   overflow: hidden;
   isolation: isolate;
+}
+
+/* Glass shell overrides — must follow opaque defaults above */
+.forge-arwes-grid-page .forge-glass-surface .ops-agent-card,
+.forge-arwes-grid-page .forge-glass-surface .forge-add-card,
+.forge-arwes-grid-page .forge-glass-surface .ops-hud-box.forge-shimmer-card {
+  background: var(--forge-glass-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-arwes-grid-page .forge-glass-surface .ops-hud-header-frame {
+  background: var(--forge-glass-bg-elevated);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.forge-arwes-grid-page .forge-glass-surface .ops-outcome-box {
+  background: var(--forge-glass-bg-subtle);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 .ops-agent-card:hover,

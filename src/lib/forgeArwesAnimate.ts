@@ -64,15 +64,15 @@ type InPlaceBase = {
   readoutStopRatio?: number;
 };
 
-/** Remember block height before in-place sequence clears text nodes (avoids card growth). */
+/** Pin block height before in-place sequence clears text nodes (avoids card growth).
+ *  minHeight is permanent — it only grows, never resets, so effect cleanup can't cause a jump. */
 export function lockElementLayout(el: HTMLElement): () => void {
   const height = el.offsetHeight;
   if (height > 0) {
-    el.style.minHeight = `${height}px`;
+    const prev = Number.parseFloat(el.style.minHeight) || 0;
+    el.style.minHeight = `${Math.max(prev, height)}px`;
   }
-  return () => {
-    el.style.minHeight = '';
-  };
+  return () => {};
 }
 
 /** Scale duration by character count (mirrors @arwes/text getAnimationTextDuration). */

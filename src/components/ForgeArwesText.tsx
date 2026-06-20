@@ -7,6 +7,7 @@ import {
   animateTextSequenceInPlace,
   FORGE_DECODE_DURATION_OPTS,
   getForgeTextDuration,
+  lockElementLayout,
 } from '@/lib/forgeArwesAnimate';
 import { useForgeUiSettings } from '@/components/ForgeUiSettingsProvider';
 import {
@@ -183,6 +184,11 @@ export function ForgeArwesText({
     const id =
       animateId ??
       `${resolved.manager}:${variant ?? 'default'}:${layout}:${content.textContent.length}:${content.textContent.slice(0, 48)}`;
+
+    if (useStack) {
+      const stack = content?.closest('.forge-arwes-text__stack') as HTMLElement | null;
+      if (stack) lockElementLayout(stack);
+    }
 
     if (playOnce && playedIdRef.current === id) {
       return;

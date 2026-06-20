@@ -8,6 +8,7 @@ import { getDefaultPromptContent } from '@/lib/forgePromptDefaults';
 import {
   clampReadoutStopRatio,
   clampTextFillRandomMaxMs,
+  clampGridMovingLinesIntervalSec,
   DEFAULT_FORGE_UI_SETTINGS,
   FORGE_UI_SETTINGS_DB_KEY,
   normalizeForgeUiSettings,
@@ -158,6 +159,10 @@ export function setUiSettings(partial: Partial<ForgeUiSettings>): ForgeUiSetting
       partial.textFillRandomMaxMs != null
         ? clampTextFillRandomMaxMs(partial.textFillRandomMaxMs)
         : current.textFillRandomMaxMs,
+    gridMovingLinesIntervalSec:
+      partial.gridMovingLinesIntervalSec != null
+        ? clampGridMovingLinesIntervalSec(partial.gridMovingLinesIntervalSec)
+        : current.gridMovingLinesIntervalSec,
   };
   ensureConfigTable();
   const now = Date.now();

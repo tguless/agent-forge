@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { ForgeArwesGridBackground, ForgeGlassSurface } from '@/components/ForgeArwesGridBackground';
 import type { ForgePageFrame, ForgePageTheme } from '@/lib/forgeLayout';
 
 export type ForgePageShellProps = {
@@ -31,25 +32,41 @@ export function ForgePageShell({
 }: ForgePageShellProps) {
   const pageClass = [
     theme === 'detail' ? 'ops-detail-page' : 'ops-dashboard',
+    'forge-arwes-grid-page',
     pageClassName,
   ]
     .filter(Boolean)
     .join(' ');
 
+  const gridVariant = theme === 'detail' ? 'detail' : 'dashboard';
+
+  const foreground = (content: React.ReactNode) => (
+    <>
+      <ForgeArwesGridBackground variant={gridVariant} placement="viewport" />
+      <div className="forge-page-foreground">{content}</div>
+    </>
+  );
+
   if (frame === 'hud') {
     return (
       <div className={pageClass} style={style}>
-        {nav}
-        <div
-          className={['ops-hud-shell', 'forge-page-shell', shellClassName, className]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          <span className="ops-hf-corner ops-hf-corner-tl" aria-hidden />
-          <span className="ops-hf-corner ops-hf-corner-tr" aria-hidden />
-          <div className="ops-hud-inner">{children}</div>
-          {footer}
-        </div>
+        {foreground(
+          <>
+            {nav}
+            <div
+              className={['ops-hud-shell', 'forge-page-shell', shellClassName, className]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              <span className="ops-hf-corner ops-hf-corner-tl" aria-hidden />
+              <span className="ops-hf-corner ops-hf-corner-tr" aria-hidden />
+              <div className="ops-hud-inner">
+                <ForgeGlassSurface variant={gridVariant}>{children}</ForgeGlassSurface>
+              </div>
+              {footer}
+            </div>
+          </>,
+        )}
       </div>
     );
   }
@@ -57,24 +74,32 @@ export function ForgePageShell({
   if (frame === 'detail') {
     return (
       <div className={pageClass} style={style}>
-        <div className={['ops-detail-shell', 'forge-page-shell', shellClassName].filter(Boolean).join(' ')}>
-          <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />
-          <span className="ops-detail-corner ops-detail-corner-tr" aria-hidden />
-          <span className="ops-detail-corner ops-detail-corner-bl" aria-hidden />
-          <span className="ops-detail-corner ops-detail-corner-br" aria-hidden />
-          <div className={['ops-detail-inner', className].filter(Boolean).join(' ')}>
-            {nav}
-            {children}
-          </div>
-        </div>
+        {foreground(
+          <div className={['ops-detail-shell', 'forge-page-shell', shellClassName].filter(Boolean).join(' ')}>
+            <span className="ops-detail-corner ops-detail-corner-tl" aria-hidden />
+            <span className="ops-detail-corner ops-detail-corner-tr" aria-hidden />
+            <span className="ops-detail-corner ops-detail-corner-bl" aria-hidden />
+            <span className="ops-detail-corner ops-detail-corner-br" aria-hidden />
+            <ForgeGlassSurface variant={gridVariant} className="forge-glass-surface--detail">
+              <div className={['ops-detail-inner', className].filter(Boolean).join(' ')}>
+                {nav}
+                {children}
+              </div>
+            </ForgeGlassSurface>
+          </div>,
+        )}
       </div>
     );
   }
 
   return (
     <div className={pageClass} style={style}>
-      {nav}
-      <div className={['forge-page-body', className].filter(Boolean).join(' ')}>{children}</div>
+      {foreground(
+        <>
+          {nav}
+          <div className={['forge-page-body', className].filter(Boolean).join(' ')}>{children}</div>
+        </>,
+      )}
     </div>
   );
 }

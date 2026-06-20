@@ -15,6 +15,7 @@ import {
 import {
   clampReadoutStopRatio,
   clampTextFillRandomMaxMs,
+  clampGridMovingLinesIntervalSec,
   isTextFillTiming,
   type ForgeUiSettings,
 } from '@/lib/forgeUiSettings';
@@ -121,6 +122,21 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: 'buttonSoundsEnabled must be a boolean.' }, { status: 400 });
       }
       partial.buttonSoundsEnabled = body.buttonSoundsEnabled;
+    }
+
+    if (body.gridMovingLinesIntervalSec !== undefined) {
+      if (
+        typeof body.gridMovingLinesIntervalSec !== 'number' ||
+        !Number.isFinite(body.gridMovingLinesIntervalSec)
+      ) {
+        return NextResponse.json(
+          { error: 'gridMovingLinesIntervalSec must be a number.' },
+          { status: 400 },
+        );
+      }
+      partial.gridMovingLinesIntervalSec = clampGridMovingLinesIntervalSec(
+        body.gridMovingLinesIntervalSec,
+      );
     }
 
     if (body.soundsEnabled !== undefined) {
