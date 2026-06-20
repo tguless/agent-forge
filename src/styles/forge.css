@@ -1884,6 +1884,47 @@
   width: 100%;
 }
 
+/* GFM tables — keep column layout; ARWES block wrappers must not override table-cell */
+.forge-markdown .ops-skills-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.forge-markdown .ops-skills-table {
+  width: 100%;
+  min-width: min(480px, 100%);
+  border-collapse: collapse;
+  font-size: clamp(0.76rem, 2vw, 0.86rem);
+  line-height: 1.45;
+  table-layout: auto;
+}
+
+.forge-markdown .ops-skills-th,
+.forge-markdown .ops-skills-td {
+  display: table-cell;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--ops-detail-green-bright, #8ee85a) 28%, transparent);
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.forge-markdown .ops-skills-th {
+  font-family: var(--ops-font-display);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ops-detail-green-bright, #8ee85a) 90%, white);
+  background: color-mix(in srgb, var(--ops-detail-green, #5d9c42) 12%, rgba(0, 0, 0, 0.35));
+}
+
+.forge-markdown .ops-skills-tr:nth-child(even) .ops-skills-td {
+  background: rgba(0, 0, 0, 0.18);
+}
+
 .forge-blueprint-status {
   margin-top: 10px;
 }

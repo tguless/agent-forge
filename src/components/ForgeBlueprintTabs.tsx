@@ -135,7 +135,7 @@ export function ForgeBlueprintTabPanel({
       hidden={!isActive}
       className="forge-blueprint-tab-panel"
     >
-      {children}
+      {isActive ? children : null}
     </section>
   );
 }

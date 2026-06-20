@@ -266,7 +266,6 @@ export default function ForgeConfigPage() {
                     <span className="forge-config-toggle-label">Ambient music</span>
                     <span className="forge-config-toggle-hint">
                       Loop &ldquo;{FORGE_AMBIENT_TRACK.title}&rdquo; in the background after your next click.
-                      Off by default.
                     </span>
                   </span>
                   <input
@@ -285,6 +284,25 @@ export default function ForgeConfigPage() {
                         }
                       });
                     }}
+                  />
+                </label>
+                <label className="forge-config-toggle-row forge-config-toggle-row--spaced">
+                  <span className="forge-config-toggle-copy">
+                    <span className="forge-config-toggle-label">Markdown text fill</span>
+                    <span className="forge-config-toggle-hint">
+                      Typewriter fill on blueprint plan, market, and role briefs. Off restores the plain
+                      skill-module renderer — full GFM, tables, and block elements without animation
+                      wrappers.
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="forge-config-toggle-input"
+                    checked={ui.markdownTextFillEnabled}
+                    disabled={uiSaving}
+                    onChange={(e) =>
+                      void setUiSettings({ markdownTextFillEnabled: e.target.checked })
+                    }
                   />
                 </label>
                 <fieldset className="forge-config-timing-fieldset">

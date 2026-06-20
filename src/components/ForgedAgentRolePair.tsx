@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ForgedAgentLicense } from '@/components/ForgedAgentLicense';
+import { ForgeFlowText } from '@/components/ForgeArwesText';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import type { BusinessAgentSummary } from '@/lib/businessStore';
 import type { BusinessRole } from '@/lib/businessTypes';
@@ -22,9 +23,24 @@ export function ForgedAgentRolePair({ agent, role, businessName, forgePhase }: F
       </div>
       <div className="forge-agent-role-split__brief">
         {role?.jobDescription?.trim() ? (
-          <ForgeMarkdown className="forge-markdown--role">{role.jobDescription}</ForgeMarkdown>
+          <ForgeMarkdown
+            className="forge-markdown--role"
+            animated
+            animatePrefix={`agent-role:${agent.slug}`}
+          >
+            {role.jobDescription}
+          </ForgeMarkdown>
         ) : (
-          <p className="forge-hint">No role brief on file for this operator.</p>
+          <ForgeFlowText
+            as="p"
+            className="forge-hint"
+            layout="block"
+            animateId={`agent-role-empty:${agent.slug}`}
+            playOnce
+            delay={0.04}
+          >
+            No role brief on file for this operator.
+          </ForgeFlowText>
         )}
       </div>
     </div>

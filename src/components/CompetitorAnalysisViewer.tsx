@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
+import { AnimatedDecodeLine, AnimatedFlowParagraph, createAnimateBlockSequence } from '@/lib/forgeAnimatedText';
 import {
   competitorAnalysisHasContent,
   filledCompetitorSections,
@@ -10,17 +11,20 @@ import type { CompetitorAnalysis } from '@/lib/businessTypes';
 
 type CompetitorAnalysisViewerProps = {
   analysis: CompetitorAnalysis | undefined;
+  animatePrefix?: string;
 };
 
 /** Landscape overview + collapsible per-competitor cards with subsections + sources. */
-export function CompetitorAnalysisViewer({ analysis }: CompetitorAnalysisViewerProps) {
+export function CompetitorAnalysisViewer({
+  analysis,
+  animatePrefix = 'competitors',
+}: CompetitorAnalysisViewerProps) {
   const competitors = analysis?.competitors ?? [];
   const [openIds, setOpenIds] = React.useState<Set<string>>(() => new Set());
   const defaultOpenAppliedRef = React.useRef(false);
   const firstId = competitors[0]?.id;
+  const seq = createAnimateBlockSequence(animatePrefix);
 
-  // Open the first competitor once when content first appears (parent polling
-  // recreates the array; never re-apply after the user collapses cards).
   React.useEffect(() => {
     if (!firstId) {
       defaultOpenAppliedRef.current = false;
@@ -46,7 +50,9 @@ export function CompetitorAnalysisViewer({ analysis }: CompetitorAnalysisViewerP
     <div className="forge-competitors">
       {analysis?.landscape?.trim() && (
         <div className="forge-competitors-landscape">
-          <ForgeMarkdown>{analysis.landscape}</ForgeMarkdown>
+          <ForgeMarkdown animated animatePrefix={`${animatePrefix}:landscape`}>
+            {analysis.landscape}
+          </ForgeMarkdown>
         </div>
       )}
 
@@ -54,6 +60,7 @@ export function CompetitorAnalysisViewer({ analysis }: CompetitorAnalysisViewerP
         {competitors.map((c) => {
           const open = openIds.has(c.id);
           const sections = filledCompetitorSections(c);
+          const cardSeq = createAnimateBlockSequence(`${animatePrefix}:card:${c.id}`);
           return (
             <section key={c.id} className="forge-competitor-card">
               <button
@@ -72,28 +79,50 @@ export function CompetitorAnalysisViewer({ analysis }: CompetitorAnalysisViewerP
               {open && (
                 <div className="forge-competitor-body">
                   {c.website && (
-                    <p className="forge-hint forge-competitor-website">
+                    <div className="forge-hint forge-competitor-website">
                       <a href={c.website} target="_blank" rel="noreferrer">
-                        {c.website}
+                        <AnimatedFlowParagraph seq={cardSeq} kind="website" as="span">
+                          {c.website}
+                        </AnimatedFlowParagraph>
                       </a>
-                    </p>
+                    </div>
                   )}
 
                   {sections.map((s) => (
                     <div key={s.key} className="forge-competitor-subsection">
-                      <h4 className="forge-competitor-subtitle">{s.label}</h4>
-                      <ForgeMarkdown>{s.content}</ForgeMarkdown>
+                      <AnimatedDecodeLine
+                        seq={cardSeq}
+                        kind={`title:${s.key}`}
+                        className="forge-competitor-subtitle"
+                        as="h4"
+                        header
+                      >
+                        {s.label}
+                      </AnimatedDecodeLine>
+                      <ForgeMarkdown animated animatePrefix={`${animatePrefix}:${c.id}:${s.key}`}>
+                        {s.content}
+                      </ForgeMarkdown>
                     </div>
                   ))}
 
                   {c.sources.length > 0 && (
                     <div className="forge-competitor-subsection">
-                      <h4 className="forge-competitor-subtitle">Sources</h4>
+                      <AnimatedDecodeLine
+                        seq={cardSeq}
+                        kind="sources-title"
+                        className="forge-competitor-subtitle"
+                        as="h4"
+                        header
+                      >
+                        Sources
+                      </AnimatedDecodeLine>
                       <ul className="forge-competitor-sources">
-                        {c.sources.map((src) => (
+                        {c.sources.map((src, i) => (
                           <li key={src}>
                             <a href={src} target="_blank" rel="noreferrer">
-                              {src}
+                              <AnimatedFlowParagraph seq={cardSeq} kind={`source:${i}`} as="span">
+                                {src}
+                              </AnimatedFlowParagraph>
                             </a>
                           </li>
                         ))}

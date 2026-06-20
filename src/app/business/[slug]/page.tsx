@@ -57,16 +57,61 @@ type Detail = {
 function TabPanelHead({
   title,
   actions,
+  titleAnimateId,
+  titleDelay,
 }: {
   title?: string;
   actions?: React.ReactNode;
+  titleAnimateId?: string;
+  titleDelay?: number;
 }) {
   if (!title && !actions) return null;
   return (
     <div className="forge-blueprint-tab-head">
-      {title ? <h2 className="forge-blueprint-tab-title">{title}</h2> : null}
+      {title ? (
+        <h2 className="forge-blueprint-tab-title">
+          <ForgeDecodeText
+            layout="inline"
+            animateId={titleAnimateId ?? title}
+            playOnce
+            delay={titleDelay}
+            contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
+          >
+            {title}
+          </ForgeDecodeText>
+        </h2>
+      ) : null}
       {actions ? <div className="forge-blueprint-tab-actions">{actions}</div> : null}
     </div>
+  );
+}
+
+function BlueprintPanelLabel({
+  children,
+  animateId,
+  delay,
+  className = 'forge-blueprint-panel-label',
+  count,
+}: {
+  children: string;
+  animateId: string;
+  delay?: number;
+  className?: string;
+  count?: number;
+}) {
+  return (
+    <h3 className={className}>
+      <ForgeDecodeText
+        layout="inline"
+        animateId={animateId}
+        playOnce
+        delay={delay}
+        contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
+      >
+        {children}
+      </ForgeDecodeText>
+      {typeof count === 'number' ? <span className="forge-collapse-count">{count}</span> : null}
+    </h3>
   );
 }
 
@@ -396,7 +441,9 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         <ForgeBlueprintTabPanel id="overview" active={tab}>
           {business.profile.elevatorPitch && (
             <ForgeInteractiveHudBox variant="rect" className="forge-blueprint-panel">
-              <h3 className="forge-blueprint-panel-label">Elevator pitch</h3>
+              <BlueprintPanelLabel animateId={`${slug}:overview:elevator-label`} delay={d('overview-elevator-label', 0.04)}>
+                Elevator pitch
+              </BlueprintPanelLabel>
               <ForgeFlowText
                 as="p"
                 className="forge-elevator-pitch"
@@ -412,7 +459,9 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
           {(business.profile.industry || business.profile.summary) && (
             <ForgeInteractiveHudBox variant="rect" className="forge-blueprint-panel">
-              <h3 className="forge-blueprint-panel-label">Profile</h3>
+              <BlueprintPanelLabel animateId={`${slug}:overview:profile-label`} delay={d('overview-profile-label', 0.04)}>
+                Profile
+              </BlueprintPanelLabel>
               {business.profile.industry && (
                 <BlueprintFlowParagraph
                   animateId={`${slug}:profile-industry:${business.profile.industry}`}
@@ -451,13 +500,20 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           {!business.profile.elevatorPitch &&
             !business.profile.industry &&
             !business.profile.summary && (
-              <p className="forge-hint">Consultant is still filling in the overview.</p>
+              <BlueprintFlowParagraph
+                animateId={`${slug}:overview:empty`}
+                delay={d('overview-empty', 0.06)}
+              >
+                Consultant is still filling in the overview.
+              </BlueprintFlowParagraph>
             )}
         </ForgeBlueprintTabPanel>
 
         <ForgeBlueprintTabPanel id="plan" active={tab}>
           <TabPanelHead
             title="Business plan"
+            titleAnimateId={`${slug}:plan:tab-title`}
+            titleDelay={d('plan-tab-title', 0.02)}
             actions={
               !planComplete && !planInFlight && !detail.consultInFlight ? (
                 <button
@@ -473,25 +529,27 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           />
 
           {planComplete && (
-            <p className="forge-hint">
+            <BlueprintFlowParagraph animateId={`${slug}:plan:complete-hint`} delay={d('plan-complete-hint', 0.08)}>
               Eight-section operator plan — switch sections with the tabs below.
-            </p>
+            </BlueprintFlowParagraph>
           )}
 
           {!planComplete && !hasBusinessPlan && !planInFlight && (
-            <p className="forge-hint">
+            <BlueprintFlowParagraph animateId={`${slug}:plan:empty-hint`} delay={d('plan-empty-hint', 0.08)}>
               No business plan yet. Generate one from the business description and profile — eight section tabs plus competitors when available.
-            </p>
+            </BlueprintFlowParagraph>
           )}
 
           {!planComplete && hasBusinessPlan && !planInFlight && (
-            <p className="forge-hint">Plan is incomplete — generate the remaining sections.</p>
+            <BlueprintFlowParagraph animateId={`${slug}:plan:incomplete-hint`} delay={d('plan-incomplete-hint', 0.08)}>
+              Plan is incomplete — generate the remaining sections.
+            </BlueprintFlowParagraph>
           )}
 
           {detail.consultInFlight && !planInFlight && !planComplete && (
-            <p className="forge-hint">
+            <BlueprintFlowParagraph animateId={`${slug}:plan:consult-hint`} delay={d('plan-consult-hint', 0.08)}>
               Blueprint consult is running; you can generate the plan once it finishes.
-            </p>
+            </BlueprintFlowParagraph>
           )}
 
           {planStreamHere && (
@@ -521,6 +579,8 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         <ForgeBlueprintTabPanel id="market" active={tab}>
           <TabPanelHead
             title="Market assessment"
+            titleAnimateId={`${slug}:market:tab-title`}
+            titleDelay={d('market-tab-title', 0.02)}
             actions={
               !marketComplete && !marketStreamHere && !detail.consultInFlight && !planStreamHere ? (
                 <button
@@ -540,17 +600,15 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           />
 
           {!hasMarketAssessment && !marketStreamHere && (
-            <p className="forge-hint">
-              No market assessment yet. Run a candid viability read — sized market (TAM/SAM/SOM),
-              demand signals, timing, risks, and an advisory go/no-go verdict. It lays out the pros,
-              cons, and risks; the decision stays yours.
-            </p>
+            <BlueprintFlowParagraph animateId={`${slug}:market:empty-hint`} delay={d('market-empty-hint', 0.08)}>
+              No market assessment yet. Run a candid viability read — sized market (TAM/SAM/SOM), demand signals, timing, risks, and an advisory go/no-go verdict. It lays out the pros, cons, and risks; the decision stays yours.
+            </BlueprintFlowParagraph>
           )}
 
           {detail.consultInFlight && !marketStreamHere && !hasMarketAssessment && (
-            <p className="forge-hint">
+            <BlueprintFlowParagraph animateId={`${slug}:market:consult-hint`} delay={d('market-consult-hint', 0.08)}>
               Blueprint consult is running; the market assessment is part of it.
-            </p>
+            </BlueprintFlowParagraph>
           )}
 
           {marketStreamHere && (
@@ -568,20 +626,37 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
           {hasMarketAssessment && (
             <div className={marketStreamHere ? 'forge-blueprint-tab-block' : undefined}>
-              <MarketAssessmentViewer assessment={business.profile.marketAssessment} />
+              <MarketAssessmentViewer
+                assessment={business.profile.marketAssessment}
+                animatePrefix={`${slug}:market`}
+              />
             </div>
           )}
         </ForgeBlueprintTabPanel>
 
         <ForgeBlueprintTabPanel id="stack" active={tab}>
-          <TabPanelHead title="Software stack" />
-          <p className="forge-hint">
+          <TabPanelHead
+            title="Software stack"
+            titleAnimateId={`${slug}:stack:tab-title`}
+            titleDelay={d('stack-tab-title', 0.02)}
+          />
+          <BlueprintFlowParagraph animateId={`${slug}:stack:intro`} delay={d('stack-intro', 0.08)}>
             One default per category (★). Click an alternative to override what agents get access to.
-          </p>
+          </BlueprintFlowParagraph>
           <div className="forge-stack-grid">
-            {appStack.map((group) => (
+            {appStack.map((group, groupIndex) => (
               <div key={group.appTypeKey}>
-                <div className="forge-stack-type">{group.appTypeLabel}</div>
+                <ForgeDecodeText
+                  as="div"
+                  className="forge-stack-type"
+                  layout="block"
+                  animateId={`${slug}:stack:type:${group.appTypeKey}`}
+                  playOnce
+                  delay={d(`stack-type-${group.appTypeKey}`, 0.12 + groupIndex * 0.05)}
+                  contentStyle={{ color: 'inherit', fontFamily: 'inherit' }}
+                >
+                  {group.appTypeLabel}
+                </ForgeDecodeText>
                 <div className="forge-stack-options">
                   {group.options.map((opt) => {
                     const selected = opt.appId === group.selectedAppId;
@@ -602,13 +677,19 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
                 </div>
               </div>
             ))}
-            {appStack.length === 0 && <p className="forge-hint">No apps recommended yet.</p>}
+            {appStack.length === 0 && (
+              <BlueprintFlowParagraph animateId={`${slug}:stack:empty`} delay={d('stack-empty', 0.1)}>
+                No apps recommended yet.
+              </BlueprintFlowParagraph>
+            )}
           </div>
         </ForgeBlueprintTabPanel>
 
         <ForgeBlueprintTabPanel id="team" active={tab}>
           <TabPanelHead
             title="Team"
+            titleAnimateId={`${slug}:team:tab-title`}
+            titleDelay={d('team-tab-title', 0.02)}
             actions={
               suggestedRoles.length > 0 ? (
                 <button
@@ -628,10 +709,13 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
           {sortedAgents.length > 0 && (
             <>
-              <h3 className="forge-blueprint-panel-label">
+              <BlueprintPanelLabel
+                animateId={`${slug}:team:forged-label`}
+                delay={d('team-forged-label', 0.08)}
+                count={sortedAgents.length}
+              >
                 Forged agents
-                <span className="forge-collapse-count">{sortedAgents.length}</span>
-              </h3>
+              </BlueprintPanelLabel>
               <div className="forge-forged-agent-rows">
                 {sortedAgents.map((a) => (
                   <ForgedAgentRolePair
@@ -648,10 +732,14 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
           {suggestedRoles.length > 0 && (
             <>
-              <h3 className="forge-blueprint-panel-label forge-blueprint-panel-label--spaced">
+              <BlueprintPanelLabel
+                animateId={`${slug}:team:suggested-label`}
+                delay={d('team-suggested-label', 0.12)}
+                className="forge-blueprint-panel-label forge-blueprint-panel-label--spaced"
+                count={suggestedRoles.length}
+              >
                 Suggested roles
-                <span className="forge-collapse-count">{suggestedRoles.length}</span>
-              </h3>
+              </BlueprintPanelLabel>
               <div className="forge-role-list">
                 {suggestedRoles.map((role) => (
                   <BlueprintRoleItem
@@ -666,10 +754,18 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           )}
 
           {suggestedRoles.length === 0 && sortedAgents.length === 0 && (
-            <p className="forge-hint">No roles suggested yet.</p>
+            <BlueprintFlowParagraph animateId={`${slug}:team:empty`} delay={d('team-empty', 0.1)}>
+              No roles suggested yet.
+            </BlueprintFlowParagraph>
           )}
           {suggestedRoles.length === 0 && sortedAgents.length > 0 && (
-            <p className="forge-hint forge-blueprint-team-note">All suggested roles have been forged.</p>
+            <BlueprintFlowParagraph
+              animateId={`${slug}:team:all-forged`}
+              delay={d('team-all-forged', 0.14)}
+              className="forge-hint forge-blueprint-team-note"
+            >
+              All suggested roles have been forged.
+            </BlueprintFlowParagraph>
           )}
         </ForgeBlueprintTabPanel>
       </div>

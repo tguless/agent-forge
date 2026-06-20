@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
+import { ForgeDecodeText, ForgeFlowText } from '@/components/ForgeArwesText';
 import { CompetitorAnalysisViewer } from '@/components/CompetitorAnalysisViewer';
 import { competitorAnalysisHasContent } from '@/lib/competitorSections';
 import {
@@ -127,29 +128,53 @@ export function BusinessPlanViewer({ plan, competitorAnalysis, planInFlight }: B
 
       {subTab === 'competitors' ? (
         <section
+          key="competitors"
           id="forge-plan-subpanel-competitors"
           role="tabpanel"
           aria-labelledby="forge-plan-subtab-competitors"
           className="forge-plan-subpanel"
         >
-          <CompetitorAnalysisViewer analysis={competitorAnalysis} />
+          <CompetitorAnalysisViewer analysis={competitorAnalysis} animatePrefix="plan-competitors" />
         </section>
       ) : activeSection ? (
         <section
+          key={activeSection.key}
           id={`forge-plan-subpanel-${activeSection.key}`}
           role="tabpanel"
           aria-labelledby={`forge-plan-subtab-${activeSection.key}`}
           className="forge-plan-subpanel"
         >
-          <h3 className="forge-plan-subpanel-title">{activeSection.label}</h3>
+          <h3 className="forge-plan-subpanel-title">
+            <ForgeDecodeText
+              layout="inline"
+              animateId={`plan-section:${activeSection.key}`}
+              playOnce
+              contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
+            >
+              {activeSection.label}
+            </ForgeDecodeText>
+          </h3>
           {activeContent ? (
-            <ForgeMarkdown className="forge-plan-section-body">{activeContent}</ForgeMarkdown>
+            <ForgeMarkdown
+              className="forge-plan-section-body"
+              animated
+              animatePrefix={`plan-section:${activeSection.key}`}
+            >
+              {activeContent}
+            </ForgeMarkdown>
           ) : (
-            <p className="forge-hint">
+            <ForgeFlowText
+              as="p"
+              className="forge-hint"
+              layout="block"
+              animateId={`plan-section-empty:${activeSection.key}`}
+              playOnce
+              delay={0.06}
+            >
               {planInFlight
                 ? 'This section is still being drafted…'
                 : 'This section has not been drafted yet. Generate or complete the business plan to fill it in.'}
-            </p>
+            </ForgeFlowText>
           )}
         </section>
       ) : null}

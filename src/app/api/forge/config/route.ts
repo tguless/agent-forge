@@ -131,6 +131,13 @@ export async function PATCH(req: Request) {
       partial.ambientMusicEnabled = body.ambientMusicEnabled;
     }
 
+    if (body.markdownTextFillEnabled !== undefined) {
+      if (typeof body.markdownTextFillEnabled !== 'boolean') {
+        return NextResponse.json({ error: 'markdownTextFillEnabled must be a boolean.' }, { status: 400 });
+      }
+      partial.markdownTextFillEnabled = body.markdownTextFillEnabled;
+    }
+
     if (body.gridMovingLinesIntervalSec !== undefined) {
       if (
         typeof body.gridMovingLinesIntervalSec !== 'number' ||

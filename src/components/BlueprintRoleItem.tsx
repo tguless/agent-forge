@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { ForgeDecodeText } from '@/components/ForgeArwesText';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import type { BusinessRole } from '@/lib/businessTypes';
 
@@ -16,7 +17,15 @@ export function BlueprintRoleItem({ role, forgeBusy, onForge }: BlueprintRoleIte
     <div className="forge-role-item forge-role-item--open">
       <div className="forge-role-row">
         <div className="forge-role-title">
-          {role.title}
+          <ForgeDecodeText
+            layout="inline"
+            animateId={`role-title:${role.id}`}
+            playOnce
+            delay={0.02}
+            contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
+          >
+            {role.title}
+          </ForgeDecodeText>
           <span className="forge-hint forge-role-meta">authority {role.authorityHint}</span>
         </div>
         <div className="forge-role-action">
@@ -30,7 +39,9 @@ export function BlueprintRoleItem({ role, forgeBusy, onForge }: BlueprintRoleIte
           </button>
         </div>
       </div>
-      <ForgeMarkdown className="forge-markdown--role">{role.jobDescription}</ForgeMarkdown>
+      <ForgeMarkdown className="forge-markdown--role" animated animatePrefix={`role:${role.id}`}>
+        {role.jobDescription}
+      </ForgeMarkdown>
     </div>
   );
 }

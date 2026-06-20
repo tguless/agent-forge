@@ -3,6 +3,11 @@
 import React from 'react';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import {
+  AnimatedDecodeLine,
+  AnimatedFlowParagraph,
+  createAnimateBlockSequence,
+} from '@/lib/forgeAnimatedText';
+import {
   MARKET_SECTIONS,
   marketAssessmentHasContent,
   sortRisksBySeverity,
@@ -12,6 +17,7 @@ import type { MarketAssessment } from '@/lib/businessTypes';
 
 type MarketAssessmentViewerProps = {
   assessment: MarketAssessment | undefined;
+  animatePrefix?: string;
 };
 
 /**
@@ -19,9 +25,13 @@ type MarketAssessmentViewerProps = {
  * timing, a pros vs cons ledger, ranked risks, and a closing recommendation.
  * Explicitly framed as informational — the operator makes the call.
  */
-export function MarketAssessmentViewer({ assessment }: MarketAssessmentViewerProps) {
+export function MarketAssessmentViewer({
+  assessment,
+  animatePrefix = 'market',
+}: MarketAssessmentViewerProps) {
   if (!marketAssessmentHasContent(assessment) || !assessment) return null;
 
+  const seq = createAnimateBlockSequence(animatePrefix);
   const verdict = viabilityVerdictDef(assessment.verdict);
   const risks = sortRisksBySeverity(assessment.risks ?? []);
   const pros = assessment.pros ?? [];
@@ -32,17 +42,28 @@ export function MarketAssessmentViewer({ assessment }: MarketAssessmentViewerPro
       {verdict && (
         <div className={`forge-verdict forge-verdict--${verdict.tone}`}>
           <div className="forge-verdict-head">
-            <span className="forge-verdict-badge">{verdict.label}</span>
+            <AnimatedDecodeLine seq={seq} kind="verdict-badge" className="forge-verdict-badge" as="span">
+              {verdict.label}
+            </AnimatedDecodeLine>
             {assessment.confidence && (
-              <span className="forge-verdict-confidence">
-                {assessment.confidence} confidence
-              </span>
+              <AnimatedDecodeLine
+                seq={seq}
+                kind="verdict-confidence"
+                className="forge-verdict-confidence"
+                as="span"
+              >
+                {`${assessment.confidence} confidence`}
+              </AnimatedDecodeLine>
             )}
           </div>
-          {assessment.headline && <p className="forge-verdict-headline">{assessment.headline}</p>}
-          <p className="forge-verdict-disclaimer">
+          {assessment.headline && (
+            <AnimatedFlowParagraph seq={seq} kind="verdict-headline" className="forge-verdict-headline">
+              {assessment.headline}
+            </AnimatedFlowParagraph>
+          )}
+          <AnimatedFlowParagraph seq={seq} kind="verdict-disclaimer" className="forge-verdict-disclaimer">
             Advisory only — pros, cons, and risks to inform your call. Agent Forge does not decide for you.
-          </p>
+          </AnimatedFlowParagraph>
         </div>
       )}
 
@@ -51,8 +72,18 @@ export function MarketAssessmentViewer({ assessment }: MarketAssessmentViewerPro
         if (!body?.trim()) return null;
         return (
           <section key={s.key} id={s.anchor} className="forge-market-section">
-            <h4 className="forge-market-subtitle">{s.label}</h4>
-            <ForgeMarkdown>{body}</ForgeMarkdown>
+            <AnimatedDecodeLine
+              seq={seq}
+              kind={`section-title:${s.key}`}
+              className="forge-market-subtitle"
+              as="h4"
+              header
+            >
+              {s.label}
+            </AnimatedDecodeLine>
+            <ForgeMarkdown animated animatePrefix={`${animatePrefix}:${s.key}`}>
+              {body}
+            </ForgeMarkdown>
           </section>
         );
       })}
@@ -61,20 +92,32 @@ export function MarketAssessmentViewer({ assessment }: MarketAssessmentViewerPro
         <div className="forge-proscons">
           {pros.length > 0 && (
             <div className="forge-proscons-col forge-proscons-col--pro">
-              <h4 className="forge-market-subtitle">Pros</h4>
+              <AnimatedDecodeLine seq={seq} kind="pros-title" className="forge-market-subtitle" as="h4" header>
+                Pros
+              </AnimatedDecodeLine>
               <ul className="forge-proscons-list">
                 {pros.map((p, i) => (
-                  <li key={i}>{p}</li>
+                  <li key={i}>
+                    <AnimatedFlowParagraph seq={seq} kind={`pro:${i}`} as="span">
+                      {p}
+                    </AnimatedFlowParagraph>
+                  </li>
                 ))}
               </ul>
             </div>
           )}
           {cons.length > 0 && (
             <div className="forge-proscons-col forge-proscons-col--con">
-              <h4 className="forge-market-subtitle">Cons</h4>
+              <AnimatedDecodeLine seq={seq} kind="cons-title" className="forge-market-subtitle" as="h4" header>
+                Cons
+              </AnimatedDecodeLine>
               <ul className="forge-proscons-list">
                 {cons.map((c, i) => (
-                  <li key={i}>{c}</li>
+                  <li key={i}>
+                    <AnimatedFlowParagraph seq={seq} kind={`con:${i}`} as="span">
+                      {c}
+                    </AnimatedFlowParagraph>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -84,23 +127,39 @@ export function MarketAssessmentViewer({ assessment }: MarketAssessmentViewerPro
 
       {risks.length > 0 && (
         <section className="forge-market-section">
-          <h4 className="forge-market-subtitle">Risks</h4>
+          <AnimatedDecodeLine seq={seq} kind="risks-title" className="forge-market-subtitle" as="h4" header>
+            Risks
+          </AnimatedDecodeLine>
           <ul className="forge-risk-list">
             {risks.map((r, i) => (
               <li key={i} className="forge-risk-item">
                 <div className="forge-risk-head">
-                  <span className={`forge-risk-sev forge-risk-sev--${r.severity}`}>
+                  <AnimatedDecodeLine
+                    seq={seq}
+                    kind={`risk-sev:${i}`}
+                    className={`forge-risk-sev forge-risk-sev--${r.severity}`}
+                    as="span"
+                  >
                     {r.severity}
-                  </span>
+                  </AnimatedDecodeLine>
                   {r.likelihood && (
-                    <span className="forge-risk-likelihood">{r.likelihood} likelihood</span>
+                    <AnimatedDecodeLine
+                      seq={seq}
+                      kind={`risk-like:${i}`}
+                      className="forge-risk-likelihood"
+                      as="span"
+                    >
+                      {`${r.likelihood} likelihood`}
+                    </AnimatedDecodeLine>
                   )}
-                  <span className="forge-risk-text">{r.risk}</span>
+                  <AnimatedFlowParagraph seq={seq} kind={`risk-text:${i}`} className="forge-risk-text" as="span">
+                    {r.risk}
+                  </AnimatedFlowParagraph>
                 </div>
                 {r.mitigation && (
-                  <p className="forge-risk-mitigation">
-                    <strong>Mitigation:</strong> {r.mitigation}
-                  </p>
+                  <AnimatedFlowParagraph seq={seq} kind={`risk-mit:${i}`} className="forge-risk-mitigation">
+                    {`Mitigation: ${r.mitigation}`}
+                  </AnimatedFlowParagraph>
                 )}
               </li>
             ))}
@@ -110,19 +169,27 @@ export function MarketAssessmentViewer({ assessment }: MarketAssessmentViewerPro
 
       {assessment.recommendation?.trim() && (
         <section className="forge-market-section forge-market-recommendation">
-          <h4 className="forge-market-subtitle">Recommendation</h4>
-          <ForgeMarkdown>{assessment.recommendation}</ForgeMarkdown>
+          <AnimatedDecodeLine seq={seq} kind="rec-title" className="forge-market-subtitle" as="h4" header>
+            Recommendation
+          </AnimatedDecodeLine>
+          <ForgeMarkdown animated animatePrefix={`${animatePrefix}:recommendation`}>
+            {assessment.recommendation}
+          </ForgeMarkdown>
         </section>
       )}
 
       {(assessment.sources?.length ?? 0) > 0 && (
         <section className="forge-market-section">
-          <h4 className="forge-market-subtitle">Sources</h4>
+          <AnimatedDecodeLine seq={seq} kind="sources-title" className="forge-market-subtitle" as="h4" header>
+            Sources
+          </AnimatedDecodeLine>
           <ul className="forge-competitor-sources">
-            {assessment.sources!.map((src) => (
+            {assessment.sources!.map((src, i) => (
               <li key={src}>
                 <a href={src} target="_blank" rel="noreferrer">
-                  {src}
+                  <AnimatedFlowParagraph seq={seq} kind={`source:${i}`} as="span">
+                    {src}
+                  </AnimatedFlowParagraph>
                 </a>
               </li>
             ))}

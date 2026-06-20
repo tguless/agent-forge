@@ -9,7 +9,7 @@ import {
 } from '@/lib/forgeAmbientMusic';
 import { unlockForgeAudio } from '@/lib/forgeBleeps';
 
-/** Syncs Interface config → looping Forge Protocol ambient track (off by default). */
+/** Syncs Interface config → looping Forge Protocol ambient track (on by default). */
 export function ForgeAmbientMusicController() {
   const { ui, loading } = useForgeUiSettings();
 

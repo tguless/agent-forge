@@ -13,8 +13,10 @@ export type ForgeUiSettings = {
   typeReadoutStopRatio: number;
   /** Full ARWES grid scan-line sweep cycle in seconds (all pages with grid backdrop). */
   gridMovingLinesIntervalSec: number;
-  /** Looping Forge Protocol ambient track (Suno). Off by default. */
+  /** Looping Forge Protocol ambient track (Suno). On by default. */
   ambientMusicEnabled: boolean;
+  /** ARWES typewriter on blueprint markdown bodies; off uses plain GFM (skill-module style). */
+  markdownTextFillEnabled: boolean;
 };
 
 export const READOUT_STOP_RATIO_MIN = 0.5;
@@ -35,7 +37,8 @@ export const DEFAULT_FORGE_UI_SETTINGS: ForgeUiSettings = {
   textFillRandomMaxMs: 800,
   typeReadoutStopRatio: 0.88,
   gridMovingLinesIntervalSec: GRID_MOVING_LINES_INTERVAL_SEC_DEFAULT,
-  ambientMusicEnabled: false,
+  ambientMusicEnabled: true,
+  markdownTextFillEnabled: true,
 };
 
 export const FORGE_UI_SETTINGS_DB_KEY = 'ui.settings';
@@ -158,5 +161,9 @@ export function normalizeForgeUiSettings(parsed: LegacyForgeUiSettings): ForgeUi
       typeof parsed.ambientMusicEnabled === 'boolean'
         ? parsed.ambientMusicEnabled
         : DEFAULT_FORGE_UI_SETTINGS.ambientMusicEnabled,
+    markdownTextFillEnabled:
+      typeof parsed.markdownTextFillEnabled === 'boolean'
+        ? parsed.markdownTextFillEnabled
+        : DEFAULT_FORGE_UI_SETTINGS.markdownTextFillEnabled,
   };
 }
