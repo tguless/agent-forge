@@ -25,6 +25,11 @@ export function anthropicSdkMaxRetries(): number {
   return readInt('FORGE_ANTHROPIC_MAX_RETRIES', 6, 0, 12);
 }
 
+/** OpenAI ToolLoopAgent / generateObject retries. Defaults to FORGE_ANTHROPIC_MAX_RETRIES. */
+export function openaiSdkMaxRetries(): number {
+  return readInt('FORGE_OPENAI_MAX_RETRIES', anthropicSdkMaxRetries(), 0, 12);
+}
+
 /** Direct `@anthropic-ai/sdk` client (e.g. forge example generator). */
 export function anthropicClientMaxRetries(): number {
   return readInt('FORGE_ANTHROPIC_CLIENT_MAX_RETRIES', anthropicSdkMaxRetries(), 0, 12);

@@ -7,6 +7,7 @@
  */
 import { runToolLoop } from '@/lib/agent/runtime';
 import { registerRun } from '@/lib/agent/runRegistry';
+import { resolveLlmCandidates, textLlmConfigError, textLlmConfigured } from '@/lib/agent/textModel';
 import { addEvent, setAgentStatus, getAgent } from '@/lib/agentStore';
 import { getAgentBusinessSlug, selectedBusinessApps } from '@/lib/businessStore';
 import { capacityKeysForAppType } from '@/lib/catalogStore';
@@ -15,7 +16,6 @@ import { applyPromptTemplate } from '@/lib/forgePrompts';
 import { createForgeTools } from './forgeTools';
 import { imageToolingStatus } from './imagePipeline';
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 const STALE_GENERATING_MS = Number(process.env.FORGE_STALE_GENERATING_MS || 45 * 60 * 1000);
 
 const generationInFlight = new Set<string>();
@@ -99,15 +99,16 @@ export async function runGeneration(
 
   generationInFlight.add(slug);
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    setAgentStatus(slug, 'error', 'ANTHROPIC_API_KEY is not set');
-    addEvent(slug, 'error', 'ANTHROPIC_API_KEY missing — add it to .env.local and retry.');
+  if (!textLlmConfigured()) {
+    setAgentStatus(slug, 'error', textLlmConfigError());
+    addEvent(slug, 'error', textLlmConfigError());
     generationInFlight.delete(slug);
     return;
   }
 
+  const activeModel = resolveLlmCandidates({ role: 'author' })[0]?.label ?? 'text LLM';
   setAgentStatus(slug, 'generating');
-  addEvent(slug, 'info', startNote ?? `Forge online · model ${MODEL}. Designing agent…`);
+  addEvent(slug, 'info', startNote ?? `Forge online · ${activeModel}. Designing agent…`);
 
   const businessSlug = getAgentBusinessSlug(slug);
   const appStackBlock = buildAppStackBlock(businessSlug);
@@ -130,7 +131,6 @@ export async function runGeneration(
       instructions: system,
       prompt: userPrompt,
       tools: createForgeTools({ agentSlug: slug, businessSlug }),
-      model: MODEL,
       signal: controller.signal,
       startNote,
     });

@@ -1,15 +1,24 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { anthropicClientMaxRetries } from '@/lib/agent/retryPolicy';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 import { getPromptContent } from '@/lib/forgeConfigStore';
 import { applyPromptTemplate } from '@/lib/forgePrompts';
-
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
+import {
+  createLanguageModel,
+  resolveLlmCandidates,
+  sdkMaxRetries,
+} from '@/lib/agent/textModel';
 
 export type GeneratedForgeExample = {
   businessContext: string;
   jobDescription: string;
   titleHint: string;
 };
+
+const exampleSchema = z.object({
+  businessContext: z.string(),
+  jobDescription: z.string(),
+  titleHint: z.string().optional(),
+});
 
 const BUILTIN_THEMES =
   'commercial real estate lease abstraction, AP invoice automation, and healthcare prior auth intake';
@@ -22,28 +31,10 @@ function buildThemeInstruction(theme?: string): string {
   return `Pick a creative industry and document-intelligence use case we have NOT used before. Avoid these built-in examples: ${BUILTIN_THEMES}.`;
 }
 
-function extractJsonObject(text: string): unknown {
-  const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fenced?.[1]) return JSON.parse(fenced[1].trim());
-    const start = trimmed.indexOf('{');
-    const end = trimmed.lastIndexOf('}');
-    if (start >= 0 && end > start) return JSON.parse(trimmed.slice(start, end + 1));
-    throw new Error('Model did not return parseable JSON.');
-  }
-}
-
-function parseExamplePayload(raw: unknown): GeneratedForgeExample {
-  if (!raw || typeof raw !== 'object') {
-    throw new Error('Example payload must be a JSON object.');
-  }
-  const o = raw as Record<string, unknown>;
-  const businessContext = String(o.businessContext ?? '').trim();
-  const jobDescription = String(o.jobDescription ?? '').trim();
-  const titleHint = String(o.titleHint ?? '').trim();
+function parseExamplePayload(raw: z.infer<typeof exampleSchema>): GeneratedForgeExample {
+  const businessContext = raw.businessContext.trim();
+  const jobDescription = raw.jobDescription.trim();
+  const titleHint = (raw.titleHint ?? '').trim();
   if (!businessContext || !jobDescription) {
     throw new Error('Generated example missing businessContext or jobDescription.');
   }
@@ -54,34 +45,36 @@ function parseExamplePayload(raw: unknown): GeneratedForgeExample {
   };
 }
 
-/** Ad-hoc forge-form example via Anthropic (configurable prompts). */
+/** Ad-hoc forge-form example via configured text LLM (configurable prompts). */
 export async function generateForgeExample(theme?: string): Promise<GeneratedForgeExample> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not set — add it to .env.local.');
+  const candidates = resolveLlmCandidates({ role: 'author' });
+  if (candidates.length === 0) {
+    throw new Error('No text LLM API key configured — set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env.local.');
   }
 
-  const client = new Anthropic({
-    apiKey,
-    timeout: 60_000,
-    maxRetries: anthropicClientMaxRetries(),
-  });
   const system = getPromptContent('forge.example.system');
   const user = applyPromptTemplate(getPromptContent('forge.example.user_template'), {
     themeInstruction: buildThemeInstruction(theme),
   });
 
-  const resp = await client.messages.create({
-    model: MODEL,
-    max_tokens: 1200,
-    system,
-    messages: [{ role: 'user', content: user }],
-  });
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      const { object } = await generateObject({
+        model: createLanguageModel(candidate.provider, candidate.modelId),
+        schema: exampleSchema,
+        system,
+        prompt: user,
+        maxOutputTokens: 1200,
+        maxRetries: sdkMaxRetries(candidate.provider),
+      });
+      return parseExamplePayload(object);
+    } catch (err) {
+      lastError = err;
+      console.warn(`[exampleGenerator] ${candidate.label} failed`, err);
+    }
+  }
 
-  const text = resp.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n');
-
-  return parseExamplePayload(extractJsonObject(text));
+  const text = lastError instanceof Error ? lastError.message : 'Example generation failed';
+  throw new Error(text);
 }

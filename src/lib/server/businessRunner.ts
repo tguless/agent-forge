@@ -6,6 +6,7 @@
 import { runToolLoop } from '@/lib/agent/runtime';
 import { registerRun } from '@/lib/agent/runRegistry';
 import { persistTurn, nextTurnIndex } from '@/lib/agent/turns';
+import { textLlmConfigError, textLlmConfigured } from '@/lib/agent/textModel';
 import {
   getBusiness,
   setBusinessStatus,
@@ -68,12 +69,12 @@ async function runBusinessConsult(slug: string): Promise<void> {
 
   setBusinessStatus(slug, 'consulting');
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    setBusinessStatus(slug, 'error', 'ANTHROPIC_API_KEY is not set');
+  if (!textLlmConfigured()) {
+    setBusinessStatus(slug, 'error', textLlmConfigError());
     persistTurn('business', slug, nextTurnIndex('business', slug), {
       role: 'SYSTEM',
       turnType: 'ERROR',
-      content: 'ANTHROPIC_API_KEY missing — add it to .env.local and retry.',
+      content: textLlmConfigError(),
     });
     return;
   }

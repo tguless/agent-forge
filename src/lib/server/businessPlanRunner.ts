@@ -6,6 +6,7 @@
 import { runToolLoop } from '@/lib/agent/runtime';
 import { registerRun } from '@/lib/agent/runRegistry';
 import { clearTurns, persistTurn, nextTurnIndex } from '@/lib/agent/turns';
+import { textLlmConfigError, textLlmConfigured } from '@/lib/agent/textModel';
 import { getBusiness } from '@/lib/businessStore';
 import {
   BUSINESS_PLAN_SECTIONS,
@@ -66,11 +67,11 @@ async function runBusinessPlanGeneration(slug: string): Promise<void> {
     return;
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!textLlmConfigured()) {
     persistTurn('business-plan', slug, nextTurnIndex('business-plan', slug), {
       role: 'SYSTEM',
       turnType: 'ERROR',
-      content: 'ANTHROPIC_API_KEY missing — add it to .env.local and retry.',
+      content: textLlmConfigError(),
     });
     return;
   }

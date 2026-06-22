@@ -7,6 +7,7 @@
 import { runToolLoop } from '@/lib/agent/runtime';
 import { registerRun } from '@/lib/agent/runRegistry';
 import { clearTurns, persistTurn, nextTurnIndex } from '@/lib/agent/turns';
+import { textLlmConfigError, textLlmConfigured } from '@/lib/agent/textModel';
 import { getBusiness } from '@/lib/businessStore';
 import { marketAssessmentIsComplete } from '@/lib/marketAssessment';
 import { businessPlanIsComplete } from '@/lib/businessPlanSections';
@@ -53,11 +54,11 @@ async function runMarketAssessment(slug: string): Promise<void> {
   const business = getBusiness(slug);
   if (!business) return;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!textLlmConfigured()) {
     persistTurn(SCOPE, slug, nextTurnIndex(SCOPE, slug), {
       role: 'SYSTEM',
       turnType: 'ERROR',
-      content: 'ANTHROPIC_API_KEY missing — add it to .env.local and retry.',
+      content: textLlmConfigError(),
     });
     return;
   }
