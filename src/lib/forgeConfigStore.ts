@@ -14,6 +14,12 @@ import {
   normalizeForgeUiSettings,
   type ForgeUiSettings,
 } from '@/lib/forgeUiSettings';
+import {
+  defaultForgeLlmSettingsFromEnv,
+  FORGE_LLM_SETTINGS_DB_KEY,
+  normalizeForgeLlmSettings,
+  type ForgeLlmSettings,
+} from '@/lib/forgeLlmSettings';
 import { getDb } from '@/lib/db';
 
 export type ForgePromptRecord = {
@@ -173,4 +179,37 @@ export function setUiSettings(partial: Partial<ForgeUiSettings>): ForgeUiSetting
     )
     .run(FORGE_UI_SETTINGS_DB_KEY, JSON.stringify(next), now);
   return next;
+}
+
+export function getLlmSettings(): ForgeLlmSettings {
+  ensureConfigTable();
+  const row = getDb()
+    .prepare('SELECT content FROM forge_config WHERE key = ?')
+    .get(FORGE_LLM_SETTINGS_DB_KEY) as { content: string } | undefined;
+  if (!row) return defaultForgeLlmSettingsFromEnv();
+  try {
+    return normalizeForgeLlmSettings(JSON.parse(row.content) as Partial<ForgeLlmSettings>);
+  } catch {
+    return defaultForgeLlmSettingsFromEnv();
+  }
+}
+
+export function setLlmSettings(partial: Partial<ForgeLlmSettings>): ForgeLlmSettings {
+  const current = getLlmSettings();
+  const next = normalizeForgeLlmSettings({ ...current, ...partial });
+  ensureConfigTable();
+  const now = Date.now();
+  getDb()
+    .prepare(
+      `INSERT INTO forge_config (key, content, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at`,
+    )
+    .run(FORGE_LLM_SETTINGS_DB_KEY, JSON.stringify(next), now);
+  return next;
+}
+
+export function resetLlmSettings(): ForgeLlmSettings {
+  ensureConfigTable();
+  getDb().prepare('DELETE FROM forge_config WHERE key = ?').run(FORGE_LLM_SETTINGS_DB_KEY);
+  return defaultForgeLlmSettingsFromEnv();
 }

@@ -1,30 +1,26 @@
 /**
  * Configurable text LLM provider for Agent Forge (OpenAI default, optional Claude fallback).
+ * Runtime provider/model selection comes from /config (SQLite) with .env.local as bootstrap default.
  */
 import { anthropic } from '@ai-sdk/anthropic';
 import { openai } from '@ai-sdk/openai';
 import type { LanguageModel } from 'ai';
+import { getLlmSettings } from '@/lib/forgeConfigStore';
+import {
+  modelForProvider,
+  type ForgeLlmSettings,
+  type LlmProviderChoice,
+} from '@/lib/forgeLlmSettings';
 import { anthropicSdkMaxRetries, openaiSdkMaxRetries } from './retryPolicy';
+import {
+  isRateLimitError,
+  llmRateLimitMaxRetries,
+  retryWithDecayingBackoff,
+} from './llmThrottle';
 
-export type LlmProvider = 'openai' | 'anthropic';
+export type LlmProvider = LlmProviderChoice;
 
 export type TextModelRole = 'author';
-
-function normalizeProvider(raw: string | undefined): LlmProvider | null {
-  const v = raw?.trim().toLowerCase();
-  if (!v || v === 'none' || v === 'off') return null;
-  if (v === 'openai' || v === 'gpt') return 'openai';
-  if (v === 'anthropic' || v === 'claude') return 'anthropic';
-  return null;
-}
-
-export function configuredLlmProvider(): LlmProvider {
-  return normalizeProvider(process.env.FORGE_LLM_PROVIDER) ?? 'openai';
-}
-
-export function configuredLlmFallbackProvider(): LlmProvider | null {
-  return normalizeProvider(process.env.FORGE_LLM_FALLBACK_PROVIDER);
-}
 
 function providerHasKey(provider: LlmProvider): boolean {
   if (provider === 'openai') return !!process.env.OPENAI_API_KEY?.trim();
@@ -38,6 +34,19 @@ export function modelMatchesProvider(modelId: string, provider: LlmProvider): bo
   return id.includes('gpt') || id.startsWith('o') || id.includes('chatgpt');
 }
 
+function activeLlmSettings(): ForgeLlmSettings {
+  return getLlmSettings();
+}
+
+export function configuredLlmProvider(): LlmProvider {
+  return activeLlmSettings().primaryProvider;
+}
+
+export function configuredLlmFallbackProvider(): LlmProvider | null {
+  const fallback = activeLlmSettings().fallbackProvider;
+  return fallback === 'none' ? null : fallback;
+}
+
 export function resolveModelId(
   provider: LlmProvider,
   role: TextModelRole = 'author',
@@ -45,10 +54,8 @@ export function resolveModelId(
 ): string | null {
   void role;
   if (explicit && modelMatchesProvider(explicit, provider)) return explicit.trim();
-  const pick =
-    provider === 'openai'
-      ? process.env.OPENAI_MODEL?.trim()
-      : process.env.ANTHROPIC_MODEL?.trim();
+  const settings = activeLlmSettings();
+  const pick = modelForProvider(settings, provider);
   if (!pick) return null;
   return modelMatchesProvider(pick, provider) ? pick : null;
 }
@@ -58,26 +65,31 @@ export function textLlmConfigured(): boolean {
 }
 
 export function textLlmConfigError(): string {
-  const primary = configuredLlmProvider();
+  const settings = activeLlmSettings();
+  const primary = settings.primaryProvider;
   const fallback = configuredLlmFallbackProvider();
   const parts: string[] = [];
 
   if (!providerHasKey(primary)) {
     parts.push(primary === 'openai' ? 'OPENAI_API_KEY' : 'ANTHROPIC_API_KEY');
   } else if (!resolveModelId(primary, 'author')) {
-    parts.push(primary === 'openai' ? 'OPENAI_MODEL' : 'ANTHROPIC_MODEL');
+    parts.push(primary === 'openai' ? 'OpenAI model (config or OPENAI_MODEL)' : 'Anthropic model (config or ANTHROPIC_MODEL)');
   }
 
-  if (fallback && fallback !== primary) {
+  if (fallback) {
     if (!providerHasKey(fallback)) {
       parts.push(fallback === 'openai' ? 'OPENAI_API_KEY (fallback)' : 'ANTHROPIC_API_KEY (fallback)');
     } else if (!resolveModelId(fallback, 'author')) {
-      parts.push(fallback === 'openai' ? 'OPENAI_MODEL (fallback)' : 'ANTHROPIC_MODEL (fallback)');
+      parts.push(
+        fallback === 'openai'
+          ? 'OpenAI fallback model (config or OPENAI_MODEL)'
+          : 'Anthropic fallback model (config or ANTHROPIC_MODEL)',
+      );
     }
   }
 
-  if (parts.length === 0) return 'Text LLM is not configured — check FORGE_LLM_PROVIDER and model env vars.';
-  return `${parts.join(' and ')} missing — add to .env.local and retry.`;
+  if (parts.length === 0) return 'Text LLM is not configured — set provider and models under /config or in .env.local.';
+  return `${parts.join(' and ')} missing — add keys on the server and pick models in Forge configuration.`;
 }
 
 export type ResolvedLlmCandidate = {
@@ -91,8 +103,7 @@ export function resolveLlmCandidates(opts?: {
   role?: TextModelRole;
 }): ResolvedLlmCandidate[] {
   const role = opts?.role ?? 'author';
-  const primary = configuredLlmProvider();
-  const fallback = configuredLlmFallbackProvider();
+  const settings = activeLlmSettings();
   const explicitModel = opts?.model?.trim();
   const out: ResolvedLlmCandidate[] = [];
 
@@ -105,8 +116,9 @@ export function resolveLlmCandidates(opts?: {
     out.push({ provider, modelId, label });
   };
 
-  push(primary);
-  if (fallback && fallback !== primary) push(fallback);
+  push(settings.primaryProvider);
+  const fallback = settings.fallbackProvider;
+  if (fallback !== 'none' && fallback !== settings.primaryProvider) push(fallback);
 
   return out;
 }
@@ -121,16 +133,21 @@ export function sdkMaxRetries(provider: LlmProvider): number {
 
 export function isProviderFallbackEligible(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
-  const e = error as { name?: string; message?: string; statusCode?: number };
+  const e = error as { name?: string; message?: string; statusCode?: number; code?: string };
   if (e.name === 'AbortError') return false;
   const msg = (e.message ?? '').toLowerCase();
   if (msg.includes('abort')) return false;
+  const code = String(e.code ?? '').toLowerCase();
   return (
+    code === 'rate_limit_exceeded' ||
     msg.includes('credit') ||
     msg.includes('billing') ||
     msg.includes('quota') ||
     msg.includes('insufficient') ||
     msg.includes('rate limit') ||
+    msg.includes('rate_limit') ||
+    msg.includes('tokens per min') ||
+    msg.includes('tpm') ||
     msg.includes('too many requests') ||
     msg.includes('429') ||
     msg.includes('401') ||
@@ -169,7 +186,14 @@ export async function runWithLlmCandidates<T>(
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i];
     try {
-      const result = await fn(candidate);
+      const result = await retryWithDecayingBackoff(
+        () => fn(candidate),
+        {
+          label: `${opts.label ?? 'call'} · ${candidate.label}`,
+          maxRetries: llmRateLimitMaxRetries(),
+          shouldRetry: isRateLimitError,
+        },
+      );
       return { result, candidate };
     } catch (error) {
       lastError = error;

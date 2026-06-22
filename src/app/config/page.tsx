@@ -10,6 +10,11 @@ import { FORGE_AMBIENT_TRACK } from '@/lib/forgeMusic';
 import { startForgeAmbientMusic, stopForgeAmbientMusic } from '@/lib/forgeAmbientMusic';
 import { unlockForgeAudio } from '@/lib/forgeBleeps';
 import {
+  LLM_FALLBACK_OPTIONS,
+  LLM_PROVIDER_OPTIONS,
+  type ForgeLlmSettings,
+} from '@/lib/forgeLlmSettings';
+import {
   READOUT_STOP_RATIO_MAX,
   READOUT_STOP_RATIO_MIN,
   GRID_MOVING_LINES_INTERVAL_SEC_MAX,
@@ -60,8 +65,23 @@ const TEXT_FILL_TIMING_OPTIONS: { value: TextFillTiming; label: string; hint: st
   },
 ];
 
+type LlmRuntimeStatus = {
+  openaiKeyConfigured: boolean;
+  anthropicKeyConfigured: boolean;
+  activePrimary: string;
+  activeFallback: string | null;
+  openaiModelResolved: string | null;
+  anthropicModelResolved: string | null;
+};
+
 export default function ForgeConfigPage() {
   const [prompts, setPrompts] = React.useState<PromptRecord[]>([]);
+  const [llm, setLlm] = React.useState<ForgeLlmSettings | null>(null);
+  const [llmDraft, setLlmDraft] = React.useState<ForgeLlmSettings | null>(null);
+  const [llmStatus, setLlmStatus] = React.useState<LlmRuntimeStatus | null>(null);
+  const [llmSaving, setLlmSaving] = React.useState(false);
+  const [llmDirty, setLlmDirty] = React.useState(false);
+  const [llmSavedFlash, setLlmSavedFlash] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [category, setCategory] = React.useState<ForgePromptCategory>('forge');
@@ -78,9 +98,20 @@ export default function ForgeConfigPage() {
     setError(null);
     try {
       const res = await fetch('/api/forge/config', { cache: 'no-store' });
-      const json = (await res.json()) as { prompts?: PromptRecord[]; error?: string };
+      const json = (await res.json()) as {
+        prompts?: PromptRecord[];
+        llm?: ForgeLlmSettings;
+        llmStatus?: LlmRuntimeStatus;
+        error?: string;
+      };
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       setPrompts(json.prompts ?? []);
+      if (json.llm) {
+        setLlm(json.llm);
+        setLlmDraft(json.llm);
+        setLlmDirty(false);
+      }
+      if (json.llmStatus) setLlmStatus(json.llmStatus);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load configuration');
     } finally {
@@ -167,6 +198,66 @@ export default function ForgeConfigPage() {
     }
   };
 
+  const saveLlm = async () => {
+    if (!llmDraft) return;
+    setLlmSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/forge/config', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ llm: llmDraft }),
+      });
+      const json = (await res.json()) as {
+        llm?: ForgeLlmSettings;
+        llmStatus?: LlmRuntimeStatus;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (json.llm) {
+        setLlm(json.llm);
+        setLlmDraft(json.llm);
+        setLlmDirty(false);
+        setLlmSavedFlash(true);
+        window.setTimeout(() => setLlmSavedFlash(false), 2000);
+      }
+      if (json.llmStatus) setLlmStatus(json.llmStatus);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'LLM settings save failed');
+    } finally {
+      setLlmSaving(false);
+    }
+  };
+
+  const resetLlm = async () => {
+    if (!window.confirm('Reset LLM settings to .env.local defaults?')) return;
+    setLlmSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/forge/config', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'reset_llm' }),
+      });
+      const json = (await res.json()) as {
+        llm?: ForgeLlmSettings;
+        llmStatus?: LlmRuntimeStatus;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (json.llm) {
+        setLlm(json.llm);
+        setLlmDraft(json.llm);
+        setLlmDirty(false);
+      }
+      if (json.llmStatus) setLlmStatus(json.llmStatus);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'LLM reset failed');
+    } finally {
+      setLlmSaving(false);
+    }
+  };
+
   const resetAll = async () => {
     if (!window.confirm('Reset ALL prompts to shipped defaults? Custom edits will be lost.')) return;
     setSaving(true);
@@ -201,7 +292,7 @@ export default function ForgeConfigPage() {
         <footer className="ops-hud-bottom-rail">
           <span className="ops-bf-corner ops-bf-corner-bl" aria-hidden />
           <span className="ops-bf-corner ops-bf-corner-br" aria-hidden />
-          <p className="ops-tagline">Anthropic system · meta skills · Gemini image prompts</p>
+          <p className="ops-tagline">OpenAI · Anthropic · Gemini image prompts</p>
         </footer>
       }
     >
@@ -214,7 +305,7 @@ export default function ForgeConfigPage() {
               <span className="ops-title-line2">Edit every LLM prompt the Forge sends</span>
             </h1>
             <p className="forge-config-lede">
-              Changes are stored locally in SQLite and apply to the next agent you forge.
+              Changes are stored locally in SQLite and apply to the next agent run, business consult, or plan.
               {customizedCount > 0 && (
                 <span className="forge-config-badge">{customizedCount} customized</span>
               )}
@@ -227,6 +318,140 @@ export default function ForgeConfigPage() {
             <p className="forge-error">{error}</p>
           ) : (
             <>
+              {llmDraft && (
+                <section className="forge-config-interface" aria-labelledby="forge-config-llm-title">
+                  <h2 id="forge-config-llm-title" className="forge-config-interface-title">
+                    Text LLM
+                  </h2>
+                  <p className="forge-config-toggle-hint">
+                    API keys stay in <code>.env.local</code> on the server. These settings choose which vendor and
+                    model the Forge uses for agent generation, business consulting, and examples.
+                  </p>
+                  {llmStatus && (
+                    <ul className="forge-config-llm-status">
+                      <li>
+                        Active: <strong>{llmStatus.activePrimary}</strong>
+                        {llmStatus.activeFallback ? (
+                          <> · fallback <strong>{llmStatus.activeFallback}</strong></>
+                        ) : null}
+                      </li>
+                      <li>
+                        Keys: OpenAI {llmStatus.openaiKeyConfigured ? '✓' : '✗'} · Anthropic{' '}
+                        {llmStatus.anthropicKeyConfigured ? '✓' : '✗'}
+                      </li>
+                    </ul>
+                  )}
+                  <fieldset className="forge-config-timing-fieldset">
+                    <legend className="forge-config-toggle-label">Primary provider</legend>
+                    <div className="forge-config-timing-options">
+                      {LLM_PROVIDER_OPTIONS.map((option) => (
+                        <label key={option.value} className="forge-config-timing-option">
+                          <input
+                            type="radio"
+                            name="llmPrimaryProvider"
+                            value={option.value}
+                            checked={llmDraft.primaryProvider === option.value}
+                            disabled={llmSaving}
+                            onChange={() => {
+                              setLlmDraft((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      primaryProvider: option.value,
+                                      fallbackProvider:
+                                        prev.fallbackProvider === option.value ? 'none' : prev.fallbackProvider,
+                                    }
+                                  : prev,
+                              );
+                              setLlmDirty(true);
+                            }}
+                          />
+                          <span className="forge-config-timing-option-copy">
+                            <span className="forge-config-timing-option-label">{option.label}</span>
+                            <span className="forge-config-timing-option-hint">{option.hint}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <fieldset className="forge-config-timing-fieldset">
+                    <legend className="forge-config-toggle-label">Fallback provider</legend>
+                    <div className="forge-config-timing-options">
+                      {LLM_FALLBACK_OPTIONS.filter(
+                        (option) => option.value === 'none' || option.value !== llmDraft.primaryProvider,
+                      ).map((option) => (
+                        <label key={option.value} className="forge-config-timing-option">
+                          <input
+                            type="radio"
+                            name="llmFallbackProvider"
+                            value={option.value}
+                            checked={llmDraft.fallbackProvider === option.value}
+                            disabled={llmSaving}
+                            onChange={() => {
+                              setLlmDraft((prev) =>
+                                prev ? { ...prev, fallbackProvider: option.value } : prev,
+                              );
+                              setLlmDirty(true);
+                            }}
+                          />
+                          <span className="forge-config-timing-option-copy">
+                            <span className="forge-config-timing-option-label">{option.label}</span>
+                            <span className="forge-config-timing-option-hint">{option.hint}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <label className="forge-config-select-wrap forge-config-select-wrap--spaced">
+                    <span className="forge-label">OpenAI model id</span>
+                    <input
+                      className="forge-input forge-config-model-input"
+                      type="text"
+                      value={llmDraft.openaiModel}
+                      placeholder={llmStatus?.openaiModelResolved ?? 'from OPENAI_MODEL env'}
+                      disabled={llmSaving}
+                      onChange={(e) => {
+                        setLlmDraft((prev) => (prev ? { ...prev, openaiModel: e.target.value } : prev));
+                        setLlmDirty(true);
+                      }}
+                    />
+                  </label>
+                  <label className="forge-config-select-wrap forge-config-select-wrap--spaced">
+                    <span className="forge-label">Anthropic model id</span>
+                    <input
+                      className="forge-input forge-config-model-input"
+                      type="text"
+                      value={llmDraft.anthropicModel}
+                      placeholder={llmStatus?.anthropicModelResolved ?? 'from ANTHROPIC_MODEL env'}
+                      disabled={llmSaving}
+                      onChange={(e) => {
+                        setLlmDraft((prev) => (prev ? { ...prev, anthropicModel: e.target.value } : prev));
+                        setLlmDirty(true);
+                      }}
+                    />
+                  </label>
+                  <div className="forge-config-actions">
+                    <button
+                      type="button"
+                      className="forge-cta"
+                      disabled={llmSaving || !llmDirty}
+                      onClick={() => void saveLlm()}
+                    >
+                      {llmSaving ? 'Saving…' : llmSavedFlash ? 'Saved' : 'Save LLM settings'}
+                    </button>
+                    <button
+                      type="button"
+                      className="forge-cta forge-cta--ghost"
+                      disabled={llmSaving}
+                      onClick={() => void resetLlm()}
+                    >
+                      Reset to env defaults
+                    </button>
+                    {llmDirty && <span className="forge-config-unsaved">Unsaved LLM changes</span>}
+                  </div>
+                </section>
+              )}
+
               <section className="forge-config-interface" aria-labelledby="forge-config-interface-title">
                 <h2 id="forge-config-interface-title" className="forge-config-interface-title">
                   Interface

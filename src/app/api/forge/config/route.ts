@@ -5,11 +5,14 @@ import {
 } from '@/lib/forgePrompts';
 import {
   getPromptRecord,
+  getLlmSettings,
   getUiSettings,
   listPromptRecords,
   resetAllPromptContent,
+  resetLlmSettings,
   resetPromptContent,
   setPromptContent,
+  setLlmSettings,
   setUiSettings,
 } from '@/lib/forgeConfigStore';
 import {
@@ -19,6 +22,11 @@ import {
   isTextFillTiming,
   type ForgeUiSettings,
 } from '@/lib/forgeUiSettings';
+import {
+  describeForgeLlmRuntime,
+  type ForgeLlmSettings,
+  type LlmFallbackChoice,
+} from '@/lib/forgeLlmSettings';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +38,9 @@ export async function GET() {
   try {
     const prompts = listPromptRecords();
     const ui = getUiSettings();
-    return NextResponse.json({ prompts, ui });
+    const llm = getLlmSettings();
+    const llmStatus = describeForgeLlmRuntime(llm);
+    return NextResponse.json({ prompts, ui, llm, llmStatus });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 500 });
@@ -60,7 +70,17 @@ export async function POST(req: Request) {
     const body = (await req.json()) as { action?: unknown; key?: unknown };
     if (body.action === 'reset_all') {
       resetAllPromptContent();
-      return NextResponse.json({ ok: true, prompts: listPromptRecords(), ui: getUiSettings() });
+      return NextResponse.json({
+        ok: true,
+        prompts: listPromptRecords(),
+        ui: getUiSettings(),
+        llm: getLlmSettings(),
+        llmStatus: describeForgeLlmRuntime(getLlmSettings()),
+      });
+    }
+    if (body.action === 'reset_llm') {
+      const llm = resetLlmSettings();
+      return NextResponse.json({ ok: true, llm, llmStatus: describeForgeLlmRuntime(llm) });
     }
     if (body.action === 'reset' && isPromptKey(body.key)) {
       resetPromptContent(body.key);
@@ -79,7 +99,44 @@ export async function PATCH(req: Request) {
     const body = (await req.json()) as Partial<ForgeUiSettings> & {
       textStaggerEnabled?: unknown;
       soundsEnabled?: unknown;
+      llm?: Partial<ForgeLlmSettings>;
     };
+
+    if (body.llm && typeof body.llm === 'object') {
+      const partial = body.llm;
+      const patch: Partial<ForgeLlmSettings> = {};
+      if (partial.primaryProvider !== undefined) {
+        if (partial.primaryProvider !== 'openai' && partial.primaryProvider !== 'anthropic') {
+          return NextResponse.json({ error: 'primaryProvider must be openai or anthropic.' }, { status: 400 });
+        }
+        patch.primaryProvider = partial.primaryProvider;
+      }
+      if (partial.fallbackProvider !== undefined) {
+        const allowed: LlmFallbackChoice[] = ['none', 'openai', 'anthropic'];
+        if (!allowed.includes(partial.fallbackProvider as LlmFallbackChoice)) {
+          return NextResponse.json({ error: 'fallbackProvider must be none, openai, or anthropic.' }, { status: 400 });
+        }
+        patch.fallbackProvider = partial.fallbackProvider as LlmFallbackChoice;
+      }
+      if (partial.openaiModel !== undefined) {
+        if (typeof partial.openaiModel !== 'string') {
+          return NextResponse.json({ error: 'openaiModel must be a string.' }, { status: 400 });
+        }
+        patch.openaiModel = partial.openaiModel.trim();
+      }
+      if (partial.anthropicModel !== undefined) {
+        if (typeof partial.anthropicModel !== 'string') {
+          return NextResponse.json({ error: 'anthropicModel must be a string.' }, { status: 400 });
+        }
+        patch.anthropicModel = partial.anthropicModel.trim();
+      }
+      if (Object.keys(patch).length === 0) {
+        return NextResponse.json({ error: 'No valid LLM settings provided.' }, { status: 400 });
+      }
+      const llm = setLlmSettings(patch);
+      return NextResponse.json({ llm, llmStatus: describeForgeLlmRuntime(llm) });
+    }
+
     const partial: Partial<ForgeUiSettings> = {};
 
     if (body.textStaggerEnabled !== undefined) {

@@ -4,7 +4,7 @@ import { getPromptContent } from '@/lib/forgeConfigStore';
 import { applyPromptTemplate } from '@/lib/forgePrompts';
 import {
   createLanguageModel,
-  resolveLlmCandidates,
+  runWithLlmCandidates,
   sdkMaxRetries,
 } from '@/lib/agent/textModel';
 
@@ -47,34 +47,22 @@ function parseExamplePayload(raw: z.infer<typeof exampleSchema>): GeneratedForge
 
 /** Ad-hoc forge-form example via configured text LLM (configurable prompts). */
 export async function generateForgeExample(theme?: string): Promise<GeneratedForgeExample> {
-  const candidates = resolveLlmCandidates({ role: 'author' });
-  if (candidates.length === 0) {
-    throw new Error('No text LLM API key configured — set OPENAI_API_KEY or ANTHROPIC_API_KEY in .env.local.');
-  }
-
   const system = getPromptContent('forge.example.system');
   const user = applyPromptTemplate(getPromptContent('forge.example.user_template'), {
     themeInstruction: buildThemeInstruction(theme),
   });
 
-  let lastError: unknown;
-  for (const candidate of candidates) {
-    try {
-      const { object } = await generateObject({
-        model: createLanguageModel(candidate.provider, candidate.modelId),
-        schema: exampleSchema,
-        system,
-        prompt: user,
-        maxOutputTokens: 1200,
-        maxRetries: sdkMaxRetries(candidate.provider),
-      });
-      return parseExamplePayload(object);
-    } catch (err) {
-      lastError = err;
-      console.warn(`[exampleGenerator] ${candidate.label} failed`, err);
-    }
-  }
+  const { result } = await runWithLlmCandidates({ role: 'author', label: 'forge example' }, async (candidate) => {
+    const { object } = await generateObject({
+      model: createLanguageModel(candidate.provider, candidate.modelId),
+      schema: exampleSchema,
+      system,
+      prompt: user,
+      maxOutputTokens: 1200,
+      maxRetries: sdkMaxRetries(candidate.provider),
+    });
+    return parseExamplePayload(object);
+  });
 
-  const text = lastError instanceof Error ? lastError.message : 'Example generation failed';
-  throw new Error(text);
+  return result;
 }

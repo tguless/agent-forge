@@ -866,6 +866,23 @@
   background: rgba(4, 12, 18, 0.45);
 }
 
+.forge-config-select-wrap--spaced {
+  margin-top: 12px;
+}
+
+.forge-config-model-input {
+  width: 100%;
+  max-width: 420px;
+}
+
+.forge-config-llm-status {
+  margin: 0 0 14px;
+  padding-left: 1.1rem;
+  color: color-mix(in srgb, var(--ops-cyan, #38bdf8) 75%, #fff);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .forge-config-interface-title {
   margin: 0 0 12px;
   font-family: var(--ops-font-display, 'Oxanium', sans-serif);

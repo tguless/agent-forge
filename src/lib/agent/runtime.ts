@@ -9,6 +9,15 @@
  */
 import { stepCountIs, ToolLoopAgent, type ToolSet } from 'ai';
 import {
+  acquireLlmBudget,
+  estimateAgentCallTokens,
+  estimateTokensFromText,
+  isRateLimitError,
+  llmRateLimitMaxRetries,
+  recordLlmUsage,
+  retryWithDecayingBackoff,
+} from './llmThrottle';
+import {
   createLanguageModel,
   isProviderFallbackEligible,
   resolveLlmCandidates,
@@ -60,25 +69,16 @@ type StreamLoopContext = {
   opts: RunToolLoopOptions;
   maxSteps: number;
   emit: (data: Parameters<typeof persistTurn>[3]) => { type: 'turn'; turn: ReturnType<typeof persistTurn> };
+  getTurnIndex: () => number;
 };
 
-async function* streamToolLoop(ctx: StreamLoopContext): AsyncGenerator<TurnEvent> {
-  const { scopeType, scopeSlug, signal, candidate, opts, maxSteps, emit } = ctx;
-  const maxRetries = sdkMaxRetries(candidate.provider);
-
-  const agent = new ToolLoopAgent({
-    model: createLanguageModel(candidate.provider, candidate.modelId),
-    instructions: opts.instructions,
-    tools: opts.tools,
-    stopWhen: stepCountIs(maxSteps),
-    maxOutputTokens: opts.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
-    maxRetries,
-  });
-
-  assertNotCancelled(signal);
+async function* consumeAgentStream(
+  ctx: StreamLoopContext,
+  streamResult: Awaited<ReturnType<ToolLoopAgent['stream']>>,
+): AsyncGenerator<TurnEvent> {
+  const { signal, opts, emit, candidate } = ctx;
   let stepText = '';
-
-  const streamResult = await agent.stream({ prompt: opts.prompt, abortSignal: signal });
+  let extraContextChars = 0;
 
   for await (const part of streamResult.fullStream) {
     assertNotCancelled(signal);
@@ -89,8 +89,18 @@ async function* streamToolLoop(ctx: StreamLoopContext): AsyncGenerator<TurnEvent
     }
 
     if (part.type === 'finish-step' && stepText.trim()) {
+      const stepTokens = estimateTokensFromText(stepText);
+      recordLlmUsage(stepTokens + (opts.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS));
+      extraContextChars += stepText.length;
       yield emit({ role: 'AGENT', turnType: 'THINKING', content: stepText.trim() });
       stepText = '';
+
+      const nextEstimate = estimateAgentCallTokens({
+        instructions: opts.instructions,
+        prompt: opts.prompt,
+        extraContextChars,
+      });
+      await acquireLlmBudget(nextEstimate, { signal, label: candidate.label });
       continue;
     }
 
@@ -108,13 +118,15 @@ async function* streamToolLoop(ctx: StreamLoopContext): AsyncGenerator<TurnEvent
 
     if (part.type === 'tool-result') {
       const output = 'output' in part ? part.output : undefined;
+      const serialized =
+        typeof output === 'string' ? output : JSON.stringify(output ?? null).slice(0, 2000);
+      extraContextChars += serialized.length;
       yield emit({
         role: 'TOOL',
         turnType: 'TOOL_RESULT',
         toolName: part.toolName,
         toolOutput: output,
-        content:
-          typeof output === 'string' ? output : JSON.stringify(output ?? null).slice(0, 2000),
+        content: serialized,
       });
       continue;
     }
@@ -137,11 +149,61 @@ async function* streamToolLoop(ctx: StreamLoopContext): AsyncGenerator<TurnEvent
   }
 
   if (stepText.trim()) {
+    recordLlmUsage(estimateTokensFromText(stepText));
     yield emit({ role: 'AGENT', turnType: 'THINKING', content: stepText.trim() });
   }
+}
 
-  yield emit({ role: 'SYSTEM', turnType: 'COMPLETE', content: 'Run complete.' });
-  yield { type: 'done', scopeSlug };
+async function* streamToolLoop(ctx: StreamLoopContext): AsyncGenerator<TurnEvent> {
+  const { scopeType, scopeSlug, signal, candidate, opts, maxSteps, emit } = ctx;
+  const maxRetries = sdkMaxRetries(candidate.provider);
+  const streamRetries = llmRateLimitMaxRetries();
+  const callEstimate = estimateAgentCallTokens({
+    instructions: opts.instructions,
+    prompt: opts.prompt,
+  });
+
+  const agent = new ToolLoopAgent({
+    model: createLanguageModel(candidate.provider, candidate.modelId),
+    instructions: opts.instructions,
+    tools: opts.tools,
+    stopWhen: stepCountIs(maxSteps),
+    maxOutputTokens: opts.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS,
+    maxRetries,
+  });
+
+  assertNotCancelled(signal);
+  const streamStartTurnIndex = ctx.getTurnIndex();
+
+  for (let streamAttempt = 0; streamAttempt <= streamRetries; streamAttempt++) {
+    try {
+      const streamResult = await retryWithDecayingBackoff(
+        () => agent.stream({ prompt: opts.prompt, abortSignal: signal }),
+        {
+          signal,
+          label: `${candidate.label} stream`,
+          estimatedTokens: callEstimate,
+        },
+      );
+
+      yield* consumeAgentStream(ctx, streamResult);
+      yield emit({ role: 'SYSTEM', turnType: 'COMPLETE', content: 'Run complete.' });
+      yield { type: 'done', scopeSlug };
+      return;
+    } catch (error) {
+      const canRetryStream =
+        isRateLimitError(error) &&
+        streamAttempt < streamRetries &&
+        ctx.getTurnIndex() === streamStartTurnIndex;
+
+      if (!canRetryStream) throw error;
+
+      console.warn(
+        `[runtime] ${candidate.label} stream rate limited before progress; retry ${streamAttempt + 1}/${streamRetries}`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
 }
 
 /**
@@ -191,6 +253,7 @@ export async function* runToolLoop(opts: RunToolLoopOptions): AsyncGenerator<Tur
           opts,
           maxSteps,
           emit,
+          getTurnIndex: () => turnIndex,
         });
         return;
       } catch (error) {
