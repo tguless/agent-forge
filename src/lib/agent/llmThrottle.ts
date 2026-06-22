@@ -124,10 +124,41 @@ export function parseRetryAfterMs(error: unknown): number | null {
   return null;
 }
 
+export function normalizeLlmError(error: unknown): Error {
+  if (error instanceof Error) {
+    if (error.message && error.message !== '[object Object]') return error;
+  }
+
+  if (error && typeof error === 'object') {
+    const e = error as Record<string, unknown>;
+    const nested =
+      e.error && typeof e.error === 'object' ? (e.error as Record<string, unknown>) : null;
+    const code = String(nested?.code ?? e.code ?? '').trim();
+    const message = String(
+      nested?.message ??
+        e.message ??
+        (code ? `LLM error (${code})` : JSON.stringify(nested ?? e)),
+    ).trim();
+    const err = new Error(message || 'LLM error');
+    if (code) (err as Error & { code?: string }).code = code;
+    const statusCode = nested?.statusCode ?? e.statusCode;
+    if (typeof statusCode === 'number') {
+      (err as Error & { statusCode?: number }).statusCode = statusCode;
+    }
+    const retryAfterMs = nested?.retryAfterMs ?? e.retryAfterMs;
+    if (typeof retryAfterMs === 'number') {
+      (err as Error & { retryAfterMs?: number }).retryAfterMs = retryAfterMs;
+    }
+    return err;
+  }
+
+  return new Error(String(error ?? 'LLM error'));
+}
+
 export function isRateLimitError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const e = error as { name?: string; message?: string; statusCode?: number; code?: string };
-  if (e.name === 'AbortError') return false;
+  const normalized = normalizeLlmError(error);
+  if (normalized.name === 'AbortError') return false;
+  const e = normalized as Error & { statusCode?: number; code?: string };
   const msg = (e.message ?? '').toLowerCase();
   if (msg.includes('abort')) return false;
   const code = String(e.code ?? '').toLowerCase();

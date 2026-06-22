@@ -14,8 +14,10 @@ import {
   estimateTokensFromText,
   isRateLimitError,
   llmRateLimitMaxRetries,
+  normalizeLlmError,
   recordLlmUsage,
   retryWithDecayingBackoff,
+  waitAfterRateLimit,
 } from './llmThrottle';
 import {
   createLanguageModel,
@@ -75,10 +77,18 @@ type StreamLoopContext = {
 async function* consumeAgentStream(
   ctx: StreamLoopContext,
   streamResult: Awaited<ReturnType<ToolLoopAgent['stream']>>,
+  streamAttempt: number,
+  streamProgress: { agentTurns: number },
 ): AsyncGenerator<TurnEvent> {
   const { signal, opts, emit, candidate } = ctx;
   let stepText = '';
   let extraContextChars = 0;
+
+  const trackEmit = (data: Parameters<typeof persistTurn>[3]) => {
+    const event = emit(data);
+    if (data.role === 'AGENT' || data.role === 'TOOL') streamProgress.agentTurns += 1;
+    return event;
+  };
 
   for await (const part of streamResult.fullStream) {
     assertNotCancelled(signal);
@@ -92,7 +102,7 @@ async function* consumeAgentStream(
       const stepTokens = estimateTokensFromText(stepText);
       recordLlmUsage(stepTokens + (opts.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS));
       extraContextChars += stepText.length;
-      yield emit({ role: 'AGENT', turnType: 'THINKING', content: stepText.trim() });
+      yield trackEmit({ role: 'AGENT', turnType: 'THINKING', content: stepText.trim() });
       stepText = '';
 
       const nextEstimate = estimateAgentCallTokens({
@@ -106,7 +116,7 @@ async function* consumeAgentStream(
 
     if (part.type === 'tool-call') {
       const input = 'input' in part ? part.input : undefined;
-      yield emit({
+      yield trackEmit({
         role: 'AGENT',
         turnType: 'TOOL_CALL',
         content: `Calling ${part.toolName}`,
@@ -121,7 +131,7 @@ async function* consumeAgentStream(
       const serialized =
         typeof output === 'string' ? output : JSON.stringify(output ?? null).slice(0, 2000);
       extraContextChars += serialized.length;
-      yield emit({
+      yield trackEmit({
         role: 'TOOL',
         turnType: 'TOOL_RESULT',
         toolName: part.toolName,
@@ -133,7 +143,7 @@ async function* consumeAgentStream(
 
     if (part.type === 'tool-error') {
       const err = 'error' in part ? part.error : 'Tool error';
-      yield emit({
+      yield trackEmit({
         role: 'TOOL',
         turnType: 'ERROR',
         toolName: part.toolName,
@@ -143,14 +153,21 @@ async function* consumeAgentStream(
     }
 
     if (part.type === 'error') {
-      const err = 'error' in part ? part.error : 'Model stream error';
-      throw err instanceof Error ? err : new Error(String(err));
+      const raw = 'error' in part ? part.error : part;
+      const err = normalizeLlmError(raw);
+      if (isRateLimitError(err)) {
+        await waitAfterRateLimit(err, streamAttempt, {
+          signal,
+          label: `${candidate.label} stream step`,
+        });
+      }
+      throw err;
     }
   }
 
   if (stepText.trim()) {
     recordLlmUsage(estimateTokensFromText(stepText));
-    yield emit({ role: 'AGENT', turnType: 'THINKING', content: stepText.trim() });
+    yield trackEmit({ role: 'AGENT', turnType: 'THINKING', content: stepText.trim() });
   }
 }
 
@@ -173,9 +190,10 @@ async function* streamToolLoop(ctx: StreamLoopContext): AsyncGenerator<TurnEvent
   });
 
   assertNotCancelled(signal);
-  const streamStartTurnIndex = ctx.getTurnIndex();
+  const streamProgress = { agentTurns: 0 };
 
   for (let streamAttempt = 0; streamAttempt <= streamRetries; streamAttempt++) {
+    streamProgress.agentTurns = 0;
     try {
       const streamResult = await retryWithDecayingBackoff(
         () => agent.stream({ prompt: opts.prompt, abortSignal: signal }),
@@ -186,21 +204,22 @@ async function* streamToolLoop(ctx: StreamLoopContext): AsyncGenerator<TurnEvent
         },
       );
 
-      yield* consumeAgentStream(ctx, streamResult);
+      yield* consumeAgentStream(ctx, streamResult, streamAttempt, streamProgress);
       yield emit({ role: 'SYSTEM', turnType: 'COMPLETE', content: 'Run complete.' });
       yield { type: 'done', scopeSlug };
       return;
     } catch (error) {
+      const err = normalizeLlmError(error);
       const canRetryStream =
-        isRateLimitError(error) &&
+        isRateLimitError(err) &&
         streamAttempt < streamRetries &&
-        ctx.getTurnIndex() === streamStartTurnIndex;
+        streamProgress.agentTurns === 0;
 
-      if (!canRetryStream) throw error;
+      if (!canRetryStream) throw err;
 
       console.warn(
-        `[runtime] ${candidate.label} stream rate limited before progress; retry ${streamAttempt + 1}/${streamRetries}`,
-        error instanceof Error ? error.message : error,
+        `[runtime] ${candidate.label} stream rate limited before agent progress; retry ${streamAttempt + 1}/${streamRetries}`,
+        err.message,
       );
     }
   }
@@ -239,7 +258,7 @@ export async function* runToolLoop(opts: RunToolLoopOptions): AsyncGenerator<Tur
     return;
   }
 
-  let lastError: unknown;
+  let lastError: Error | undefined;
 
   try {
     for (let i = 0; i < candidates.length; i++) {
@@ -257,17 +276,17 @@ export async function* runToolLoop(opts: RunToolLoopOptions): AsyncGenerator<Tur
         });
         return;
       } catch (error) {
-        lastError = error;
+        lastError = normalizeLlmError(error);
         if (signal?.aborted || isAbortError(error)) {
           yield emit({ role: 'SYSTEM', turnType: 'ERROR', content: 'Cancelled by user.' });
           yield { type: 'cancelled', scopeSlug };
           return;
         }
 
-        const hasFallback = i < candidates.length - 1 && isProviderFallbackEligible(error);
+        const hasFallback = i < candidates.length - 1 && isProviderFallbackEligible(lastError);
         if (hasFallback) {
           const next = candidates[i + 1];
-          const message = error instanceof Error ? error.message : 'Agent run failed';
+          const message = lastError.message;
           yield emit({
             role: 'SYSTEM',
             turnType: 'MESSAGE',
@@ -276,14 +295,14 @@ export async function* runToolLoop(opts: RunToolLoopOptions): AsyncGenerator<Tur
           continue;
         }
 
-        const message = error instanceof Error ? error.message : 'Agent run failed';
+        const message = lastError.message;
         yield emit({ role: 'SYSTEM', turnType: 'ERROR', content: message });
         yield { type: 'error', message };
         return;
       }
     }
 
-    const message = lastError instanceof Error ? lastError.message : 'Agent run failed';
+    const message = lastError?.message ?? 'Agent run failed';
     yield emit({ role: 'SYSTEM', turnType: 'ERROR', content: message });
     yield { type: 'error', message };
   } finally {
