@@ -5,10 +5,13 @@ import type { Business, BusinessPlanSectionKey, CompetitorSectionKey } from '@/l
 import { BUSINESS_PLAN_SECTIONS } from '@/lib/businessPlanSections';
 import { COMPETITOR_SECTIONS } from '@/lib/competitorSections';
 import { MARKET_SECTIONS } from '@/lib/marketAssessment';
+import { marketRisksToText, textToMarketRisks, MARKET_RISKS_EDIT_HINT } from '@/lib/marketRisksText';
 import {
   getBusiness,
+  getBusinessAppStackRow,
   getRole,
   listRoles,
+  patchBusinessAppRationale,
   patchBusinessPlanSection,
   patchBusinessProfile,
   patchMarketAssessment,
@@ -17,7 +20,7 @@ import {
   setCompetitorSection,
 } from '@/lib/businessStore';
 
-export type EditableSectionKind = 'markdown' | 'plain' | 'lines' | 'bullets';
+export type EditableSectionKind = 'markdown' | 'plain' | 'lines' | 'bullets' | 'risks';
 
 export type ResolvedEditableSection = {
   path: string[];
@@ -182,6 +185,16 @@ export function resolveEditableSection(slug: string, path: string[]): ResolvedEd
           rewriteHint: 'One bullet per line.',
         };
       }
+      if (key === 'risks') {
+        return {
+          path,
+          label: 'Market risks',
+          kind: 'risks',
+          content: marketRisksToText(market?.risks ?? []),
+          canRewrite: true,
+          rewriteHint: MARKET_RISKS_EDIT_HINT,
+        };
+      }
       const def = MARKET_SECTIONS.find((s) => s.key === key);
       if (def) {
         return {
@@ -212,9 +225,25 @@ export function resolveEditableSection(slug: string, path: string[]): ResolvedEd
       label: PROFILE_LABELS[field],
       kind,
       content,
-      canRewrite: field !== 'industry',
+      canRewrite: true,
       rewriteHint:
-        field === 'elevatorPitch' ? '30–45 seconds spoken (~50–90 words).' : undefined,
+        field === 'elevatorPitch' ? '30–45 seconds spoken (~50–90 words).'
+        : field === 'industry' ? 'Sector in plain language.'
+        : undefined,
+    };
+  }
+
+  if (root === 'stack' && rest.length === 2 && rest[1] === 'rationale') {
+    const stackRowId = Number(rest[0]);
+    if (!Number.isFinite(stackRowId)) return null;
+    const row = getBusinessAppStackRow(stackRowId);
+    if (!row || row.businessSlug !== slug) return null;
+    return {
+      path,
+      label: `${row.app.name} — Recommendation rationale`,
+      kind: 'plain',
+      content: row.rationale?.trim() ?? '',
+      canRewrite: true,
     };
   }
 
@@ -253,7 +282,8 @@ export function writeEditableSection(slug: string, path: string[], rawContent: s
       return true;
     }
     if (rest.length === 3) {
-      return setCompetitorSection(slug, rest[0], rest[1] as CompetitorSectionKey, content);
+      const resolvedId = setCompetitorSection(slug, rest[0], rest[1] as CompetitorSectionKey, content);
+      return resolvedId !== null;
     }
     if (rest.length === 2) {
       const competitor = findCompetitor(business, rest[0]);
@@ -288,6 +318,10 @@ export function writeEditableSection(slug: string, path: string[], rawContent: s
       patchMarketAssessment(slug, { recommendation: content });
       return true;
     }
+    if (key === 'risks') {
+      patchMarketAssessment(slug, { risks: textToMarketRisks(content) });
+      return true;
+    }
     if (MARKET_SECTIONS.some((s) => s.key === key)) {
       patchMarketAssessment(slug, { [key]: content });
       return true;
@@ -310,6 +344,14 @@ export function writeEditableSection(slug: string, path: string[], rawContent: s
     const role = getRole(roleId);
     if (!role || role.businessSlug !== slug) return false;
     patchRole(roleId, { [field]: content });
+    return true;
+  }
+
+  if (root === 'stack' && rest.length === 2 && rest[1] === 'rationale') {
+    const stackRowId = Number(rest[0]);
+    const row = getBusinessAppStackRow(stackRowId);
+    if (!row || row.businessSlug !== slug) return false;
+    patchBusinessAppRationale(stackRowId, content);
     return true;
   }
 
@@ -392,6 +434,11 @@ export function buildEditableRewriteContext(business: Business, targetPath: stri
         `## Recommendation (market/recommendation)${marker(['market', 'recommendation'])}\n\n${market.recommendation.trim()}`,
       );
     }
+    if (market.risks?.length) {
+      marketParts.push(
+        `## Market risks (market/risks)${marker(['market', 'risks'])}\n\n${marketRisksToText(market.risks)}`,
+      );
+    }
   }
 
   const roleParts = listRoles(business.slug)
@@ -406,6 +453,11 @@ export function buildEditableRewriteContext(business: Business, targetPath: stri
       if (r.jobDescription?.trim()) {
         lines.push(
           `Job description (roles/${r.id}/jobDescription)${marker(['roles', String(r.id), 'jobDescription'])}\n${r.jobDescription.trim()}`,
+        );
+      }
+      if (r.rationale?.trim()) {
+        lines.push(
+          `Rationale (roles/${r.id}/rationale)${marker(['roles', String(r.id), 'rationale'])}\n${r.rationale.trim()}`,
         );
       }
       return lines.join('\n\n');

@@ -49,6 +49,8 @@ export async function runSectionRewrite(slug: string, path: string[], instructio
   const kindHint =
     section.kind === 'bullets' ? 'Output one bullet per line (- item).'
     : section.kind === 'lines' ? 'Output one value-chain stage per line.'
+    : section.kind === 'risks' ?
+      'Output market risks as blocks separated by --- lines. Each block: severity, optional likelihood, risk, optional mitigation (field: value per line).'
     : section.kind === 'plain' ? 'Output plain text only — no markdown headings.'
     : 'Output markdown body only — no ## section heading (the UI renders the title).';
 

@@ -10,7 +10,6 @@ import {
 } from '@/lib/forgeAnimatedText';
 import {
   MARKET_CORE_SUB_TABS,
-  MARKET_SECTIONS,
   MARKET_SOURCES_SUB_TAB,
   MARKET_SUBTAB_SHORT_LABELS,
   defaultMarketSubTab,
@@ -22,6 +21,7 @@ import {
   viabilityVerdictDef,
   type MarketSubTabId,
 } from '@/lib/marketAssessment';
+import { marketRisksToText } from '@/lib/marketRisksText';
 import { EditableSectionHost, EditSectionButton } from '@/components/EditableSectionHost';
 import type { EditableTarget } from '@/lib/editableSections';
 import type { MarketAssessment } from '@/lib/businessTypes';
@@ -367,7 +367,21 @@ function MarketSubTabPanel({
       return <MarketSubTabEmpty subTab="risks" marketInFlight={marketInFlight} />;
     }
     return (
-      <ul className="forge-risk-list">
+      <>
+        <div className="spread forge-plan-subpanel-head">
+          <span />
+          <EditSectionButton
+            label="Edit risks"
+            onClick={() =>
+              onEdit({
+                path: ['market', 'risks'],
+                label: 'Market risks',
+                content: marketRisksToText(risks),
+              })
+            }
+          />
+        </div>
+        <ul className="forge-risk-list">
         {risks.map((r, i) => (
           <li key={i} className="forge-risk-item">
             <div className="forge-risk-head">
@@ -401,6 +415,7 @@ function MarketSubTabPanel({
           </li>
         ))}
       </ul>
+      </>
     );
   }
 

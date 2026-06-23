@@ -3045,14 +3045,36 @@ a.forge-roster-group-title:hover {
   margin-bottom: 8px;
 }
 
-.forge-competitor-meta-item {
+.forge-stack-option-wrap {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.forge-stack-rationale-row {
+  padding: 0 4px 8px;
   gap: 8px;
+}
+
+.forge-stack-rationale {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.forge-role-extra {
+  margin-top: 10px;
 }
 
 .forge-prose-preview {
   white-space: pre-wrap;
   word-break: break-word;
   margin: 6px 0 0;
+}
+
+.forge-competitor-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

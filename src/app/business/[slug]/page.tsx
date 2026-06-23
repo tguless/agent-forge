@@ -160,7 +160,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const { turns: planTurns, done: planDone } = useBusinessPlanStream(slug, planStreamActive);
   const fillDelay = useTextFillDelay();
   const [tab, setTab] = useBlueprintTab('overview');
-  const [overviewEdit, setOverviewEdit] = React.useState<EditableTarget | null>(null);
+  const [blueprintEdit, setBlueprintEdit] = React.useState<EditableTarget | null>(null);
 
   const load = React.useCallback(async () => {
     const res = await fetch(`/api/businesses/${slug}`, { cache: 'no-store' });
@@ -451,7 +451,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
                 <EditSectionButton
                   label="Edit"
                   onClick={() =>
-                    setOverviewEdit({
+                    setBlueprintEdit({
                       path: ['profile', 'elevatorPitch'],
                       label: 'Elevator pitch',
                       content: business.profile.elevatorPitch!.trim(),
@@ -479,11 +479,35 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
                   Profile
                 </BlueprintPanelLabel>
                 <div className="forge-editor-actions">
+                  {business.profile.industry && (
+                    <EditSectionButton
+                      label="Edit industry"
+                      onClick={() =>
+                        setBlueprintEdit({
+                          path: ['profile', 'industry'],
+                          label: 'Industry',
+                          content: business.profile.industry!.trim(),
+                        })
+                      }
+                    />
+                  )}
+                  {business.profile.businessModel && (
+                    <EditSectionButton
+                      label="Edit model"
+                      onClick={() =>
+                        setBlueprintEdit({
+                          path: ['profile', 'businessModel'],
+                          label: 'Business model',
+                          content: business.profile.businessModel!.trim(),
+                        })
+                      }
+                    />
+                  )}
                   {business.profile.summary && (
                     <EditSectionButton
                       label="Edit summary"
                       onClick={() =>
-                        setOverviewEdit({
+                        setBlueprintEdit({
                           path: ['profile', 'summary'],
                           label: 'Summary',
                           content: business.profile.summary!.trim(),
@@ -495,7 +519,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
                     <EditSectionButton
                       label="Edit value chain"
                       onClick={() =>
-                        setOverviewEdit({
+                        setBlueprintEdit({
                           path: ['profile', 'valueChain'],
                           label: 'Value chain',
                           content: business.profile.valueChain!.join('\n'),
@@ -709,17 +733,34 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
                   {group.options.map((opt) => {
                     const selected = opt.appId === group.selectedAppId;
                     return (
-                      <button
-                        key={opt.appId}
-                        type="button"
-                        className={`forge-stack-option${selected ? ' forge-stack-option--selected' : ''}`}
-                        onClick={() => !selected && void selectApp(opt.appId)}
-                        title={opt.rationale}
-                      >
-                        {opt.isAgentDefault ? '★ ' : ''}
-                        {opt.app.name}
-                        <span className="forge-stack-kind">{opt.app.kind}</span>
-                      </button>
+                      <div key={opt.appId} className="forge-stack-option-wrap">
+                        <button
+                          type="button"
+                          className={`forge-stack-option${selected ? ' forge-stack-option--selected' : ''}`}
+                          onClick={() => !selected && void selectApp(opt.appId)}
+                        >
+                          {opt.isAgentDefault ? '★ ' : ''}
+                          {opt.app.name}
+                          <span className="forge-stack-kind">{opt.app.kind}</span>
+                        </button>
+                        {opt.rationale?.trim() && (
+                          <div className="forge-stack-rationale-row spread">
+                            <span className="forge-hint forge-stack-rationale" title={opt.rationale}>
+                              {opt.rationale.length > 120 ? `${opt.rationale.slice(0, 120)}…` : opt.rationale}
+                            </span>
+                            <EditSectionButton
+                              label="Edit rationale"
+                              onClick={() =>
+                                setBlueprintEdit({
+                                  path: ['stack', String(opt.id), 'rationale'],
+                                  label: `${opt.app.name} — Recommendation rationale`,
+                                  content: opt.rationale.trim(),
+                                })
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -825,8 +866,8 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
       <EditableSectionHost
         slug={slug}
-        target={overviewEdit}
-        onClose={() => setOverviewEdit(null)}
+        target={blueprintEdit}
+        onClose={() => setBlueprintEdit(null)}
         onSaved={() => void load()}
       />
     </div>

@@ -9,16 +9,18 @@ import {
   patchBusinessPlanSection,
   addRole,
   addBusinessApp,
+  getBusiness,
+  listBusinessApps,
   setCompetitorLandscape,
   upsertCompetitor,
   setCompetitorSection,
   patchMarketAssessment,
   addMarketRisk,
   setViabilityVerdict,
-  getBusiness,
 } from '@/lib/businessStore';
 import { BUSINESS_PLAN_SECTIONS } from '@/lib/businessPlanSections';
 import { appendTextSectionVersion } from '@/lib/server/textSectionVersionHistory';
+import { marketRisksToText } from '@/lib/marketRisksText';
 import { COMPETITOR_SECTION_KEYS } from '@/lib/competitorSections';
 import {
   VIABILITY_VERDICT_KEYS,
@@ -97,6 +99,18 @@ function createCompetitorTools(ctx: BusinessToolContext): ToolSet {
           website: input.website,
           oneLiner: input.oneLiner,
         });
+        if (input.oneLiner?.trim()) {
+          appendTextSectionVersion(ctx.businessSlug, ['competitors', id, 'oneLiner'], {
+            content: input.oneLiner.trim(),
+            source: 'agent_generated',
+          });
+        }
+        if (input.website?.trim()) {
+          appendTextSectionVersion(ctx.businessSlug, ['competitors', id, 'website'], {
+            content: input.website.trim(),
+            source: 'agent_generated',
+          });
+        }
         return { competitorId: id, name: input.name };
       },
     }),
@@ -113,21 +127,21 @@ function createCompetitorTools(ctx: BusinessToolContext): ToolSet {
         sources: z.array(z.string()).optional().describe('Source URLs'),
       }),
       execute: async (input) => {
-        const ok = setCompetitorSection(
+        const resolvedId = setCompetitorSection(
           ctx.businessSlug,
           input.competitorId,
           input.section as (typeof COMPETITOR_SECTION_KEYS)[number],
           input.content,
           input.sources,
         );
-        if (ok) {
+        if (resolvedId) {
           const trimmed = input.content.trim();
-          appendTextSectionVersion(ctx.businessSlug, ['competitors', input.competitorId, input.section], {
+          appendTextSectionVersion(ctx.businessSlug, ['competitors', resolvedId, input.section], {
             content: trimmed,
             source: 'agent_generated',
           });
         }
-        return ok
+        return resolvedId
           ? `${input.section} saved for ${input.competitorId}.`
           : `No competitor matched "${input.competitorId}" — call upsert_competitor first.`;
       },
@@ -220,6 +234,11 @@ function createMarketAssessmentTools(ctx: BusinessToolContext): ToolSet {
           severity: input.severity as (typeof RISK_SEVERITIES)[number],
           likelihood: input.likelihood as (typeof RISK_SEVERITIES)[number] | undefined,
           mitigation: input.mitigation?.trim(),
+        });
+        const risks = getBusiness(ctx.businessSlug)?.profile.marketAssessment?.risks ?? [];
+        appendTextSectionVersion(ctx.businessSlug, ['market', 'risks'], {
+          content: marketRisksToText(risks),
+          source: 'agent_generated',
         });
         return `Risk recorded (${input.severity}).`;
       },
@@ -393,6 +412,15 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
           isDefault: input.isDefault,
           rationale: input.rationale,
         });
+        if (input.rationale?.trim()) {
+          const link = listBusinessApps(ctx.businessSlug).find((row) => row.appId === app.id);
+          if (link) {
+            appendTextSectionVersion(ctx.businessSlug, ['stack', String(link.id), 'rationale'], {
+              content: input.rationale.trim(),
+              source: 'agent_generated',
+            });
+          }
+        }
         return `${input.isDefault ? 'Default' : 'Alternative'} for ${app.appTypeKey}: ${app.name} (${input.kind})${newType ? ' [new type]' : ''}.`;
       },
     }),
@@ -459,6 +487,12 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
           content: input.businessContext.trim(),
           source: 'agent_generated',
         });
+        if (input.rationale?.trim()) {
+          appendTextSectionVersion(ctx.businessSlug, ['roles', String(role.id), 'rationale'], {
+            content: input.rationale.trim(),
+            source: 'agent_generated',
+          });
+        }
         return `Role suggested: ${role.title} (authority ${role.authorityHint}).`;
       },
     }),

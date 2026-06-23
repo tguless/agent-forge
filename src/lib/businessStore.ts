@@ -192,10 +192,10 @@ export function setCompetitorSection(
   section: CompetitorSectionKey,
   content: string,
   sources?: string[],
-): boolean {
+): string | null {
   const analysis = currentAnalysis(slug);
   const id = findCompetitorId(analysis, idOrName);
-  if (!id) return false;
+  if (!id) return null;
   const competitors = analysis.competitors.map((c) => {
     if (c.id !== id) return c;
     const mergedSources = sources?.length
@@ -208,7 +208,7 @@ export function setCompetitorSection(
     };
   });
   patchBusinessProfile(slug, { competitorAnalysis: { ...analysis, competitors } });
-  return true;
+  return id;
 }
 
 // ── Market assessment (advisory viability verdict) ──────────────────────────
@@ -404,6 +404,28 @@ export function listBusinessApps(businessSlug: string): BusinessApp[] {
       } satisfies BusinessApp;
     })
     .filter((x): x is BusinessApp => x !== null);
+}
+
+export function getBusinessAppStackRow(id: number): BusinessApp | null {
+  const row = getDb().prepare('SELECT * FROM business_apps WHERE id = ?').get(id) as BusinessAppRow | undefined;
+  if (!row) return null;
+  const app = getApp(row.app_id);
+  if (!app) return null;
+  return {
+    id: row.id,
+    businessSlug: row.business_slug,
+    appTypeKey: row.app_type_key,
+    appId: row.app_id,
+    isAgentDefault: !!row.is_agent_default,
+    isSelected: !!row.is_selected,
+    rationale: row.rationale,
+    app,
+  };
+}
+
+export function patchBusinessAppRationale(stackRowId: number, rationale: string): BusinessApp | null {
+  getDb().prepare('UPDATE business_apps SET rationale = ? WHERE id = ?').run(rationale.trim(), stackRowId);
+  return getBusinessAppStackRow(stackRowId);
 }
 
 /**
