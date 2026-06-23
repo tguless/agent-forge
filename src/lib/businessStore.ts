@@ -337,6 +337,30 @@ export function setRoleStatus(id: number, status: BusinessRoleStatus, agentSlug?
   }
 }
 
+export function patchRole(
+  id: number,
+  patch: Partial<Pick<BusinessRole, 'title' | 'jobDescription' | 'businessContext' | 'rationale' | 'authorityHint'>>,
+): BusinessRole | null {
+  const current = getRole(id);
+  if (!current) return null;
+  const next = { ...current, ...patch };
+  getDb()
+    .prepare(
+      `UPDATE business_roles
+       SET title = ?, business_context = ?, job_description = ?, authority_hint = ?, rationale = ?
+       WHERE id = ?`,
+    )
+    .run(
+      next.title,
+      next.businessContext,
+      next.jobDescription,
+      next.authorityHint,
+      next.rationale ?? '',
+      id,
+    );
+  return getRole(id);
+}
+
 /** Promote roles stuck on `forging` when their agent already finished. */
 export function reconcileRoleForgeStatuses(businessSlug: string): void {
   for (const role of listRoles(businessSlug)) {

@@ -14,6 +14,8 @@ import { BlueprintRoleItem } from '@/components/BlueprintRoleItem';
 import type { BusinessAgentSummary } from '@/lib/businessStore';
 import { BusinessPlaque } from '@/components/BusinessPlaque';
 import { ForgeTopNav } from '@/components/ForgeTopNav';
+import { EditableSectionHost, EditSectionButton } from '@/components/EditableSectionHost';
+import type { EditableTarget } from '@/lib/editableSections';
 import { ForgeDecodeText, ForgeFlowText } from '@/components/ForgeArwesText';
 import { ForgeMarkdown } from '@/components/ForgeMarkdown';
 import { useTextFillDelay } from '@/hooks/useTextFillDelay';
@@ -158,6 +160,7 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
   const { turns: planTurns, done: planDone } = useBusinessPlanStream(slug, planStreamActive);
   const fillDelay = useTextFillDelay();
   const [tab, setTab] = useBlueprintTab('overview');
+  const [overviewEdit, setOverviewEdit] = React.useState<EditableTarget | null>(null);
 
   const load = React.useCallback(async () => {
     const res = await fetch(`/api/businesses/${slug}`, { cache: 'no-store' });
@@ -441,9 +444,21 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
         <ForgeBlueprintTabPanel id="overview" active={tab}>
           {business.profile.elevatorPitch && (
             <ForgeInteractiveHudBox variant="rect" className="forge-blueprint-panel">
-              <BlueprintPanelLabel animateId={`${slug}:overview:elevator-label`} delay={d('overview-elevator-label', 0.04)}>
-                Elevator pitch
-              </BlueprintPanelLabel>
+              <div className="forge-plan-subpanel-head spread">
+                <BlueprintPanelLabel animateId={`${slug}:overview:elevator-label`} delay={d('overview-elevator-label', 0.04)}>
+                  Elevator pitch
+                </BlueprintPanelLabel>
+                <EditSectionButton
+                  label="Edit"
+                  onClick={() =>
+                    setOverviewEdit({
+                      path: ['profile', 'elevatorPitch'],
+                      label: 'Elevator pitch',
+                      content: business.profile.elevatorPitch!.trim(),
+                    })
+                  }
+                />
+              </div>
               <ForgeFlowText
                 as="p"
                 className="forge-elevator-pitch"
@@ -459,9 +474,37 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
 
           {(business.profile.industry || business.profile.summary) && (
             <ForgeInteractiveHudBox variant="rect" className="forge-blueprint-panel">
-              <BlueprintPanelLabel animateId={`${slug}:overview:profile-label`} delay={d('overview-profile-label', 0.04)}>
-                Profile
-              </BlueprintPanelLabel>
+              <div className="forge-plan-subpanel-head spread">
+                <BlueprintPanelLabel animateId={`${slug}:overview:profile-label`} delay={d('overview-profile-label', 0.04)}>
+                  Profile
+                </BlueprintPanelLabel>
+                <div className="forge-editor-actions">
+                  {business.profile.summary && (
+                    <EditSectionButton
+                      label="Edit summary"
+                      onClick={() =>
+                        setOverviewEdit({
+                          path: ['profile', 'summary'],
+                          label: 'Summary',
+                          content: business.profile.summary!.trim(),
+                        })
+                      }
+                    />
+                  )}
+                  {!!business.profile.valueChain?.length && (
+                    <EditSectionButton
+                      label="Edit value chain"
+                      onClick={() =>
+                        setOverviewEdit({
+                          path: ['profile', 'valueChain'],
+                          label: 'Value chain',
+                          content: business.profile.valueChain!.join('\n'),
+                        })
+                      }
+                    />
+                  )}
+                </div>
+              </div>
               {business.profile.industry && (
                 <BlueprintFlowParagraph
                   animateId={`${slug}:profile-industry:${business.profile.industry}`}
@@ -568,9 +611,11 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           {(hasBusinessPlan || competitorAnalysisHasContent(business.profile.competitorAnalysis)) && (
             <div className={planInFlight ? 'forge-blueprint-tab-block' : undefined}>
               <BusinessPlanViewer
+                slug={slug}
                 plan={business.profile.businessPlan}
                 competitorAnalysis={business.profile.competitorAnalysis}
                 planInFlight={planInFlight}
+                onSectionSaved={() => void load()}
               />
             </div>
           )}
@@ -627,9 +672,11 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           {hasMarketAssessment && (
             <div className={marketStreamHere ? 'forge-blueprint-tab-block' : undefined}>
               <MarketAssessmentViewer
+                slug={slug}
                 assessment={business.profile.marketAssessment}
                 animatePrefix={`${slug}:market`}
                 marketInFlight={marketStreamHere}
+                onSaved={() => void load()}
               />
             </div>
           )}
@@ -745,9 +792,11 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
                 {suggestedRoles.map((role) => (
                   <BlueprintRoleItem
                     key={role.id}
+                    slug={slug}
                     role={role}
                     forgeBusy={forgeBusy}
                     onForge={(roleId) => void forge(roleId)}
+                    onSaved={() => void load()}
                   />
                 ))}
               </div>
@@ -773,6 +822,13 @@ export default function BlueprintPage({ params }: { params: { slug: string } }) 
           </div>
         </div>
       </div>
+
+      <EditableSectionHost
+        slug={slug}
+        target={overviewEdit}
+        onClose={() => setOverviewEdit(null)}
+        onSaved={() => void load()}
+      />
     </div>
   );
 }

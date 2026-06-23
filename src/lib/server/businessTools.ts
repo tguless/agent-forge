@@ -18,6 +18,7 @@ import {
   getBusiness,
 } from '@/lib/businessStore';
 import { BUSINESS_PLAN_SECTIONS } from '@/lib/businessPlanSections';
+import { appendTextSectionVersion } from '@/lib/server/textSectionVersionHistory';
 import { COMPETITOR_SECTION_KEYS } from '@/lib/competitorSections';
 import {
   VIABILITY_VERDICT_KEYS,
@@ -72,7 +73,12 @@ function createCompetitorTools(ctx: BusinessToolContext): ToolSet {
         landscape: z.string().describe('Markdown overview of the competitive landscape'),
       }),
       execute: async (input) => {
-        setCompetitorLandscape(ctx.businessSlug, input.landscape);
+        const trimmed = input.landscape.trim();
+        setCompetitorLandscape(ctx.businessSlug, trimmed);
+        appendTextSectionVersion(ctx.businessSlug, ['competitors', 'landscape'], {
+          content: trimmed,
+          source: 'agent_generated',
+        });
         return 'Competitive landscape overview saved.';
       },
     }),
@@ -114,6 +120,13 @@ function createCompetitorTools(ctx: BusinessToolContext): ToolSet {
           input.content,
           input.sources,
         );
+        if (ok) {
+          const trimmed = input.content.trim();
+          appendTextSectionVersion(ctx.businessSlug, ['competitors', input.competitorId, input.section], {
+            content: trimmed,
+            source: 'agent_generated',
+          });
+        }
         return ok
           ? `${input.section} saved for ${input.competitorId}.`
           : `No competitor matched "${input.competitorId}" — call upsert_competitor first.`;
@@ -137,9 +150,14 @@ function createMarketAssessmentTools(ctx: BusinessToolContext): ToolSet {
         sources: z.array(z.string()).optional().describe('Source URLs'),
       }),
       execute: async (input) => {
+        const trimmed = input.content.trim();
         patchMarketAssessment(ctx.businessSlug, {
-          marketSize: input.content.trim(),
+          marketSize: trimmed,
           sources: input.sources,
+        });
+        appendTextSectionVersion(ctx.businessSlug, ['market', 'marketSize'], {
+          content: trimmed,
+          source: 'agent_generated',
         });
         return 'Market size saved.';
       },
@@ -153,9 +171,14 @@ function createMarketAssessmentTools(ctx: BusinessToolContext): ToolSet {
         sources: z.array(z.string()).optional().describe('Source URLs'),
       }),
       execute: async (input) => {
+        const trimmed = input.content.trim();
         patchMarketAssessment(ctx.businessSlug, {
-          demandSignals: input.content.trim(),
+          demandSignals: trimmed,
           sources: input.sources,
+        });
+        appendTextSectionVersion(ctx.businessSlug, ['market', 'demandSignals'], {
+          content: trimmed,
+          source: 'agent_generated',
         });
         return 'Demand signals saved.';
       },
@@ -169,9 +192,14 @@ function createMarketAssessmentTools(ctx: BusinessToolContext): ToolSet {
         sources: z.array(z.string()).optional().describe('Source URLs'),
       }),
       execute: async (input) => {
+        const trimmed = input.content.trim();
         patchMarketAssessment(ctx.businessSlug, {
-          timing: input.content.trim(),
+          timing: trimmed,
           sources: input.sources,
+        });
+        appendTextSectionVersion(ctx.businessSlug, ['market', 'timing'], {
+          content: trimmed,
+          source: 'agent_generated',
         });
         return 'Market timing saved.';
       },
@@ -228,6 +256,23 @@ function createMarketAssessmentTools(ctx: BusinessToolContext): ToolSet {
           cons: input.cons,
           recommendation: input.recommendation,
         });
+        const slug = ctx.businessSlug;
+        appendTextSectionVersion(slug, ['market', 'headline'], {
+          content: input.headline.trim(),
+          source: 'agent_generated',
+        });
+        appendTextSectionVersion(slug, ['market', 'pros'], {
+          content: input.pros.map((p) => `- ${p}`).join('\n'),
+          source: 'agent_generated',
+        });
+        appendTextSectionVersion(slug, ['market', 'cons'], {
+          content: input.cons.map((c) => `- ${c}`).join('\n'),
+          source: 'agent_generated',
+        });
+        appendTextSectionVersion(slug, ['market', 'recommendation'], {
+          content: input.recommendation.trim(),
+          source: 'agent_generated',
+        });
         return `Viability verdict saved: ${input.verdict}.`;
       },
     }),
@@ -245,7 +290,12 @@ function createPlanSectionTools(ctx: BusinessToolContext): ToolSet {
           .describe('Markdown body for this section only — no ## heading (the UI adds the title)'),
       }),
       execute: async (input) => {
-        patchBusinessPlanSection(ctx.businessSlug, section.key, input.content);
+        const trimmed = input.content.trim();
+        patchBusinessPlanSection(ctx.businessSlug, section.key, trimmed);
+        appendTextSectionVersion(ctx.businessSlug, ['plan', section.key], {
+          content: trimmed,
+          source: 'agent_generated',
+        });
         return `${section.label} saved.`;
       },
     });
@@ -271,6 +321,25 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
           summary: input.summary,
           valueChain: input.valueChain ?? [],
         });
+        const slug = ctx.businessSlug;
+        appendTextSectionVersion(slug, ['profile', 'industry'], {
+          content: input.industry.trim(),
+          source: 'agent_generated',
+        });
+        appendTextSectionVersion(slug, ['profile', 'businessModel'], {
+          content: input.businessModel.trim(),
+          source: 'agent_generated',
+        });
+        appendTextSectionVersion(slug, ['profile', 'summary'], {
+          content: input.summary.trim(),
+          source: 'agent_generated',
+        });
+        if (input.valueChain?.length) {
+          appendTextSectionVersion(slug, ['profile', 'valueChain'], {
+            content: input.valueChain.join('\n'),
+            source: 'agent_generated',
+          });
+        }
         return `Profile saved: ${input.industry} · ${input.businessModel}.`;
       },
     }),
@@ -282,7 +351,12 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
         pitch: z.string().describe('Spoken elevator pitch, no bullet lists'),
       }),
       execute: async (input) => {
-        patchBusinessProfile(ctx.businessSlug, { elevatorPitch: input.pitch.trim() });
+        const trimmed = input.pitch.trim();
+        patchBusinessProfile(ctx.businessSlug, { elevatorPitch: trimmed });
+        appendTextSectionVersion(ctx.businessSlug, ['profile', 'elevatorPitch'], {
+          content: trimmed,
+          source: 'agent_generated',
+        });
         return 'Elevator pitch saved.';
       },
     }),
@@ -376,6 +450,14 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
           jobDescription: input.jobDescription,
           authorityHint: input.authorityHint,
           rationale: input.rationale,
+        });
+        appendTextSectionVersion(ctx.businessSlug, ['roles', String(role.id), 'jobDescription'], {
+          content: input.jobDescription.trim(),
+          source: 'agent_generated',
+        });
+        appendTextSectionVersion(ctx.businessSlug, ['roles', String(role.id), 'businessContext'], {
+          content: input.businessContext.trim(),
+          source: 'agent_generated',
         });
         return `Role suggested: ${role.title} (authority ${role.authorityHint}).`;
       },

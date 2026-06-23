@@ -22,12 +22,16 @@ import {
   viabilityVerdictDef,
   type MarketSubTabId,
 } from '@/lib/marketAssessment';
+import { EditableSectionHost, EditSectionButton } from '@/components/EditableSectionHost';
+import type { EditableTarget } from '@/lib/editableSections';
 import type { MarketAssessment } from '@/lib/businessTypes';
 
 type MarketAssessmentViewerProps = {
+  slug: string;
   assessment: MarketAssessment | undefined;
   animatePrefix?: string;
   marketInFlight?: boolean;
+  onSaved?: () => void;
 };
 
 function useMarketSubTab(assessment: MarketAssessment | undefined) {
@@ -104,10 +108,14 @@ function MarketSubTabEmpty({
  * timing, pros vs cons, risks, recommendation, and sources.
  */
 export function MarketAssessmentViewer({
+  slug,
   assessment,
   animatePrefix = 'market',
   marketInFlight,
+  onSaved,
 }: MarketAssessmentViewerProps) {
+  const [editTarget, setEditTarget] = React.useState<EditableTarget | null>(null);
+
   if (!marketAssessmentHasContent(assessment) || !assessment) return null;
 
   const hasSources = marketSubTabHasContent(assessment, 'sources');
@@ -171,8 +179,16 @@ export function MarketAssessmentViewer({
           assessment={assessment}
           animatePrefix={panelPrefix}
           marketInFlight={marketInFlight}
+          onEdit={setEditTarget}
         />
       </section>
+
+      <EditableSectionHost
+        slug={slug}
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => onSaved?.()}
+      />
     </div>
   );
 }
@@ -182,11 +198,13 @@ function MarketSubTabPanel({
   assessment,
   animatePrefix,
   marketInFlight,
+  onEdit,
 }: {
   subTab: MarketSubTabId;
   assessment: MarketAssessment;
   animatePrefix: string;
   marketInFlight?: boolean;
+  onEdit: (target: EditableTarget) => void;
 }) {
   const seq = createAnimateBlockSequence(animatePrefix);
   const verdict = viabilityVerdictDef(assessment.verdict);
@@ -218,9 +236,21 @@ function MarketSubTabPanel({
               )}
             </div>
             {assessment.headline && (
-              <AnimatedFlowParagraph seq={seq} kind="verdict-headline" className="forge-verdict-headline">
-                {assessment.headline}
-              </AnimatedFlowParagraph>
+              <div className="forge-plan-subpanel-head spread">
+                <AnimatedFlowParagraph seq={seq} kind="verdict-headline" className="forge-verdict-headline">
+                  {assessment.headline}
+                </AnimatedFlowParagraph>
+                <EditSectionButton
+                  label="Edit headline"
+                  onClick={() =>
+                    onEdit({
+                      path: ['market', 'headline'],
+                      label: 'Verdict headline',
+                      content: assessment.headline!.trim(),
+                    })
+                  }
+                />
+              </div>
             )}
             <AnimatedFlowParagraph seq={seq} kind="verdict-disclaimer" className="forge-verdict-disclaimer">
               Advisory only — pros, cons, and risks to inform your call. Agent Forge does not decide for you.
@@ -236,10 +266,26 @@ function MarketSubTabPanel({
     if (!body) {
       return <MarketSubTabEmpty subTab={subTab} marketInFlight={marketInFlight} />;
     }
+    const tabLabel = MARKET_CORE_SUB_TABS.find((t) => t.id === subTab)?.label ?? subTab;
     return (
-      <ForgeMarkdown className="forge-plan-section-body" animated animatePrefix={animatePrefix}>
-        {body}
-      </ForgeMarkdown>
+      <>
+        <div className="spread forge-plan-subpanel-head">
+          <span />
+          <EditSectionButton
+            label="Edit section"
+            onClick={() =>
+              onEdit({
+                path: ['market', subTab],
+                label: tabLabel,
+                content: body,
+              })
+            }
+          />
+        </div>
+        <ForgeMarkdown className="forge-plan-section-body" animated animatePrefix={animatePrefix}>
+          {body}
+        </ForgeMarkdown>
+      </>
     );
   }
 
@@ -248,7 +294,37 @@ function MarketSubTabPanel({
       return <MarketSubTabEmpty subTab="proscons" marketInFlight={marketInFlight} />;
     }
     return (
-      <div className="forge-proscons">
+      <>
+        <div className="spread forge-plan-subpanel-head">
+          <span />
+          <div className="forge-editor-actions">
+            {pros.length > 0 && (
+              <EditSectionButton
+                label="Edit pros"
+                onClick={() =>
+                  onEdit({
+                    path: ['market', 'pros'],
+                    label: 'Pros',
+                    content: pros.map((p) => `- ${p}`).join('\n'),
+                  })
+                }
+              />
+            )}
+            {cons.length > 0 && (
+              <EditSectionButton
+                label="Edit cons"
+                onClick={() =>
+                  onEdit({
+                    path: ['market', 'cons'],
+                    label: 'Cons',
+                    content: cons.map((c) => `- ${c}`).join('\n'),
+                  })
+                }
+              />
+            )}
+          </div>
+        </div>
+        <div className="forge-proscons">
         {pros.length > 0 && (
           <div className="forge-proscons-col forge-proscons-col--pro">
             <AnimatedDecodeLine seq={seq} kind="pros-title" className="forge-market-subtitle" as="h4" header>
@@ -282,6 +358,7 @@ function MarketSubTabPanel({
           </div>
         )}
       </div>
+      </>
     );
   }
 
@@ -333,13 +410,25 @@ function MarketSubTabPanel({
       return <MarketSubTabEmpty subTab="recommendation" marketInFlight={marketInFlight} />;
     }
     return (
-      <ForgeMarkdown className="forge-plan-section-body" animated animatePrefix={animatePrefix}>
-        {body}
-      </ForgeMarkdown>
+      <>
+        <div className="spread forge-plan-subpanel-head">
+          <span />
+          <EditSectionButton
+            label="Edit section"
+            onClick={() =>
+              onEdit({
+                path: ['market', 'recommendation'],
+                label: 'Recommendation',
+                content: body,
+              })
+            }
+          />
+        </div>
+        <ForgeMarkdown className="forge-plan-section-body" animated animatePrefix={animatePrefix}>
+          {body}
+        </ForgeMarkdown>
+      </>
     );
-  }
-
-  if (subTab === 'sources') {
     const sources = assessment.sources ?? [];
     if (sources.length === 0) {
       return <MarketSubTabEmpty subTab="sources" marketInFlight={marketInFlight} />;

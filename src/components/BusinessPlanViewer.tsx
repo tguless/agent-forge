@@ -14,12 +14,16 @@ import {
   planSubTabHash,
   type PlanSubTabId,
 } from '@/lib/businessPlanSections';
+import { EditableSectionHost, EditSectionButton } from '@/components/EditableSectionHost';
+import type { EditableTarget } from '@/lib/editableSections';
 import type { BusinessPlanSections, CompetitorAnalysis } from '@/lib/businessTypes';
 
 type BusinessPlanViewerProps = {
+  slug: string;
   plan: BusinessPlanSections | undefined;
   competitorAnalysis?: CompetitorAnalysis;
   planInFlight?: boolean;
+  onSectionSaved?: () => void;
 };
 
 function usePlanSubTab(plan: BusinessPlanSections | undefined, hasCompetitors: boolean) {
@@ -66,9 +70,16 @@ function usePlanSubTab(plan: BusinessPlanSections | undefined, hasCompetitors: b
 }
 
 /** Section sub-tabs for the structured business plan (+ optional competitors). */
-export function BusinessPlanViewer({ plan, competitorAnalysis, planInFlight }: BusinessPlanViewerProps) {
+export function BusinessPlanViewer({
+  slug,
+  plan,
+  competitorAnalysis,
+  planInFlight,
+  onSectionSaved,
+}: BusinessPlanViewerProps) {
   const hasCompetitors = competitorAnalysisHasContent(competitorAnalysis);
   const [subTab, setSubTab] = usePlanSubTab(plan, hasCompetitors);
+  const [editTarget, setEditTarget] = React.useState<EditableTarget | null>(null);
 
   if (!businessPlanHasContent(plan) && !hasCompetitors) return null;
 
@@ -134,7 +145,12 @@ export function BusinessPlanViewer({ plan, competitorAnalysis, planInFlight }: B
           aria-labelledby="forge-plan-subtab-competitors"
           className="forge-plan-subpanel"
         >
-          <CompetitorAnalysisViewer analysis={competitorAnalysis} animatePrefix="plan-competitors" />
+          <CompetitorAnalysisViewer
+            slug={slug}
+            analysis={competitorAnalysis}
+            animatePrefix="plan-competitors"
+            onSaved={onSectionSaved}
+          />
         </section>
       ) : activeSection ? (
         <section
@@ -144,16 +160,30 @@ export function BusinessPlanViewer({ plan, competitorAnalysis, planInFlight }: B
           aria-labelledby={`forge-plan-subtab-${activeSection.key}`}
           className="forge-plan-subpanel"
         >
-          <h3 className="forge-plan-subpanel-title">
-            <ForgeDecodeText
-              layout="inline"
-              animateId={`plan-section:${activeSection.key}`}
-              playOnce
-              contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
-            >
-              {activeSection.label}
-            </ForgeDecodeText>
-          </h3>
+          <div className="forge-plan-subpanel-head spread">
+            <h3 className="forge-plan-subpanel-title">
+              <ForgeDecodeText
+                layout="inline"
+                animateId={`plan-section:${activeSection.key}`}
+                playOnce
+                contentStyle={{ color: 'inherit', fontFamily: 'inherit', fontWeight: 'inherit' }}
+              >
+                {activeSection.label}
+              </ForgeDecodeText>
+            </h3>
+            {activeContent && (
+              <EditSectionButton
+                label="Edit section"
+                onClick={() =>
+                  setEditTarget({
+                    path: ['plan', activeSection.key],
+                    label: activeSection.label,
+                    content: activeContent,
+                  })
+                }
+              />
+            )}
+          </div>
           {activeContent ? (
             <ForgeMarkdown
               className="forge-plan-section-body"
@@ -184,6 +214,13 @@ export function BusinessPlanViewer({ plan, competitorAnalysis, planInFlight }: B
           {pendingCount} section{pendingCount === 1 ? '' : 's'} still being drafted…
         </p>
       )}
+
+      <EditableSectionHost
+        slug={slug}
+        target={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => onSectionSaved?.()}
+      />
     </div>
   );
 }
