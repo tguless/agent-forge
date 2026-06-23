@@ -18,6 +18,7 @@ import path from 'node:path';
 import { geminiMaxRetries, isRetryableHttpError, retryWithFullJitter } from '@/lib/agent/retryPolicy';
 import { getPromptContent } from '@/lib/forgeConfigStore';
 import { applyPromptTemplate } from '@/lib/forgePrompts';
+import { buildBusinessOgPrompt, buildBusinessOgPromptInput } from '@/lib/server/businessOgPrompt';
 
 export type ImageKind = 'icon' | 'emblem' | 'portrait';
 
@@ -531,7 +532,8 @@ function drawPlaceholder(magick: string | null, kind: ImageKind, accent: string,
 
 async function geminiGenerate(
   prompt: string,
-  aspect: '1:1' | '3:4',
+  aspect: '1:1' | '3:4' | '16:9',
+  referencePath?: string,
 ): Promise<{ buf: Buffer | null; error?: string }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return { buf: null, error: 'No GEMINI_API_KEY' };
@@ -543,13 +545,27 @@ async function geminiGenerate(
 
     const attemptOnce = async (): Promise<{ buf: Buffer | null; error?: string }> => {
       const run = async (): Promise<{ buf: Buffer | null; error?: string }> => {
+        const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
+          { text: prompt },
+        ];
+        if (referencePath && fs.existsSync(referencePath)) {
+          const mimeType =
+            referencePath.endsWith('.jpg') || referencePath.endsWith('.jpeg') ? 'image/jpeg' : 'image/png';
+          parts.unshift({
+            inlineData: {
+              data: fs.readFileSync(referencePath).toString('base64'),
+              mimeType,
+            },
+          });
+        }
+
         const response = await client.models.generateContent({
           model: MODEL,
-          contents: prompt,
+          contents: referencePath ? [{ parts }] : prompt,
           config: { imageConfig },
         });
-        const parts = response.candidates?.[0]?.content?.parts ?? [];
-        for (const part of parts) {
+        const responseParts = response.candidates?.[0]?.content?.parts ?? [];
+        for (const part of responseParts) {
           const data = (part as { inlineData?: { data?: string } }).inlineData?.data;
           if (data) return { buf: Buffer.from(data, 'base64') };
         }
@@ -840,6 +856,81 @@ export async function generateBusinessPlaque(input: GenerateBusinessPlaqueInput)
   fs.copyFileSync(source, finalPath);
   if (!magick && !python) notes.push('Normalize skipped; saved intermediate PNG.');
   return { webPath, generated: true, notes };
+}
+
+// ── Business OG banner (16:9 forge-business-new style + reference image) ───────
+
+export type GenerateBusinessOgImageInput = {
+  slug: string;
+  businessName: string;
+  subtitle: string;
+  tagline: string;
+  accent: string;
+  emblemSubject: string;
+};
+
+const OG_REFERENCE_PATH = path.join(CWD, 'public', 'og-business-new.png');
+
+/** 16:9 social sharing banner — forge-business-new style, customized per business. */
+export async function generateBusinessOgImage(
+  input: GenerateBusinessOgImageInput,
+): Promise<GenerateImageResult> {
+  const notes: string[] = [];
+  const outDir = path.join(DATA_BUSINESSES, input.slug);
+  fs.mkdirSync(outDir, { recursive: true });
+
+  const finalPath = path.join(outDir, 'og-image.png');
+  const webPath = `/businesses/${input.slug}/og-image.png`;
+
+  const prompt = buildBusinessOgPrompt({
+    title: input.businessName,
+    subtitle: input.subtitle,
+    tagline: input.tagline,
+    accent: input.accent,
+    emblemSubject: input.emblemSubject,
+  });
+
+  const referencePath = fs.existsSync(OG_REFERENCE_PATH) ? OG_REFERENCE_PATH : undefined;
+  if (!referencePath) notes.push('og-business-new.png reference missing; generating without style reference.');
+
+  console.log(`[imagePipeline] business og start slug=${input.slug}`);
+  const { buf, error: geminiError } = await geminiGenerate(prompt, '16:9', referencePath);
+
+  if (!buf) {
+    notes.push(geminiError ? `${geminiError}; used fallback.` : 'Used fallback.');
+    console.warn(`[imagePipeline] business og fallback slug=${input.slug}: ${notes.join(' ')}`);
+    if (referencePath) {
+      fs.copyFileSync(referencePath, finalPath);
+      return { webPath, generated: false, notes };
+    }
+    return { webPath, generated: false, notes };
+  }
+
+  fs.writeFileSync(finalPath, buf);
+  console.log(`[imagePipeline] business og ok slug=${input.slug} path=${webPath}`);
+  return { webPath, generated: true, notes };
+}
+
+/** Convenience wrapper — derives OG copy fields from a business record. */
+export async function generateBusinessOgImageForBusiness(
+  business: {
+    slug: string;
+    name: string;
+    description: string;
+    profile: import('@/lib/businessTypes').BusinessProfile;
+  },
+  emblemSubject: string,
+  accent: string,
+): Promise<GenerateImageResult> {
+  const fields = buildBusinessOgPromptInput(business, emblemSubject, accent);
+  return generateBusinessOgImage({
+    slug: business.slug,
+    businessName: business.name,
+    subtitle: fields.subtitle,
+    tagline: fields.tagline,
+    accent: fields.accent,
+    emblemSubject: fields.emblemSubject,
+  });
 }
 
 export function imageToolingStatus(): { gemini: boolean; rembg: boolean; magick: boolean; python: boolean } {

@@ -5,7 +5,7 @@ import {
   derivePlaqueSubject,
   plaqueAccent,
 } from '@/lib/businessPlaqueMotif';
-import { generateBusinessPlaque } from '@/lib/server/imagePipeline';
+import { generateBusinessPlaque, generateBusinessOgImageForBusiness } from '@/lib/server/imagePipeline';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,9 +34,12 @@ export async function POST(_req: Request, ctx: { params: Promise<{ slug: string 
     businessContext: buildPlaqueBusinessContext(business),
   });
 
+  const ogResult = await generateBusinessOgImageForBusiness(business, subject, accent);
+
   patchBusinessProfile(slug, {
     plaquePath: result.webPath,
     plaqueSubject: subject,
+    ogImagePath: ogResult.webPath,
   });
 
   const refreshed = getBusiness(slug);
@@ -53,6 +56,11 @@ export async function POST(_req: Request, ctx: { params: Promise<{ slug: string 
       notes: result.notes,
       cacheBust: Date.now(),
       businessUpdatedAt: refreshed?.updatedAt,
+    },
+    ogImage: {
+      generated: ogResult.generated,
+      webPath: ogResult.webPath,
+      notes: ogResult.notes,
     },
   });
 }

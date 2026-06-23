@@ -29,7 +29,7 @@ import {
 } from '@/lib/marketAssessment';
 import { upsertApp, ensureCapacity, appTypeExists } from '@/lib/catalogStore';
 import { searchWeb, webSearchProvider } from './webSearch';
-import { generateBusinessPlaque } from './imagePipeline';
+import { generateBusinessPlaque, generateBusinessOgImageForBusiness } from './imagePipeline';
 import {
   buildPlaqueBusinessContext,
   plaqueAccent,
@@ -427,7 +427,7 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
 
     generate_plaque: tool({
       description:
-        'Generate the riveted business identity plaque (Gemini). Call once after set_business_profile. Pass subject = ONE short HUD glyph phrase (10–25 words): [artifact] + [action] — HUD line icon. Example for patent research: "magnifying glass over fanned patent pages with claim lines — HUD line icon". Never paste the business description; never generic circuit-book or database icons.',
+        'Generate the riveted business identity plaque (Gemini) and a matching 16:9 social sharing banner. Call once after set_business_profile. Pass subject = ONE short HUD glyph phrase (10–25 words): [artifact] + [action] — HUD line icon. Example for patent research: "magnifying glass over fanned patent pages with claim lines — HUD line icon". Never paste the business description; never generic circuit-book or database icons.',
       inputSchema: z.object({
         subject: z
           .string()
@@ -448,14 +448,23 @@ export function createBusinessTools(ctx: BusinessToolContext): ToolSet {
           businessName: business.name,
           businessContext: buildPlaqueBusinessContext(business),
         });
+        const ogResult = await generateBusinessOgImageForBusiness(
+          business,
+          input.subject.trim(),
+          accent,
+        );
         patchBusinessProfile(ctx.businessSlug, {
           plaquePath: result.webPath,
           plaqueSubject: input.subject.trim(),
+          ogImagePath: ogResult.webPath,
         });
         return {
           webPath: result.webPath,
+          ogImagePath: ogResult.webPath,
           generated: result.generated,
+          ogGenerated: ogResult.generated,
           notes: result.notes,
+          ogNotes: ogResult.notes,
         };
       },
     }),

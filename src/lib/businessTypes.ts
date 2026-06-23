@@ -120,6 +120,8 @@ export type BusinessProfile = {
   plaquePath?: string;
   /** LLM-authored center-icon subject for regenerate-plaque. */
   plaqueSubject?: string;
+  /** 16:9 social sharing banner — `/businesses/<slug>/og-image.png`. */
+  ogImagePath?: string;
 };
 
 export type Business = {

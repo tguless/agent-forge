@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_FILES = new Set(['plaque.png']);
+const ALLOWED_FILES = new Set(['plaque.png', 'og-image.png']);
 
 /** Serve runtime-generated business plaque PNGs (standalone only indexes public/ at boot). */
 export async function GET(_req: Request, ctx: { params: Promise<{ slug: string; file: string }> }) {

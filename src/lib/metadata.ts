@@ -10,6 +10,14 @@ const DEFAULT_DESCRIPTION =
 const OG_IMAGE_PATH = '/og-image.png';
 const OG_IMAGE_ALT = 'Agent Forge — tactical AI agent card generator on PaperIQ';
 
+export const NEW_BUSINESS_OG_IMAGE_PATH = '/og-business-new.png';
+export const NEW_BUSINESS_OG_IMAGE_ALT =
+  'Agent Forge — forge a business blueprint with AI consultant on PaperIQ';
+
+export const NEW_BUSINESS_TITLE = 'New Business Blueprint · Agent Forge';
+export const NEW_BUSINESS_DESCRIPTION =
+  'Describe what the business does. The consultant profiles it, writes an elevator pitch and business plan, researches competitors with live web search, drafts an advisory market assessment, recommends a SaaS + open-source stack, and proposes agent roles to forge.';
+
 /** Shared Open Graph + Twitter card fields for social link previews. */
 export function buildSocialMetadata(overrides?: {
   title?: string;
@@ -98,7 +106,7 @@ export function buildAgentMetadata(agent: {
   };
 }
 
-/** Per-business blueprint — sector plaque for link previews (matches header mount). */
+/** Per-business blueprint — OG banner when available, else sector plaque, else site default. */
 export function buildBusinessMetadata(business: Business): Metadata {
   const title = `${business.name} · ${SITE_NAME}`;
   const description =
@@ -107,9 +115,13 @@ export function buildBusinessMetadata(business: Business): Metadata {
     business.description.trim() ||
     DEFAULT_DESCRIPTION;
   const pageUrl = absoluteUrl(`/business/${business.slug}`);
-  const imagePath = business.profile.plaquePath || OG_IMAGE_PATH;
-  const imageAlt = `${business.name} — business identity plaque`;
+  const imagePath =
+    business.profile.ogImagePath || business.profile.plaquePath || OG_IMAGE_PATH;
+  const hasOgBanner = !!business.profile.ogImagePath;
   const hasPlaque = !!business.profile.plaquePath;
+  const imageAlt = hasOgBanner
+    ? `${business.name} — business blueprint on Agent Forge`
+    : `${business.name} — business identity plaque`;
 
   return {
     title: business.name,
@@ -121,8 +133,25 @@ export function buildBusinessMetadata(business: Business): Metadata {
       url: pageUrl,
       imageUrl: absoluteUrl(imagePath),
       imageAlt,
-      imageWidth: hasPlaque ? 512 : 1200,
-      imageHeight: hasPlaque ? 512 : 630,
+      imageWidth: hasOgBanner || !hasPlaque ? 1200 : 512,
+      imageHeight: hasOgBanner || !hasPlaque ? 630 : 512,
+    }),
+  };
+}
+
+export function buildNewBusinessMetadata(): Metadata {
+  const pageUrl = absoluteUrl('/business/new');
+
+  return {
+    title: 'New Business Blueprint',
+    description: NEW_BUSINESS_DESCRIPTION,
+    alternates: { canonical: pageUrl },
+    ...buildSocialMetadata({
+      title: NEW_BUSINESS_TITLE,
+      description: NEW_BUSINESS_DESCRIPTION,
+      url: pageUrl,
+      imageUrl: absoluteUrl(NEW_BUSINESS_OG_IMAGE_PATH),
+      imageAlt: NEW_BUSINESS_OG_IMAGE_ALT,
     }),
   };
 }
